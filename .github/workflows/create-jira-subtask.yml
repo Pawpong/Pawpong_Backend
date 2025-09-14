@@ -29,18 +29,53 @@ jobs:
       - name: Create Jira Subtask
         id: create-subtask
         run: |
-          # 안전한 JSON 생성 (jq 사용)
+          # ADF 형식으로 description 생성
           PAYLOAD=$(jq -n \
             --arg project "PP" \
             --arg parent "${{ steps.extract-jira-key.outputs.jira_key }}" \
             --arg summary "${{ github.event.issue.title }}" \
-            --arg description "GitHub Issue: ${{ github.event.issue.html_url }}" \
+            --arg github_url "${{ github.event.issue.html_url }}" \
             '{
               "fields": {
                 "project": {"key": $project},
                 "parent": {"key": $parent},
                 "summary": $summary,
-                "description": $description,
+                "description": {
+                  "type": "doc",
+                  "version": 1,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "GitHub Issue: "
+                        },
+                        {
+                          "type": "text",
+                          "text": $github_url,
+                          "marks": [
+                            {
+                              "type": "link",
+                              "attrs": {
+                                "href": $github_url
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "이 작업은 GitHub에서 자동으로 생성된 하위 작업입니다."
+                        }
+                      ]
+                    }
+                  ]
+                },
                 "issuetype": {"name": "하위 작업"}
               }
             }')
@@ -83,12 +118,12 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `🔗 **Jira Sub-task 생성 완료**
+              body: `🔗 **Jira 하위 작업 생성 완료**
 
-            **Sub-task:** [${jiraIssueKey}](${jiraBaseUrl}/browse/${jiraIssueKey})
-            **Parent Story:** [${parentStory}](${jiraBaseUrl}/browse/${parentStory})
+            **하위 작업:** [${jiraIssueKey}](${jiraBaseUrl}/browse/${jiraIssueKey})
+            **상위 스토리:** [${parentStory}](${jiraBaseUrl}/browse/${parentStory})
 
-            > 이 GitHub 이슈와 Jira Sub-task가 자동으로 연결되었습니다.`
+            > 이 GitHub 이슈와 Jira 하위 작업이 자동으로 연결되었습니다.`
             });
 
       - name: Add GitHub Link to Jira
