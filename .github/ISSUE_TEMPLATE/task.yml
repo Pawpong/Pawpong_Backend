@@ -1,14 +1,13 @@
-name: 🔧 Task
-description: 새로운 작업 생성 (Jira Sub-task로 자동 연결)
-title: "[TASK] "
-labels: ["task"]
+name: Task
+description: Jira 하위 작업 생성
+title: ""
+labels: []
 body:
   - type: input
     id: jira-story-number
     attributes:
-      label: 연결할 Jira Story 번호
-      description: PP- 뒤의 숫자만 입력하세요
-      placeholder: "예시: 15"
+      label: Story 번호 (PP- 뒤의 숫자만)
+      placeholder: "26"
     validations:
       required: true
   
@@ -16,11 +15,19 @@ body:
     id: description
     attributes:
       label: 작업 설명
-      description: 구체적인 작업 내용을 작성하세요
       placeholder: |
-        예시:
-        - API 엔드포인트 개발
-        - 프론트엔드 컴포넌트 구현
-        - 테스트 케이스 작성
+        - 구현할 기능
+        - 작업 내용
+    validations:
+      required: true
+  
+  - type: dropdown
+    id: assignee
+    attributes:
+      label: 담당자
+      options:
+        - 김승찬
+        - 류태호
+      default: 0
     validations:
       required: true
