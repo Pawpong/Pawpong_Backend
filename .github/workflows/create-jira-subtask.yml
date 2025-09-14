@@ -10,87 +10,121 @@ jobs:
     if: contains(github.event.issue.labels.*.name, 'task')
     
     steps:
-      - name: Extract Jira Story Key
+      - name: Extract and Build Jira Story Key
         id: extract-jira-key
         run: |
-          # 이슈 본문에서 Jira 키 추출
-          JIRA_KEY=$(echo "${{ github.event.issue.body }}" | grep -oE 'PROJ-[0-9]+' | head -1)
+          echo "Extracting story number from issue body..."
+          echo "Issue body: ${{ github.event.issue.body }}"
+          
+          # 숫자만 추출
+          STORY_NUMBER=$(echo "${{ github.event.issue.body }}" | grep -oE '[0-9]+' | head -1)
+          
+          if [ -z "$STORY_NUMBER" ]; then
+            echo "❌ No story number found in issue body"
+            exit 1
+          fi
+          
+          # PP- 접두사 추가
+          JIRA_KEY="PP-$STORY_NUMBER"
+          
           echo "jira_key=$JIRA_KEY" >> $GITHUB_OUTPUT
-          echo "Found Jira Key: $JIRA_KEY"
+          echo "✅ Built Jira Key: $JIRA_KEY (from number: $STORY_NUMBER)"
+
+      - name: Validate Jira Story exists
+        id: validate-story
+        run: |
+          echo "Validating Jira Story: ${{ steps.extract-jira-key.outputs.jira_key }}"
+          
+          # Jira Story가 존재하는지 확인
+          RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" \
+            -H "Authorization: Basic ${{ secrets.JIRA_TOKEN }}" \
+            -H "Accept: application/json" \
+            "${{ secrets.JIRA_BASE_URL }}/rest/api/3/issue/${{ steps.extract-jira-key.outputs.jira_key }}")
+          
+          HTTP_CODE=$(echo "$RESPONSE" | grep "HTTP_CODE:" | cut -d: -f2)
+          RESPONSE_BODY=$(echo "$RESPONSE" | sed '/HTTP_CODE:/d')
+          
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "❌ Jira Story not found: ${{ steps.extract-jira-key.outputs.jira_key }}"
+            
+            # GitHub 이슈에 오류 댓글 추가
+            curl -X POST \
+              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments \
+              -d '{
+                "body": "❌ **Jira Story를 찾을 수 없습니다**\n\n`${{ steps.extract-jira-key.outputs.jira_key }}`\n\n다음을 확인해주세요:\n- Story 번호가 올바른지 (예: 15)\n- 해당 Story가 Jira에 존재하는지"
+              }'
+            exit 1
+          fi
+          
+          echo "✅ Jira Story validated: ${{ steps.extract-jira-key.outputs.jira_key }}"
 
       - name: Create Jira Subtask
-        if: steps.extract-jira-key.outputs.jira_key != ''
         run: |
-          # Jira 서브태스크 생성
-          RESPONSE=$(curl -s -X POST \
+          echo "Creating Jira Sub-task for story: ${{ steps.extract-jira-key.outputs.jira_key }}"
+          
+          RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" -X POST \
             -H "Authorization: Basic ${{ secrets.JIRA_TOKEN }}" \
             -H "Content-Type: application/json" \
             -H "Accept: application/json" \
             -d '{
               "fields": {
                 "project": {
-                  "key": "PROJ"
+                  "key": "PP"
                 },
                 "parent": {
                   "key": "${{ steps.extract-jira-key.outputs.jira_key }}"
                 },
                 "summary": "${{ github.event.issue.title }}",
-                "description": {
-                  "type": "doc",
-                  "version": 1,
-                  "content": [
-                    {
-                      "type": "paragraph",
-                      "content": [
-                        {
-                          "type": "text",
-                          "text": "GitHub Issue: ${{ github.event.issue.html_url }}"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "paragraph",
-                      "content": [
-                        {
-                          "type": "text",
-                          "text": "${{ github.event.issue.body }}"
-                        }
-                      ]
-                    }
-                  ]
-                },
+                "description": "GitHub Issue: ${{ github.event.issue.html_url }}\n\n${{ github.event.issue.body }}",
                 "issuetype": {
                   "name": "Sub-task"
                 }
               }
             }' \
-            https://your-company.atlassian.net/rest/api/3/issue)
+            ${{ secrets.JIRA_BASE_URL }}/rest/api/3/issue)
           
-          echo "Jira Response: $RESPONSE"
+          HTTP_CODE=$(echo "$RESPONSE" | grep "HTTP_CODE:" | cut -d: -f2)
+          RESPONSE_BODY=$(echo "$RESPONSE" | sed '/HTTP_CODE:/d')
           
-          # Jira 이슈 키 추출
-          JIRA_ISSUE_KEY=$(echo $RESPONSE | jq -r '.key')
-          echo "Created Jira Issue: $JIRA_ISSUE_KEY"
+          echo "HTTP Code: $HTTP_CODE"
+          echo "Response: $RESPONSE_BODY"
           
-          # GitHub 이슈에 Jira 링크 댓글 추가
-          if [ "$JIRA_ISSUE_KEY" != "null" ] && [ "$JIRA_ISSUE_KEY" != "" ]; then
+          if [ "$HTTP_CODE" = "201" ]; then
+            JIRA_ISSUE_KEY=$(echo $RESPONSE_BODY | jq -r '.key')
+            echo "✅ Created Jira Sub-task: $JIRA_ISSUE_KEY"
+            
+            # GitHub 이슈에 성공 댓글 추가
             curl -X POST \
               -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
               -H "Accept: application/vnd.github.v3+json" \
               https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments \
               -d '{
-                "body": "🔗 **Jira Sub-task 생성 완료**\n\n['"$JIRA_ISSUE_KEY"'](https://your-company.atlassian.net/browse/'"$JIRA_ISSUE_KEY"') - '"${{ github.event.issue.title }}"'\n\n> 이 GitHub 이슈와 Jira Sub-task가 자동으로 연결되었습니다."
+                "body": "🔗 **Jira Sub-task 생성 완료**\n\n**Sub-task:** ['"$JIRA_ISSUE_KEY"']('"${{ secrets.JIRA_BASE_URL }}"'/browse/'"$JIRA_ISSUE_KEY"')\n**Parent Story:** ['"${{ steps.extract-jira-key.outputs.jira_key }}"']('"${{ secrets.JIRA_BASE_URL }}"'/browse/'"${{ steps.extract-jira-key.outputs.jira_key }}"')\n\n> 이 GitHub 이슈와 Jira Sub-task가 자동으로 연결되었습니다."
               }'
+          else
+            echo "❌ Failed to create Jira Sub-task"
+            echo "Error response: $RESPONSE_BODY"
+            
+            # GitHub 이슈에 오류 댓글 추가
+            curl -X POST \
+              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments \
+              -d '{
+                "body": "❌ **Jira Sub-task 생성 실패**\n\nHTTP Code: '"$HTTP_CODE"'\n\n관리자에게 문의하거나 Jira 설정을 확인해주세요."
+              }'
+            exit 1
           fi
 
       - name: Add GitHub Issue Link to Jira
-        if: steps.extract-jira-key.outputs.jira_key != ''
         run: |
-          # Jira 이슈에 GitHub 링크 추가 (Web Link)
+          # Jira 이슈에 GitHub 링크 추가
           curl -X POST \
             -H "Authorization: Basic ${{ secrets.JIRA_TOKEN }}" \
             -H "Content-Type: application/json" \
-            https://your-company.atlassian.net/rest/api/3/issue/${{ steps.extract-jira-key.outputs.jira_key }}/remotelink \
+            ${{ secrets.JIRA_BASE_URL }}/rest/api/3/issue/${{ steps.extract-jira-key.outputs.jira_key }}/remotelink \
             -d '{
               "object": {
                 "url": "${{ github.event.issue.html_url }}",
