@@ -1,13 +1,15 @@
 name: Task
 description: Jira 하위 작업 생성
-title: "제목"
-labels: []
+title: "작업: "
+assignees:
+  - rtaeho
+  - kscold
 body:
   - type: input
     id: jira-story-number
     attributes:
       label: Story 번호 (PP- 뒤의 숫자만)
-      placeholder: "26"
+      placeholder: "55"
     validations:
       required: true
   
@@ -18,16 +20,5 @@ body:
       placeholder: |
         - 구현할 기능
         - 작업 내용
-    validations:
-      required: true
-  
-  - type: dropdown
-    id: assignee
-    attributes:
-      label: 담당자
-      options:
-        - 김승찬
-        - 류태호
-      default: 0
     validations:
       required: true
