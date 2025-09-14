@@ -41,7 +41,7 @@ jobs:
                 "parent": {"key": $parent},
                 "summary": $summary,
                 "description": $description,
-                "issuetype": {"name": "Sub-task"}
+                "issuetype": {"name": "하위 작업"}
               }
             }')
           
