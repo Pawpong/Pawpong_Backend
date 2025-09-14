@@ -1,0 +1,3644 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/api/auth/register/adopter": {
+      "post": {
+        "operationId": "registerAdopter",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterAdopterRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/auth/register/breeder": {
+      "post": {
+        "operationId": "registerBreeder",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterBreederRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "operationId": "login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/breeder/search": {
+      "get": {
+        "operationId": "searchBreeders",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "페이지 번호(기본값: 1)",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "example": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "take",
+            "required": false,
+            "in": "query",
+            "description": "한 페이지에 보여질 데이터 수(기본값: 10)",
+            "schema": {
+              "minimum": 1,
+              "default": 10,
+              "example": 10,
+              "type": "number"
+            }
+          },
+          {
+            "name": "petType",
+            "required": false,
+            "in": "query",
+            "description": "반려동물 종류",
+            "schema": {
+              "example": "dog",
+              "type": "string",
+              "enum": [
+                "dog",
+                "cat"
+              ]
+            }
+          },
+          {
+            "name": "breedName",
+            "required": false,
+            "in": "query",
+            "description": "반려동물 품종",
+            "schema": {
+              "example": "골든 리트리버",
+              "type": "string"
+            }
+          },
+          {
+            "name": "cityName",
+            "required": false,
+            "in": "query",
+            "description": "도시명",
+            "schema": {
+              "example": "서울",
+              "type": "string"
+            }
+          },
+          {
+            "name": "districtName",
+            "required": false,
+            "in": "query",
+            "description": "구/군명",
+            "schema": {
+              "example": "강남구",
+              "type": "string"
+            }
+          },
+          {
+            "name": "isImmediatelyAvailable",
+            "required": false,
+            "in": "query",
+            "description": "즉시 분양 가능 여부",
+            "schema": {
+              "example": true,
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "minPrice",
+            "required": false,
+            "in": "query",
+            "description": "최소 가격 (원)",
+            "schema": {
+              "minimum": 0,
+              "example": 500000,
+              "type": "number"
+            }
+          },
+          {
+            "name": "maxPrice",
+            "required": false,
+            "in": "query",
+            "description": "최대 가격 (원)",
+            "schema": {
+              "maximum": 10000000,
+              "example": 2000000,
+              "type": "number"
+            }
+          },
+          {
+            "name": "sortCriteria",
+            "required": false,
+            "in": "query",
+            "description": "정렬 기준",
+            "schema": {
+              "default": "rating",
+              "example": "rating",
+              "type": "string",
+              "enum": [
+                "rating",
+                "experience",
+                "recent",
+                "applications"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BreederSearchResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Breeder"
+        ]
+      }
+    },
+    "/api/breeder/{id}": {
+      "get": {
+        "operationId": "getBreederProfile",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BreederProfileResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Breeder"
+        ]
+      }
+    },
+    "/api/adopter/application": {
+      "post": {
+        "operationId": "createApplication",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplicationCreateRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Adopter"
+        ]
+      }
+    },
+    "/api/adopter/review": {
+      "post": {
+        "operationId": "createReview",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewCreateRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Adopter"
+        ]
+      }
+    },
+    "/api/adopter/favorite": {
+      "post": {
+        "operationId": "addFavorite",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FavoriteAddRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Adopter"
+        ]
+      }
+    },
+    "/api/adopter/favorite/{breederId}": {
+      "delete": {
+        "operationId": "removeFavorite",
+        "parameters": [
+          {
+            "name": "breederId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Adopter"
+        ]
+      }
+    },
+    "/api/adopter/report": {
+      "post": {
+        "operationId": "createReport",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportCreateRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Adopter"
+        ]
+      }
+    },
+    "/api/adopter/profile": {
+      "get": {
+        "operationId": "getProfile",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdopterProfileResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Adopter"
+        ]
+      },
+      "patch": {
+        "operationId": "updateProfile",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Adopter"
+        ]
+      }
+    },
+    "/api/breeder-management/dashboard": {
+      "get": {
+        "description": "브리더의 통계 정보와 최근 활동을 확인합니다.",
+        "operationId": "getDashboard",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "대시보드 조회 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BreederDashboardResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "잘못된 요청"
+          }
+        },
+        "security": [
+          {
+            "JWT-Auth": []
+          }
+        ],
+        "summary": "브리더 대시보드 조회",
+        "tags": [
+          "브리더 관리"
+        ]
+      }
+    },
+    "/api/breeder-management/profile": {
+      "get": {
+        "description": "로그인한 브리더의 프로필 정보를 조회합니다.",
+        "operationId": "getProfile",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "프로필 조회 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BreederProfileResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "잘못된 요청"
+          }
+        },
+        "security": [
+          {
+            "JWT-Auth": []
+          }
+        ],
+        "summary": "브리더 프로필 조회",
+        "tags": [
+          "브리더 관리"
+        ]
+      },
+      "patch": {
+        "description": "브리더의 프로필 정보를 업데이트합니다.",
+        "operationId": "updateProfile",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileUpdateRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "프로필 수정 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileUpdateResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "잘못된 요청"
+          }
+        },
+        "security": [
+          {
+            "JWT-Auth": []
+          }
+        ],
+        "summary": "브리더 프로필 수정",
+        "tags": [
+          "브리더 관리"
+        ]
+      }
+    },
+    "/api/breeder-management/verification": {
+      "post": {
+        "description": "브리더 인증을 위한 서류를 제출합니다.",
+        "operationId": "submitVerification",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerificationSubmitRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "인증 신청 성공"
+          },
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "잘못된 요청"
+          }
+        },
+        "security": [
+          {
+            "JWT-Auth": []
+          }
+        ],
+        "summary": "브리더 인증 신청",
+        "tags": [
+          "브리더 관리"
+        ]
+      }
+    },
+    "/api/breeder-management/parent-pets": {
+      "post": {
+        "description": "새로운 부모 반려동물을 등록합니다.",
+        "operationId": "addParentPet",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ParentPetAddDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "부모 반려동물 등록 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PetAddResponseDto"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PetAddResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "잘못된 요청"
+          }
+        },
+        "security": [
+          {
+            "JWT-Auth": []
+          }
+        ],
+        "summary": "부모견/부모묘 추가",
+        "tags": [
+          "브리더 관리"
+        ]
+      }
+    },
+    "/api/breeder-management/parent-pets/{petId}": {
+      "put": {
+        "description": "등록된 부모 반려동물의 정보를 수정합니다.",
+        "operationId": "updateParentPet",
+        "parameters": [
+          {
+            "name": "petId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "부모 반려동물 수정 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PetUpdateResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "잘못된 요청"
+          }
+        },
+        "security": [
+          {
+            "JWT-Auth": []
+          }
+        ],
+        "summary": "부모견/부모묘 정보 수정",
+        "tags": [
+          "브리더 관리"
+        ]
+      },
+      "delete": {
+        "description": "등록된 부모 반려동물을 삭제합니다.",
+        "operationId": "removeParentPet",
+        "parameters": [
+          {
+            "name": "petId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "부모 반려동물 삭제 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PetRemoveResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "잘못된 요청"
+          }
+        },
+        "security": [
+          {
+            "JWT-Auth": []
+          }
+        ],
+        "summary": "부모견/부모묘 삭제",
+        "tags": [
+          "브리더 관리"
+        ]
+      }
+    },
+    "/api/breeder-management/available-pets": {
+      "post": {
+        "description": "새로운 분양 가능한 반려동물을 등록합니다.",
+        "operationId": "addAvailablePet",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AvailablePetAddDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "분양 반려동물 등록 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PetAddResponseDto"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PetAddResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "잘못된 요청"
+          }
+        },
+        "security": [
+          {
+            "JWT-Auth": []
+          }
+        ],
+        "summary": "분양 가능한 반려동물 추가",
+        "tags": [
+          "브리더 관리"
+        ]
+      }
+    },
+    "/api/breeder-management/available-pets/{petId}": {
+      "put": {
+        "description": "등록된 분양 반려동물의 정보를 수정합니다.",
+        "operationId": "updateAvailablePet",
+        "parameters": [
+          {
+            "name": "petId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "분양 반려동물 수정 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PetUpdateResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "잘못된 요청"
+          }
+        },
+        "security": [
+          {
+            "JWT-Auth": []
+          }
+        ],
+        "summary": "분양 가능한 반려동물 정보 수정",
+        "tags": [
+          "브리더 관리"
+        ]
+      },
+      "delete": {
+        "description": "등록된 분양 반려동물을 삭제합니다.",
+        "operationId": "removeAvailablePet",
+        "parameters": [
+          {
+            "name": "petId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "분양 반려동물 삭제 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PetRemoveResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "잘못된 요청"
+          }
+        },
+        "security": [
+          {
+            "JWT-Auth": []
+          }
+        ],
+        "summary": "분양 가능한 반려동물 삭제",
+        "tags": [
+          "브리더 관리"
+        ]
+      }
+    },
+    "/api/breeder-management/available-pets/{petId}/status": {
+      "patch": {
+        "description": "분양 반려동물의 상태를 변경합니다.",
+        "operationId": "updatePetStatus",
+        "parameters": [
+          {
+            "name": "petId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PetStatusUpdateRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "반려동물 상태 변경 성공"
+          },
+          "400": {
+            "description": "잘못된 요청"
+          }
+        },
+        "security": [
+          {
+            "JWT-Auth": []
+          }
+        ],
+        "summary": "반려동물 상태 변경",
+        "tags": [
+          "브리더 관리"
+        ]
+      }
+    },
+    "/api/breeder-management/applications": {
+      "get": {
+        "description": "브리더가 받은 입양 신청들을 페이지네이션으로 조회합니다.",
+        "operationId": "getReceivedApplications",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "페이지 번호(기본값: 1)",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "example": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "take",
+            "required": false,
+            "in": "query",
+            "description": "한 페이지에 보여질 데이터 수(기본값: 10)",
+            "schema": {
+              "minimum": 1,
+              "default": 10,
+              "example": 10,
+              "type": "number"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "입양 신청 상태 필터",
+            "schema": {
+              "example": "consultation_pending",
+              "type": "string",
+              "enum": [
+                "consultation_pending",
+                "consultation_completed",
+                "adoption_approved",
+                "adoption_rejected"
+              ]
+            }
+          },
+          {
+            "name": "petType",
+            "required": false,
+            "in": "query",
+            "description": "반려동물 종류 필터",
+            "schema": {
+              "example": "dog",
+              "type": "string",
+              "enum": [
+                "dog",
+                "cat"
+              ]
+            }
+          },
+          {
+            "name": "recentDays",
+            "required": false,
+            "in": "query",
+            "description": "최근 N일 이내 신청만 조회",
+            "schema": {
+              "example": 30,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "입양 신청 목록 조회 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceivedApplicationListResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "잘못된 요청"
+          }
+        },
+        "security": [
+          {
+            "JWT-Auth": []
+          }
+        ],
+        "summary": "받은 입양 신청 목록 조회",
+        "tags": [
+          "브리더 관리"
+        ]
+      }
+    },
+    "/api/breeder-management/applications/{applicationId}": {
+      "patch": {
+        "description": "받은 입양 신청의 상태를 변경합니다.",
+        "operationId": "updateApplicationStatus",
+        "parameters": [
+          {
+            "name": "applicationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplicationStatusUpdateRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "입양 신청 상태 변경 성공"
+          },
+          "400": {
+            "description": "잘못된 요청"
+          }
+        },
+        "security": [
+          {
+            "JWT-Auth": []
+          }
+        ],
+        "summary": "입양 신청 상태 업데이트",
+        "tags": [
+          "브리더 관리"
+        ]
+      }
+    },
+    "/api/admin/profile": {
+      "get": {
+        "operationId": "getProfile",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/admin/verification/pending": {
+      "get": {
+        "operationId": "getPendingBreederVerifications",
+        "parameters": [
+          {
+            "name": "verificationStatus",
+            "required": false,
+            "in": "query",
+            "description": "인증 상태 필터",
+            "schema": {
+              "example": "pending",
+              "type": "string",
+              "enum": [
+                "pending",
+                "reviewing",
+                "approved",
+                "rejected"
+              ]
+            }
+          },
+          {
+            "name": "cityName",
+            "required": false,
+            "in": "query",
+            "description": "도시명 필터",
+            "schema": {
+              "example": "서울",
+              "type": "string"
+            }
+          },
+          {
+            "name": "searchKeyword",
+            "required": false,
+            "in": "query",
+            "description": "검색어 (이름 또는 이메일)",
+            "schema": {
+              "example": "김브리더",
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageNumber",
+            "required": false,
+            "in": "query",
+            "description": "페이지 번호",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "example": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "itemsPerPage",
+            "required": false,
+            "in": "query",
+            "description": "페이지당 항목 수",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 10,
+              "example": 10,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/admin/verification/{breederId}": {
+      "put": {
+        "operationId": "updateBreederVerification",
+        "parameters": [
+          {
+            "name": "breederId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BreederVerificationRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/admin/users": {
+      "get": {
+        "operationId": "getUsers",
+        "parameters": [
+          {
+            "name": "userRole",
+            "required": false,
+            "in": "query",
+            "description": "사용자 역할 필터",
+            "schema": {
+              "example": "adopter",
+              "type": "string",
+              "enum": [
+                "adopter",
+                "breeder"
+              ]
+            }
+          },
+          {
+            "name": "accountStatus",
+            "required": false,
+            "in": "query",
+            "description": "계정 상태 필터",
+            "schema": {
+              "example": "active",
+              "type": "string",
+              "enum": [
+                "active",
+                "suspended",
+                "deleted"
+              ]
+            }
+          },
+          {
+            "name": "searchKeyword",
+            "required": false,
+            "in": "query",
+            "description": "검색어 (이름 또는 이메일)",
+            "schema": {
+              "example": "김사용자",
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageNumber",
+            "required": false,
+            "in": "query",
+            "description": "페이지 번호",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "example": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "itemsPerPage",
+            "required": false,
+            "in": "query",
+            "description": "페이지당 항목 수",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 10,
+              "example": 10,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/admin/users/{userId}/status": {
+      "put": {
+        "operationId": "updateUserStatus",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "role",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserManagementRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/admin/applications": {
+      "get": {
+        "operationId": "getApplications",
+        "parameters": [
+          {
+            "name": "targetBreederId",
+            "required": false,
+            "in": "query",
+            "description": "브리더 ID 필터",
+            "schema": {
+              "example": "507f1f77bcf86cd799439011",
+              "type": "string"
+            }
+          },
+          {
+            "name": "startDate",
+            "required": false,
+            "in": "query",
+            "description": "검색 시작 날짜",
+            "schema": {
+              "format": "date",
+              "example": "2024-01-01",
+              "type": "string"
+            }
+          },
+          {
+            "name": "endDate",
+            "required": false,
+            "in": "query",
+            "description": "검색 종료 날짜",
+            "schema": {
+              "format": "date",
+              "example": "2024-01-31",
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageNumber",
+            "required": false,
+            "in": "query",
+            "description": "페이지 번호",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "example": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "itemsPerPage",
+            "required": false,
+            "in": "query",
+            "description": "페이지당 항목 수",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 10,
+              "example": 10,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/admin/reports": {
+      "get": {
+        "operationId": "getReports",
+        "parameters": [
+          {
+            "name": "page",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/admin/reports/{breederId}/{reportId}": {
+      "put": {
+        "operationId": "updateReportStatus",
+        "parameters": [
+          {
+            "name": "breederId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "reportId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportActionRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/admin/reviews/{breederId}/{reviewId}": {
+      "delete": {
+        "operationId": "deleteReview",
+        "parameters": [
+          {
+            "name": "breederId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "reviewId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/admin/stats": {
+      "get": {
+        "operationId": "getStats",
+        "parameters": [
+          {
+            "name": "statsType",
+            "required": false,
+            "in": "query",
+            "description": "통계 유형",
+            "schema": {
+              "default": "daily",
+              "example": "daily",
+              "type": "string",
+              "enum": [
+                "daily",
+                "weekly",
+                "monthly"
+              ]
+            }
+          },
+          {
+            "name": "startDate",
+            "required": false,
+            "in": "query",
+            "description": "통계 시작 날짜",
+            "schema": {
+              "format": "date",
+              "example": "2024-01-01",
+              "type": "string"
+            }
+          },
+          {
+            "name": "endDate",
+            "required": false,
+            "in": "query",
+            "description": "통계 종료 날짜",
+            "schema": {
+              "format": "date",
+              "example": "2024-01-31",
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageNumber",
+            "required": false,
+            "in": "query",
+            "description": "페이지 번호",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "example": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "itemsPerPage",
+            "required": false,
+            "in": "query",
+            "description": "페이지당 항목 수",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10,
+              "example": 10,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminStatsResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/health": {
+      "get": {
+        "operationId": "getHealth",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Health"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "Pawpong Backend API",
+    "description": "반려동물 입양 플랫폼 백엔드 API 문서",
+    "version": "1.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "securitySchemes": {
+      "JWT-Auth": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http",
+        "description": "JWT 토큰 인증 (입양자, 브리더, 관리자)"
+      }
+    },
+    "schemas": {
+      "RegisterAdopterRequestDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "description": "입양자 이메일 주소 (로그인 ID로 사용)",
+            "example": "adopter@example.com",
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "description": "계정 비밀번호 (최소 6자 이상)",
+            "example": "securepassword123",
+            "minLength": 6
+          },
+          "name": {
+            "type": "string",
+            "description": "입양자 실명",
+            "example": "김철수"
+          },
+          "phone": {
+            "type": "string",
+            "description": "연락처 전화번호 (선택사항)",
+            "example": "010-1234-5678"
+          }
+        },
+        "required": [
+          "email",
+          "password",
+          "name"
+        ]
+      },
+      "AuthenticatedUserDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "description": "사용자 고유 ID",
+            "example": "507f1f77bcf86cd799439011"
+          },
+          "emailAddress": {
+            "type": "string",
+            "description": "사용자 이메일 주소",
+            "example": "user@example.com"
+          },
+          "fullName": {
+            "type": "string",
+            "description": "사용자 이름",
+            "example": "김사용자"
+          },
+          "userRole": {
+            "type": "string",
+            "description": "사용자 역할",
+            "example": "adopter",
+            "enum": [
+              "adopter",
+              "breeder",
+              "admin"
+            ]
+          },
+          "accountStatus": {
+            "type": "string",
+            "description": "계정 상태",
+            "example": "active",
+            "enum": [
+              "active",
+              "suspended",
+              "deactivated",
+              "pending"
+            ]
+          },
+          "profileImageUrl": {
+            "type": "string",
+            "description": "프로필 이미지 URL",
+            "example": "https://example.com/profile.jpg"
+          }
+        },
+        "required": [
+          "userId",
+          "emailAddress",
+          "fullName",
+          "userRole",
+          "accountStatus"
+        ]
+      },
+      "AuthResponseDto": {
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string",
+            "description": "JWT 액세스 토큰",
+            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+          },
+          "expiresIn": {
+            "type": "number",
+            "description": "토큰 만료 시간 (초 단위)",
+            "example": 86400
+          },
+          "userInfo": {
+            "description": "인증된 사용자 정보",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AuthenticatedUserDto"
+              }
+            ]
+          },
+          "message": {
+            "type": "string",
+            "description": "인증 완료 메시지",
+            "example": "로그인이 완료되었습니다."
+          }
+        },
+        "required": [
+          "accessToken",
+          "expiresIn",
+          "userInfo",
+          "message"
+        ]
+      },
+      "RegisterBreederRequestDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "description": "브리더 이메일 주소 (로그인 ID로 사용)",
+            "example": "breeder@example.com",
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "description": "계정 비밀번호 (최소 6자 이상)",
+            "example": "securepassword123",
+            "minLength": 6
+          },
+          "name": {
+            "type": "string",
+            "description": "브리더 실명 또는 대표자명",
+            "example": "김브리더"
+          },
+          "phone": {
+            "type": "string",
+            "description": "연락처 전화번호 (선택사항)",
+            "example": "010-9876-5432"
+          },
+          "businessNumber": {
+            "type": "string",
+            "description": "사업자 등록번호 (선택사항)",
+            "example": "123-45-67890"
+          },
+          "businessName": {
+            "type": "string",
+            "description": "사업체명 (선택사항)",
+            "example": "행복한 반려동물 농장"
+          }
+        },
+        "required": [
+          "email",
+          "password",
+          "name"
+        ]
+      },
+      "LoginRequestDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "description": "사용자 이메일 주소",
+            "example": "user@example.com",
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "description": "사용자 비밀번호",
+            "example": "password123",
+            "minLength": 6
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "BreederLocationDto": {
+        "type": "object",
+        "properties": {
+          "cityName": {
+            "type": "string",
+            "description": "도시명",
+            "example": "서울"
+          },
+          "districtName": {
+            "type": "string",
+            "description": "구/군명",
+            "example": "강남구"
+          },
+          "detailAddress": {
+            "type": "string",
+            "description": "상세 주소",
+            "example": "테헤란로 123"
+          }
+        },
+        "required": [
+          "cityName",
+          "districtName"
+        ]
+      },
+      "BreederPriceRangeDto": {
+        "type": "object",
+        "properties": {
+          "minPrice": {
+            "type": "number",
+            "description": "최소 가격 (원)",
+            "example": 500000
+          },
+          "maxPrice": {
+            "type": "number",
+            "description": "최대 가격 (원)",
+            "example": 2000000
+          }
+        },
+        "required": [
+          "minPrice",
+          "maxPrice"
+        ]
+      },
+      "BreederProfileInfoDto": {
+        "type": "object",
+        "properties": {
+          "profileDescription": {
+            "type": "string",
+            "description": "브리더 소개 설명",
+            "example": "20년 경력의 전문 브리더입니다"
+          },
+          "locationInfo": {
+            "description": "위치 정보",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BreederLocationDto"
+              }
+            ]
+          },
+          "profilePhotos": {
+            "description": "브리더 사진 URL 배열",
+            "example": [
+              "https://example.com/photo1.jpg"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "priceRangeInfo": {
+            "description": "분양 가격대 정보",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BreederPriceRangeDto"
+              }
+            ]
+          },
+          "specializationAreas": {
+            "description": "전문 분야 (품종)",
+            "example": [
+              "골든 리트리버",
+              "래브라도"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "experienceYears": {
+            "type": "number",
+            "description": "경력 연수",
+            "example": 20
+          }
+        },
+        "required": [
+          "profileDescription",
+          "locationInfo",
+          "profilePhotos",
+          "priceRangeInfo",
+          "specializationAreas"
+        ]
+      },
+      "BreederStatsDto": {
+        "type": "object",
+        "properties": {
+          "totalApplicationCount": {
+            "type": "number",
+            "description": "총 신청 수",
+            "example": 150
+          },
+          "completedAdoptionCount": {
+            "type": "number",
+            "description": "성사된 입양 수",
+            "example": 85
+          },
+          "averageRatingScore": {
+            "type": "number",
+            "description": "평균 평점",
+            "example": 4.5
+          },
+          "totalReviewCount": {
+            "type": "number",
+            "description": "총 후기 수",
+            "example": 42
+          },
+          "profileViewCount": {
+            "type": "number",
+            "description": "프로필 조회수",
+            "example": 1250
+          }
+        },
+        "required": [
+          "totalApplicationCount",
+          "completedAdoptionCount",
+          "averageRatingScore",
+          "totalReviewCount",
+          "profileViewCount"
+        ]
+      },
+      "BreederVerificationDto": {
+        "type": "object",
+        "properties": {
+          "verificationStatus": {
+            "type": "string",
+            "description": "인증 상태",
+            "example": "approved",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected"
+            ]
+          }
+        },
+        "required": [
+          "verificationStatus"
+        ]
+      },
+      "BreederProfileResponseDto": {
+        "type": "object",
+        "properties": {
+          "breederId": {
+            "type": "string",
+            "description": "브리더 고유 ID",
+            "example": "507f1f77bcf86cd799439011"
+          },
+          "breederName": {
+            "type": "string",
+            "description": "브리더 이름",
+            "example": "김브리더"
+          },
+          "breederEmail": {
+            "type": "string",
+            "description": "브리더 이메일",
+            "example": "breeder@example.com"
+          },
+          "profileImageUrl": {
+            "type": "string",
+            "description": "프로필 이미지 URL",
+            "example": "https://example.com/profile.jpg"
+          },
+          "profileInfo": {
+            "description": "브리더 프로필 상세 정보",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BreederProfileInfoDto"
+              }
+            ]
+          },
+          "parentPetInfo": {
+            "description": "부모견/부모묘 정보",
+            "example": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "availablePetInfo": {
+            "description": "분양 가능한 반려동물 정보",
+            "example": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "reviewInfo": {
+            "description": "후기 정보",
+            "example": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "statsInfo": {
+            "description": "브리더 통계 정보",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BreederStatsDto"
+              }
+            ]
+          },
+          "verificationInfo": {
+            "description": "브리더 인증 정보",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BreederVerificationDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "breederId",
+          "breederName",
+          "breederEmail",
+          "profileInfo",
+          "parentPetInfo",
+          "availablePetInfo",
+          "reviewInfo",
+          "statsInfo",
+          "verificationInfo"
+        ]
+      },
+      "PageInfoDto": {
+        "type": "object",
+        "properties": {
+          "currentPage": {
+            "type": "number",
+            "description": "페이지 번호(기본값: 1)",
+            "example": 1
+          },
+          "pageSize": {
+            "type": "number",
+            "description": "한 페이지에 보여질 데이터 수(기본값: 10)",
+            "example": 10
+          },
+          "totalItems": {
+            "type": "number",
+            "description": "총 데이터의 갯수",
+            "example": 100
+          },
+          "totalPages": {
+            "type": "number",
+            "description": "총 페이지의 수",
+            "example": 10
+          },
+          "hasNextPage": {
+            "type": "boolean",
+            "description": "다음 페이지 존재 유무(다음페이지가 존재하면 true)",
+            "example": true
+          },
+          "hasPrevPage": {
+            "type": "boolean",
+            "description": "이전 페이지 존재 유무(이전페이지가 존재하면 true)",
+            "example": false
+          }
+        },
+        "required": [
+          "currentPage",
+          "pageSize",
+          "totalItems",
+          "totalPages",
+          "hasNextPage",
+          "hasPrevPage"
+        ]
+      },
+      "BreederSearchResponseDto": {
+        "type": "object",
+        "properties": {
+          "item": {
+            "description": "검색된 브리더 목록",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BreederProfileResponseDto"
+            }
+          },
+          "pageInfo": {
+            "description": "페이지네이션 정보",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PageInfoDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "item",
+          "pageInfo"
+        ]
+      },
+      "ApplicationCreateRequestDto": {
+        "type": "object",
+        "properties": {
+          "breederId": {
+            "type": "string",
+            "description": "신청할 브리더 ID",
+            "example": "507f1f77bcf86cd799439011"
+          },
+          "petId": {
+            "type": "string",
+            "description": "신청할 반려동물 ID",
+            "example": "507f1f77bcf86cd799439022"
+          },
+          "message": {
+            "type": "string",
+            "description": "입양 신청 메시지",
+            "example": "안녕하세요. 이 아이를 입양하고 싶습니다."
+          },
+          "experienceLevel": {
+            "type": "string",
+            "description": "입양자의 반려동물 경험 수준",
+            "example": "beginner",
+            "enum": [
+              "beginner",
+              "intermediate",
+              "expert"
+            ]
+          },
+          "livingEnvironment": {
+            "type": "string",
+            "description": "거주 환경",
+            "example": "apartment",
+            "enum": [
+              "apartment",
+              "house",
+              "farm"
+            ]
+          },
+          "hasOtherPets": {
+            "type": "boolean",
+            "description": "다른 반려동물 보유 여부",
+            "example": false
+          },
+          "familySize": {
+            "type": "string",
+            "description": "가족 구성원 수",
+            "example": "3명"
+          },
+          "specialRequests": {
+            "type": "string",
+            "description": "특별한 요청사항",
+            "example": "주말 방문 가능 시간을 알려주세요"
+          },
+          "applicationForm": {
+            "type": "object",
+            "description": "입양 신청 폼 데이터",
+            "example": {}
+          }
+        },
+        "required": [
+          "breederId",
+          "petId",
+          "message",
+          "experienceLevel",
+          "livingEnvironment",
+          "hasOtherPets"
+        ]
+      },
+      "ReviewCreateRequestDto": {
+        "type": "object",
+        "properties": {
+          "applicationId": {
+            "type": "string",
+            "description": "입양 신청 ID",
+            "example": "app_507f1f77bcf86cd799439011"
+          },
+          "reviewType": {
+            "type": "string",
+            "description": "후기 타입",
+            "example": "general",
+            "enum": [
+              "general",
+              "health",
+              "communication"
+            ]
+          },
+          "breederId": {
+            "type": "string",
+            "description": "후기를 작성할 브리더 ID",
+            "example": "507f1f77bcf86cd799439011"
+          },
+          "rating": {
+            "type": "number",
+            "description": "전체 평점 (1-5점)",
+            "example": 5,
+            "minimum": 1,
+            "maximum": 5
+          },
+          "content": {
+            "type": "string",
+            "description": "후기 내용",
+            "example": "정말 좋은 브리더입니다. 반려동물이 건강하고 성격도 좋아요."
+          },
+          "petHealthRating": {
+            "type": "number",
+            "description": "반려동물 건강 상태 평점 (1-5점)",
+            "example": 5,
+            "minimum": 1,
+            "maximum": 5
+          },
+          "communicationRating": {
+            "type": "number",
+            "description": "브리더 소통 능력 평점 (1-5점)",
+            "example": 4,
+            "minimum": 1,
+            "maximum": 5
+          },
+          "facilityRating": {
+            "type": "number",
+            "description": "시설 환경 평점 (1-5점)",
+            "example": 5,
+            "minimum": 1,
+            "maximum": 5
+          },
+          "photos": {
+            "description": "후기 사진 URL 배열",
+            "example": [
+              "https://example.com/photo1.jpg",
+              "https://example.com/photo2.jpg"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "applicationId",
+          "reviewType",
+          "breederId",
+          "rating",
+          "content",
+          "petHealthRating",
+          "communicationRating"
+        ]
+      },
+      "FavoriteAddRequestDto": {
+        "type": "object",
+        "properties": {
+          "breederId": {
+            "type": "string",
+            "description": "즐겨찾기에 추가할 브리더 ID",
+            "example": "507f1f77bcf86cd799439011"
+          }
+        },
+        "required": [
+          "breederId"
+        ]
+      },
+      "ReportCreateRequestDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "신고 타입",
+            "example": "breeder",
+            "enum": [
+              "breeder",
+              "adopter",
+              "content"
+            ]
+          },
+          "breederId": {
+            "type": "string",
+            "description": "신고할 브리더 ID",
+            "example": "507f1f77bcf86cd799439011"
+          },
+          "reason": {
+            "type": "string",
+            "description": "신고 사유",
+            "example": "inappropriate_content",
+            "enum": [
+              "no_contract",
+              "false_info",
+              "inappropriate_content",
+              "poor_conditions",
+              "fraud",
+              "other"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "description": "신고 상세 내용",
+            "example": "브리더가 허위 정보를 제공했습니다. 반려동물의 건강 상태가 설명과 다릅니다."
+          },
+          "evidence": {
+            "description": "증거 자료 URL 배열",
+            "example": [
+              "https://example.com/evidence1.jpg",
+              "https://example.com/evidence2.jpg"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "contactInfo": {
+            "type": "string",
+            "description": "추가 연락처",
+            "example": "010-1234-5678"
+          }
+        },
+        "required": [
+          "type",
+          "breederId",
+          "reason",
+          "description"
+        ]
+      },
+      "AdopterProfileResponseDto": {
+        "type": "object",
+        "properties": {
+          "adopterId": {
+            "type": "string",
+            "description": "입양자 고유 ID",
+            "example": "507f1f77bcf86cd799439011"
+          },
+          "emailAddress": {
+            "type": "string",
+            "description": "이메일 주소",
+            "example": "adopter@example.com"
+          },
+          "fullName": {
+            "type": "string",
+            "description": "입양자 실명",
+            "example": "박입양"
+          },
+          "phoneNumber": {
+            "type": "string",
+            "description": "전화번호",
+            "example": "010-1234-5678"
+          },
+          "profileImageUrl": {
+            "type": "string",
+            "description": "프로필 이미지 URL",
+            "example": "https://example.com/profile.jpg"
+          },
+          "accountStatus": {
+            "type": "string",
+            "description": "계정 상태",
+            "example": "active",
+            "enum": [
+              "active",
+              "inactive",
+              "suspended"
+            ]
+          },
+          "favoriteBreederList": {
+            "description": "즐겨찾기 브리더 목록",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "breederId": {
+                  "type": "string",
+                  "example": "507f1f77bcf86cd799439011"
+                },
+                "breederName": {
+                  "type": "string",
+                  "example": "김브리더"
+                },
+                "addedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            }
+          },
+          "adoptionApplicationList": {
+            "description": "입양 신청 내역",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "applicationId": {
+                  "type": "string",
+                  "example": "app_507f1f77bcf86cd799439011"
+                },
+                "breederId": {
+                  "type": "string",
+                  "example": "507f1f77bcf86cd799439011"
+                },
+                "petId": {
+                  "type": "string",
+                  "example": "pet_507f1f77bcf86cd799439011"
+                },
+                "applicationStatus": {
+                  "type": "string",
+                  "example": "pending"
+                },
+                "appliedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            }
+          },
+          "writtenReviewList": {
+            "description": "작성한 후기 목록",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "reviewId": {
+                  "type": "string",
+                  "example": "rev_507f1f77bcf86cd799439011"
+                },
+                "breederId": {
+                  "type": "string",
+                  "example": "507f1f77bcf86cd799439011"
+                },
+                "rating": {
+                  "type": "number",
+                  "example": 5
+                },
+                "content": {
+                  "type": "string",
+                  "example": "정말 좋은 브리더입니다."
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            }
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "계정 생성 일시",
+            "example": "2024-01-10T08:15:00.000Z"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "최종 수정 일시",
+            "example": "2024-01-15T14:30:00.000Z"
+          }
+        },
+        "required": [
+          "adopterId",
+          "emailAddress",
+          "fullName",
+          "phoneNumber",
+          "accountStatus",
+          "favoriteBreederList",
+          "adoptionApplicationList",
+          "writtenReviewList",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "BreederVerificationInfoDto": {
+        "type": "object",
+        "properties": {
+          "verificationStatus": {
+            "type": "string",
+            "description": "인증 상태",
+            "example": "approved",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected"
+            ]
+          },
+          "subscriptionPlan": {
+            "type": "string",
+            "description": "구독 플랜",
+            "example": "premium",
+            "enum": [
+              "basic",
+              "premium",
+              "enterprise"
+            ]
+          },
+          "submittedAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "인증 신청 일시",
+            "example": "2024-01-10T10:30:00.000Z"
+          },
+          "reviewedAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "인증 검토 일시",
+            "example": "2024-01-12T14:20:00.000Z"
+          },
+          "rejectionReason": {
+            "type": "string",
+            "description": "거부 사유",
+            "example": "서류가 불완전합니다."
+          }
+        },
+        "required": [
+          "verificationStatus",
+          "subscriptionPlan"
+        ]
+      },
+      "BreederDashboardStatsDto": {
+        "type": "object",
+        "properties": {
+          "totalApplicationCount": {
+            "type": "number",
+            "description": "총 받은 입양 신청 수",
+            "example": 148
+          },
+          "pendingApplicationCount": {
+            "type": "number",
+            "description": "처리 대기 신청 수",
+            "example": 12
+          },
+          "completedAdoptionCount": {
+            "type": "number",
+            "description": "완료된 입양 수",
+            "example": 95
+          },
+          "averageRating": {
+            "type": "number",
+            "description": "평균 평점",
+            "example": 4.6
+          },
+          "totalReviewCount": {
+            "type": "number",
+            "description": "총 후기 수",
+            "example": 78
+          },
+          "profileViewCount": {
+            "type": "number",
+            "description": "프로필 조회 수",
+            "example": 2340
+          }
+        },
+        "required": [
+          "totalApplicationCount",
+          "pendingApplicationCount",
+          "completedAdoptionCount",
+          "averageRating",
+          "totalReviewCount",
+          "profileViewCount"
+        ]
+      },
+      "BreederDashboardResponseDto": {
+        "type": "object",
+        "properties": {
+          "profileInfo": {
+            "type": "object",
+            "properties": {
+              "verificationInfo": {
+                "$ref": "#/components/schemas/BreederVerificationInfoDto"
+              }
+            },
+            "required": [
+              "verificationInfo"
+            ]
+          },
+          "statisticsInfo": {
+            "description": "브리더 통계 정보",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BreederDashboardStatsDto"
+              }
+            ]
+          },
+          "recentApplicationList": {
+            "description": "최근 입양 신청 목록",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "availablePetCount": {
+            "type": "number",
+            "description": "분양 가능한 반려동물 수",
+            "example": 8
+          }
+        },
+        "required": [
+          "profileInfo",
+          "statisticsInfo",
+          "recentApplicationList",
+          "availablePetCount"
+        ]
+      },
+      "LocationUpdateDto": {
+        "type": "object",
+        "properties": {
+          "cityName": {
+            "type": "string",
+            "description": "도시명",
+            "example": "서울"
+          },
+          "districtName": {
+            "type": "string",
+            "description": "구/군명",
+            "example": "강남구"
+          },
+          "detailAddress": {
+            "type": "string",
+            "description": "상세 주소",
+            "example": "테헤란로 123번길"
+          }
+        },
+        "required": [
+          "cityName",
+          "districtName"
+        ]
+      },
+      "PriceRangeUpdateDto": {
+        "type": "object",
+        "properties": {
+          "minimumPrice": {
+            "type": "number",
+            "description": "최소 가격 (원)",
+            "example": 500000,
+            "minimum": 0
+          },
+          "maximumPrice": {
+            "type": "number",
+            "description": "최대 가격 (원)",
+            "example": 2000000,
+            "minimum": 0
+          }
+        },
+        "required": [
+          "minimumPrice",
+          "maximumPrice"
+        ]
+      },
+      "ProfileUpdateRequestDto": {
+        "type": "object",
+        "properties": {
+          "profileDescription": {
+            "type": "string",
+            "description": "브리더 소개 설명",
+            "example": "20년 경력의 전문 브리더입니다. 건강하고 성격 좋은 반려동물을 분양합니다.",
+            "maxLength": 1000
+          },
+          "locationInfo": {
+            "description": "위치 정보",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LocationUpdateDto"
+              }
+            ]
+          },
+          "profilePhotos": {
+            "description": "브리더 사진 URL 배열",
+            "example": [
+              "https://example.com/photo1.jpg",
+              "https://example.com/photo2.jpg"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "priceRangeInfo": {
+            "description": "분양 가격대 정보",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PriceRangeUpdateDto"
+              }
+            ]
+          },
+          "specializationTypes": {
+            "description": "전문 분야 (반려동물 종류)",
+            "example": [
+              "dog",
+              "cat"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "dog",
+                "cat"
+              ]
+            }
+          },
+          "experienceYears": {
+            "type": "number",
+            "description": "경력 연수",
+            "example": 20,
+            "minimum": 0
+          }
+        }
+      },
+      "ProfileUpdateResponseDto": {
+        "type": "object",
+        "properties": {
+          "breederId": {
+            "type": "string",
+            "description": "브리더 고유 ID",
+            "example": "507f1f77bcf86cd799439011"
+          },
+          "updateMessage": {
+            "type": "string",
+            "description": "프로필 수정 완료 메시지",
+            "example": "프로필이 성공적으로 업데이트되었습니다."
+          },
+          "updatedFieldCount": {
+            "type": "number",
+            "description": "수정된 항목 수",
+            "example": 3
+          },
+          "lastUpdatedAt": {
+            "type": "string",
+            "description": "마지막 업데이트 일시",
+            "example": "2024-01-15T14:30:00.000Z",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "breederId",
+          "updateMessage",
+          "updatedFieldCount",
+          "lastUpdatedAt"
+        ]
+      },
+      "VerificationSubmitRequestDto": {
+        "type": "object",
+        "properties": {
+          "businessNumber": {
+            "type": "string",
+            "description": "사업자 등록번호",
+            "example": "123-45-67890"
+          },
+          "businessName": {
+            "type": "string",
+            "description": "사업체명",
+            "example": "행복한 강아지 농장"
+          },
+          "plan": {
+            "type": "string",
+            "description": "구독 플랜",
+            "example": "premium",
+            "enum": [
+              "basic",
+              "premium",
+              "enterprise"
+            ]
+          },
+          "documents": {
+            "type": "array",
+            "description": "제출 서류 URL 배열",
+            "example": [
+              "https://example.com/business_license.pdf",
+              "https://example.com/facility_photo.jpg"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "businessAddress": {
+            "type": "string",
+            "description": "사업장 주소",
+            "example": "경기도 용인시 처인구 모현읍 능원리 123"
+          },
+          "experienceYears": {
+            "type": "string",
+            "description": "브리딩 경험 연수",
+            "example": "10년"
+          },
+          "specialBreeds": {
+            "type": "string",
+            "description": "전문 품종",
+            "example": "골든리트리버, 래브라도, 푸들"
+          },
+          "facilityDescription": {
+            "type": "string",
+            "description": "시설 규모 및 환경 설명",
+            "example": "실내외 운동장 포함 200평 규모의 시설"
+          },
+          "veterinaryPartnership": {
+            "type": "string",
+            "description": "수의사 협력 정보",
+            "example": "용인 동물병원과 정기 건강검진 협약"
+          },
+          "submittedByEmail": {
+            "type": "boolean",
+            "description": "이메일로 신청서 제출 여부",
+            "example": false
+          },
+          "additionalMessage": {
+            "type": "string",
+            "description": "추가 메시지",
+            "example": "빠른 검토 부탁드립니다."
+          }
+        },
+        "required": [
+          "businessNumber",
+          "businessName",
+          "plan",
+          "documents",
+          "businessAddress",
+          "experienceYears",
+          "specialBreeds",
+          "facilityDescription"
+        ]
+      },
+      "ParentPetAddDto": {
+        "type": "object",
+        "properties": {
+          "petName": {
+            "type": "string",
+            "description": "부모 반려동물 이름",
+            "example": "챔프"
+          },
+          "breedName": {
+            "type": "string",
+            "description": "품종",
+            "example": "골든리트리버"
+          },
+          "gender": {
+            "type": "string",
+            "description": "성별",
+            "example": "male",
+            "enum": [
+              "male",
+              "female"
+            ]
+          },
+          "ageInMonths": {
+            "type": "number",
+            "description": "나이 (개월)",
+            "example": 36,
+            "minimum": 0
+          },
+          "petType": {
+            "type": "string",
+            "description": "반려동물 종류",
+            "example": "dog",
+            "enum": [
+              "dog",
+              "cat"
+            ]
+          },
+          "photoUrls": {
+            "type": "array",
+            "description": "부모 반려동물 사진 URL 배열",
+            "example": [
+              "https://example.com/parent1.jpg"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "healthInfo": {
+            "type": "object",
+            "description": "건강 정보",
+            "additionalProperties": true,
+            "example": {
+              "isVaccinated": true,
+              "isNeutered": false,
+              "isHealthChecked": true,
+              "healthIssues": ""
+            }
+          }
+        },
+        "required": [
+          "petName",
+          "breedName",
+          "gender",
+          "ageInMonths",
+          "petType",
+          "photoUrls",
+          "healthInfo"
+        ]
+      },
+      "PetAddResponseDto": {
+        "type": "object",
+        "properties": {
+          "petId": {
+            "type": "string",
+            "description": "등록된 반려동물 고유 ID",
+            "example": "507f1f77bcf86cd799439088"
+          },
+          "petName": {
+            "type": "string",
+            "description": "반려동물 이름",
+            "example": "골든베이비"
+          },
+          "petType": {
+            "type": "string",
+            "description": "반려동물 종류",
+            "example": "dog",
+            "enum": [
+              "dog",
+              "cat"
+            ]
+          },
+          "registrationMessage": {
+            "type": "string",
+            "description": "반려동물 등록 완료 메시지",
+            "example": "반려동물이 성공적으로 등록되었습니다."
+          },
+          "registeredAt": {
+            "type": "string",
+            "description": "등록 일시",
+            "example": "2024-01-15T10:30:00.000Z",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "petId",
+          "petName",
+          "petType",
+          "registrationMessage",
+          "registeredAt"
+        ]
+      },
+      "PetUpdateResponseDto": {
+        "type": "object",
+        "properties": {
+          "petId": {
+            "type": "string",
+            "description": "수정된 반려동물 고유 ID",
+            "example": "507f1f77bcf86cd799439088"
+          },
+          "petName": {
+            "type": "string",
+            "description": "반려동물 이름",
+            "example": "골든베이비"
+          },
+          "updateMessage": {
+            "type": "string",
+            "description": "반려동물 정보 수정 완료 메시지",
+            "example": "반려동물 정보가 성공적으로 수정되었습니다."
+          },
+          "updatedFieldCount": {
+            "type": "number",
+            "description": "수정된 필드 수",
+            "example": 2
+          },
+          "lastUpdatedAt": {
+            "type": "string",
+            "description": "마지막 수정 일시",
+            "example": "2024-01-15T14:30:00.000Z",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "petId",
+          "petName",
+          "updateMessage",
+          "updatedFieldCount",
+          "lastUpdatedAt"
+        ]
+      },
+      "PetRemoveResponseDto": {
+        "type": "object",
+        "properties": {
+          "petId": {
+            "type": "string",
+            "description": "삭제된 반려동물 고유 ID",
+            "example": "507f1f77bcf86cd799439088"
+          },
+          "petName": {
+            "type": "string",
+            "description": "삭제된 반려동물 이름",
+            "example": "골든베이비"
+          },
+          "deletionMessage": {
+            "type": "string",
+            "description": "반려동물 삭제 완료 메시지",
+            "example": "반려동물이 성공적으로 삭제되었습니다."
+          },
+          "deletedAt": {
+            "type": "string",
+            "description": "삭제 일시",
+            "example": "2024-01-15T16:45:00.000Z",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "petId",
+          "petName",
+          "deletionMessage",
+          "deletedAt"
+        ]
+      },
+      "AvailablePetAddDto": {
+        "type": "object",
+        "properties": {
+          "petName": {
+            "type": "string",
+            "description": "반려동물 이름",
+            "example": "밀크"
+          },
+          "breedName": {
+            "type": "string",
+            "description": "반려동물 품종",
+            "example": "골든리트리버"
+          },
+          "petType": {
+            "type": "string",
+            "description": "반려동물 종류",
+            "example": "dog",
+            "enum": [
+              "dog",
+              "cat"
+            ]
+          },
+          "gender": {
+            "type": "string",
+            "description": "성별",
+            "example": "male",
+            "enum": [
+              "male",
+              "female"
+            ]
+          },
+          "birthDate": {
+            "type": "string",
+            "description": "출생일 (YYYY-MM-DD 형식)",
+            "example": "2024-01-15"
+          },
+          "adoptionPrice": {
+            "type": "number",
+            "description": "분양 가격 (원)",
+            "example": 1500000,
+            "minimum": 0
+          },
+          "photoUrls": {
+            "type": "array",
+            "description": "반려동물 사진 URL 배열",
+            "example": [
+              "https://example.com/pet1.jpg",
+              "https://example.com/pet2.jpg"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "healthInfo": {
+            "type": "object",
+            "description": "건강 정보",
+            "additionalProperties": true,
+            "example": {
+              "isVaccinated": true,
+              "isNeutered": false,
+              "isHealthChecked": true,
+              "healthIssues": ""
+            }
+          }
+        },
+        "required": [
+          "petName",
+          "breedName",
+          "petType",
+          "gender",
+          "birthDate",
+          "adoptionPrice",
+          "photoUrls",
+          "healthInfo"
+        ]
+      },
+      "PetStatusUpdateRequestDto": {
+        "type": "object",
+        "properties": {
+          "petStatus": {
+            "description": "반려동물 상태",
+            "example": "available",
+            "enum": [
+              "available",
+              "reserved",
+              "adopted"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "petStatus"
+        ]
+      },
+      "ReceivedApplicationResponseDto": {
+        "type": "object",
+        "properties": {
+          "applicationId": {
+            "type": "string",
+            "description": "입양 신청 고유 ID",
+            "example": "507f1f77bcf86cd799439088"
+          },
+          "adopterId": {
+            "type": "string",
+            "description": "입양자 고유 ID",
+            "example": "507f1f77bcf86cd799439044"
+          },
+          "adopterName": {
+            "type": "string",
+            "description": "입양자 실명",
+            "example": "박입양자"
+          },
+          "adopterEmail": {
+            "type": "string",
+            "description": "입양자 이메일",
+            "example": "adopter@example.com"
+          },
+          "targetPetId": {
+            "type": "string",
+            "description": "신청한 반려동물 ID",
+            "example": "507f1f77bcf86cd799439099"
+          },
+          "targetPetName": {
+            "type": "string",
+            "description": "신청한 반려동물 이름",
+            "example": "골든베이비"
+          },
+          "applicationStatus": {
+            "type": "string",
+            "description": "신청 처리 상태",
+            "example": "consultation_pending",
+            "enum": [
+              "consultation_pending",
+              "consultation_completed",
+              "adoption_approved",
+              "adoption_rejected"
+            ]
+          },
+          "applicationFormData": {
+            "type": "object",
+            "description": "입양 신청서 데이터"
+          },
+          "appliedAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "신청 접수 일시",
+            "example": "2024-01-15T10:30:00.000Z"
+          },
+          "processedAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "신청 처리 일시",
+            "example": "2024-01-16T15:45:00.000Z"
+          },
+          "breederNotes": {
+            "type": "string",
+            "description": "브리더 메모",
+            "example": "면담 후 최종 결정 예정"
+          }
+        },
+        "required": [
+          "applicationId",
+          "adopterId",
+          "adopterName",
+          "adopterEmail",
+          "targetPetId",
+          "targetPetName",
+          "applicationStatus",
+          "applicationFormData",
+          "appliedAt"
+        ]
+      },
+      "ReceivedApplicationListResponseDto": {
+        "type": "object",
+        "properties": {
+          "item": {
+            "description": "받은 입양 신청 목록",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReceivedApplicationResponseDto"
+            }
+          },
+          "pageInfo": {
+            "description": "페이지네이션 정보",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PageInfoDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "item",
+          "pageInfo"
+        ]
+      },
+      "ApplicationStatusUpdateRequestDto": {
+        "type": "object",
+        "properties": {
+          "applicationId": {
+            "type": "string",
+            "description": "입양 신청 ID",
+            "example": "app_507f1f77bcf86cd799439011"
+          },
+          "status": {
+            "type": "string",
+            "description": "변경할 상태",
+            "example": "consultation_completed",
+            "enum": [
+              "consultation_pending",
+              "consultation_completed",
+              "adoption_approved",
+              "adoption_rejected"
+            ]
+          },
+          "notes": {
+            "type": "string",
+            "description": "상태 변경 사유 또는 메모",
+            "example": "상담을 통해 입양 조건이 충족되어 승인합니다."
+          },
+          "actionTaken": {
+            "type": "string",
+            "description": "브리더가 취한 구체적인 조치",
+            "example": "전화 상담 완료, 견학 예약"
+          },
+          "nextSteps": {
+            "type": "string",
+            "description": "다음 단계 안내",
+            "example": "이번 주말에 직접 방문 부탁드립니다."
+          }
+        },
+        "required": [
+          "applicationId",
+          "status"
+        ]
+      },
+      "BreederVerificationRequestDto": {
+        "type": "object",
+        "properties": {
+          "verificationStatus": {
+            "description": "인증 상태",
+            "example": "approved",
+            "enum": [
+              "pending",
+              "reviewing",
+              "approved",
+              "rejected"
+            ],
+            "type": "string"
+          },
+          "rejectionReason": {
+            "type": "string",
+            "description": "거부 사유",
+            "example": "제출된 서류가 불완전합니다."
+          }
+        },
+        "required": [
+          "verificationStatus"
+        ]
+      },
+      "UserManagementRequestDto": {
+        "type": "object",
+        "properties": {
+          "accountStatus": {
+            "description": "계정 상태",
+            "example": "suspended",
+            "enum": [
+              "active",
+              "suspended",
+              "deleted"
+            ],
+            "type": "string"
+          },
+          "actionReason": {
+            "type": "string",
+            "description": "상태 변경 사유",
+            "example": "부적절한 게시물 작성"
+          }
+        },
+        "required": [
+          "accountStatus"
+        ]
+      },
+      "ReportActionRequestDto": {
+        "type": "object",
+        "properties": {
+          "reportStatus": {
+            "description": "신고 처리 상태",
+            "example": "resolved",
+            "enum": [
+              "pending",
+              "reviewing",
+              "resolved",
+              "dismissed"
+            ],
+            "type": "string"
+          },
+          "adminNotes": {
+            "type": "string",
+            "description": "관리자 처리 메모",
+            "example": "허위 신고로 판단되어 기각 처리합니다."
+          }
+        },
+        "required": [
+          "reportStatus"
+        ]
+      },
+      "UserStatsDto": {
+        "type": "object",
+        "properties": {
+          "totalAdopterCount": {
+            "type": "number",
+            "description": "총 입양자 수",
+            "example": 1250
+          },
+          "newAdopterCount": {
+            "type": "number",
+            "description": "신규 입양자 수 (이번 달)",
+            "example": 85
+          },
+          "activeAdopterCount": {
+            "type": "number",
+            "description": "활성 입양자 수",
+            "example": 1180
+          },
+          "totalBreederCount": {
+            "type": "number",
+            "description": "총 브리더 수",
+            "example": 340
+          },
+          "newBreederCount": {
+            "type": "number",
+            "description": "신규 브리더 수 (이번 달)",
+            "example": 28
+          },
+          "approvedBreederCount": {
+            "type": "number",
+            "description": "승인된 브리더 수",
+            "example": 285
+          },
+          "pendingBreederCount": {
+            "type": "number",
+            "description": "승인 대기 브리더 수",
+            "example": 45
+          }
+        },
+        "required": [
+          "totalAdopterCount",
+          "newAdopterCount",
+          "activeAdopterCount",
+          "totalBreederCount",
+          "newBreederCount",
+          "approvedBreederCount",
+          "pendingBreederCount"
+        ]
+      },
+      "AdoptionStatsDto": {
+        "type": "object",
+        "properties": {
+          "totalApplicationCount": {
+            "type": "number",
+            "description": "총 입양 신청 수",
+            "example": 2480
+          },
+          "newApplicationCount": {
+            "type": "number",
+            "description": "신규 입양 신청 수 (이번 달)",
+            "example": 156
+          },
+          "completedAdoptionCount": {
+            "type": "number",
+            "description": "완료된 입양 수",
+            "example": 1870
+          },
+          "pendingApplicationCount": {
+            "type": "number",
+            "description": "처리 대기 신청 수",
+            "example": 235
+          },
+          "rejectedApplicationCount": {
+            "type": "number",
+            "description": "거절된 신청 수",
+            "example": 375
+          }
+        },
+        "required": [
+          "totalApplicationCount",
+          "newApplicationCount",
+          "completedAdoptionCount",
+          "pendingApplicationCount",
+          "rejectedApplicationCount"
+        ]
+      },
+      "PopularBreedDto": {
+        "type": "object",
+        "properties": {
+          "breedName": {
+            "type": "string",
+            "description": "품종명",
+            "example": "골든 리트리버"
+          },
+          "petType": {
+            "type": "string",
+            "description": "반려동물 종류",
+            "example": "dog"
+          },
+          "applicationCount": {
+            "type": "number",
+            "description": "입양 신청 수",
+            "example": 450
+          },
+          "completedAdoptionCount": {
+            "type": "number",
+            "description": "완료된 입양 수",
+            "example": 320
+          },
+          "averagePrice": {
+            "type": "number",
+            "description": "평균 분양 가격 (원)",
+            "example": 1500000
+          }
+        },
+        "required": [
+          "breedName",
+          "petType",
+          "applicationCount",
+          "completedAdoptionCount",
+          "averagePrice"
+        ]
+      },
+      "RegionalStatsDto": {
+        "type": "object",
+        "properties": {
+          "cityName": {
+            "type": "string",
+            "description": "도시명",
+            "example": "서울"
+          },
+          "districtName": {
+            "type": "string",
+            "description": "구/군명",
+            "example": "강남구"
+          },
+          "breederCount": {
+            "type": "number",
+            "description": "지역 브리더 수",
+            "example": 45
+          },
+          "applicationCount": {
+            "type": "number",
+            "description": "지역 입양 신청 수",
+            "example": 380
+          },
+          "completedAdoptionCount": {
+            "type": "number",
+            "description": "지역 완료된 입양 수",
+            "example": 285
+          }
+        },
+        "required": [
+          "cityName",
+          "districtName",
+          "breederCount",
+          "applicationCount",
+          "completedAdoptionCount"
+        ]
+      },
+      "BreederPerformanceDto": {
+        "type": "object",
+        "properties": {
+          "breederId": {
+            "type": "string",
+            "description": "브리더 ID",
+            "example": "507f1f77bcf86cd799439011"
+          },
+          "breederName": {
+            "type": "string",
+            "description": "브리더 이름",
+            "example": "김브리더"
+          },
+          "cityName": {
+            "type": "string",
+            "description": "지역 (도시)",
+            "example": "서울"
+          },
+          "applicationCount": {
+            "type": "number",
+            "description": "받은 입양 신청 수",
+            "example": 95
+          },
+          "completedAdoptionCount": {
+            "type": "number",
+            "description": "완료된 입양 수",
+            "example": 72
+          },
+          "averageRating": {
+            "type": "number",
+            "description": "평균 평점",
+            "example": 4.7
+          },
+          "totalReviewCount": {
+            "type": "number",
+            "description": "총 후기 수",
+            "example": 68
+          },
+          "profileViewCount": {
+            "type": "number",
+            "description": "프로필 조회 수",
+            "example": 2450
+          }
+        },
+        "required": [
+          "breederId",
+          "breederName",
+          "cityName",
+          "applicationCount",
+          "completedAdoptionCount",
+          "averageRating",
+          "totalReviewCount",
+          "profileViewCount"
+        ]
+      },
+      "ReportStatsDto": {
+        "type": "object",
+        "properties": {
+          "totalReportCount": {
+            "type": "number",
+            "description": "총 신고 수",
+            "example": 125
+          },
+          "newReportCount": {
+            "type": "number",
+            "description": "신규 신고 수 (이번 달)",
+            "example": 18
+          },
+          "resolvedReportCount": {
+            "type": "number",
+            "description": "처리된 신고 수",
+            "example": 98
+          },
+          "pendingReportCount": {
+            "type": "number",
+            "description": "처리 대기 신고 수",
+            "example": 15
+          },
+          "dismissedReportCount": {
+            "type": "number",
+            "description": "기각된 신고 수",
+            "example": 12
+          }
+        },
+        "required": [
+          "totalReportCount",
+          "newReportCount",
+          "resolvedReportCount",
+          "pendingReportCount",
+          "dismissedReportCount"
+        ]
+      },
+      "AdminStatsResponseDto": {
+        "type": "object",
+        "properties": {
+          "userStatistics": {
+            "description": "사용자 통계 정보",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserStatsDto"
+              }
+            ]
+          },
+          "adoptionStatistics": {
+            "description": "입양 통계 정보",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AdoptionStatsDto"
+              }
+            ]
+          },
+          "popularBreeds": {
+            "description": "인기 품종 통계",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PopularBreedDto"
+            }
+          },
+          "regionalStatistics": {
+            "description": "지역별 통계",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RegionalStatsDto"
+            }
+          },
+          "breederPerformanceRanking": {
+            "description": "브리더 성과 순위",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BreederPerformanceDto"
+            }
+          },
+          "reportStatistics": {
+            "description": "신고 통계 정보",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReportStatsDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "userStatistics",
+          "adoptionStatistics",
+          "popularBreeds",
+          "regionalStatistics",
+          "breederPerformanceRanking",
+          "reportStatistics"
+        ]
+      }
+    }
+  }
+}

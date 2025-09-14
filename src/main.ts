@@ -112,21 +112,37 @@ async function bootstrap(): Promise<void> {
             },
             'JWT-Auth',
         )
-        .setBasePath('api')
         .build();
 
-    const document: OpenAPIObject = SwaggerModule.createDocument(app, config);
+    const document: OpenAPIObject = SwaggerModule.createDocument(app, config, {
+        operationIdFactory: (_controllerKey: string, methodKey: string) => methodKey,
+    });
+    
     SwaggerModule.setup('api/docs', app, document, {
         swaggerOptions: {
             persistAuthorization: true, // 인증 정보 유지
+            tryItOutEnabled: true, // API 테스트 기능 활성화
+            filter: true, // API 검색 기능 활성화
+            displayOperationId: true, // Operation ID 표시
         },
+        customCss: '.swagger-ui .topbar { display: none }', // 탑바 숨김
+        customSiteTitle: 'Pawpong API Documentation',
     });
-
+    
     // ConfigService 주입
     const configService: ConfigService = app.get(ConfigService);
 
     // 프로덕션 환경 체크
     const isProduction = process.env.NODE_ENV === 'production';
+    
+    // 개발 환경에서 Swagger JSON 파일 저장
+    if (!isProduction) {
+        const fs = require('fs');
+        const path = require('path');
+        const swaggerPath = path.join(process.cwd(), 'swagger.json');
+        fs.writeFileSync(swaggerPath, JSON.stringify(document, null, 2));
+        logger.log(`[bootstrap] Swagger JSON saved to: ${swaggerPath}`);
+    }
 
     // Express Request Body 크기 제한 설정
     app.use(express.json({ limit: '50mb' }));
