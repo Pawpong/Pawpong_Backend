@@ -1,0 +1,103 @@
+name: Create Jira Subtask
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  create-jira-subtask:
+    runs-on: ubuntu-latest
+    if: contains(github.event.issue.labels.*.name, 'task')
+    
+    steps:
+      - name: Extract Jira Story Key
+        id: extract-jira-key
+        run: |
+          # 이슈 본문에서 Jira 키 추출
+          JIRA_KEY=$(echo "${{ github.event.issue.body }}" | grep -oE 'PROJ-[0-9]+' | head -1)
+          echo "jira_key=$JIRA_KEY" >> $GITHUB_OUTPUT
+          echo "Found Jira Key: $JIRA_KEY"
+
+      - name: Create Jira Subtask
+        if: steps.extract-jira-key.outputs.jira_key != ''
+        run: |
+          # Jira 서브태스크 생성
+          RESPONSE=$(curl -s -X POST \
+            -H "Authorization: Basic ${{ secrets.JIRA_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -H "Accept: application/json" \
+            -d '{
+              "fields": {
+                "project": {
+                  "key": "PROJ"
+                },
+                "parent": {
+                  "key": "${{ steps.extract-jira-key.outputs.jira_key }}"
+                },
+                "summary": "${{ github.event.issue.title }}",
+                "description": {
+                  "type": "doc",
+                  "version": 1,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "GitHub Issue: ${{ github.event.issue.html_url }}"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "${{ github.event.issue.body }}"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "issuetype": {
+                  "name": "Sub-task"
+                }
+              }
+            }' \
+            https://your-company.atlassian.net/rest/api/3/issue)
+          
+          echo "Jira Response: $RESPONSE"
+          
+          # Jira 이슈 키 추출
+          JIRA_ISSUE_KEY=$(echo $RESPONSE | jq -r '.key')
+          echo "Created Jira Issue: $JIRA_ISSUE_KEY"
+          
+          # GitHub 이슈에 Jira 링크 댓글 추가
+          if [ "$JIRA_ISSUE_KEY" != "null" ] && [ "$JIRA_ISSUE_KEY" != "" ]; then
+            curl -X POST \
+              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments \
+              -d '{
+                "body": "🔗 **Jira Sub-task 생성 완료**\n\n['"$JIRA_ISSUE_KEY"'](https://your-company.atlassian.net/browse/'"$JIRA_ISSUE_KEY"') - '"${{ github.event.issue.title }}"'\n\n> 이 GitHub 이슈와 Jira Sub-task가 자동으로 연결되었습니다."
+              }'
+          fi
+
+      - name: Add GitHub Issue Link to Jira
+        if: steps.extract-jira-key.outputs.jira_key != ''
+        run: |
+          # Jira 이슈에 GitHub 링크 추가 (Web Link)
+          curl -X POST \
+            -H "Authorization: Basic ${{ secrets.JIRA_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            https://your-company.atlassian.net/rest/api/3/issue/${{ steps.extract-jira-key.outputs.jira_key }}/remotelink \
+            -d '{
+              "object": {
+                "url": "${{ github.event.issue.html_url }}",
+                "title": "GitHub Issue #${{ github.event.issue.number }}",
+                "summary": "${{ github.event.issue.title }}",
+                "icon": {
+                  "url16x16": "https://github.com/favicon.ico"
+                }
+              }
+            }'
