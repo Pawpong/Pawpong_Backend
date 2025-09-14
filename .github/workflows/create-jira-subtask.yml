@@ -7,7 +7,7 @@ on:
 jobs:
   create-jira-subtask:
     runs-on: ubuntu-latest
-    if: contains(github.event.issue.labels.*.name, 'task')
+    if: startsWith(github.event.issue.title, '[TASK]')
     
     steps:
       - name: Extract and Build Jira Story Key
