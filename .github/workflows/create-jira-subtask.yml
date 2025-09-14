@@ -11,7 +11,6 @@ permissions:
 jobs:
   create-jira-subtask:
     runs-on: ubuntu-latest
-    # [TASK] 조건 제거 - 모든 이슈에서 실행
     
     steps:
       - name: Extract Jira Story Key
@@ -29,30 +28,35 @@ jobs:
       - name: Extract Assignee
         id: extract-assignee
         run: |
-          # 담당자 이름을 Jira 사용자 ID로 매핑
-          ASSIGNEE_NAME=$(echo "${{ github.event.issue.body }}" | grep -A1 "담당자" | tail -1 | xargs)
+          # GitHub 이슈의 assignee를 확인
+          GITHUB_ASSIGNEE="${{ github.event.issue.assignee.login }}"
           
-          case "$ASSIGNEE_NAME" in
-            "김승찬")
-              JIRA_ASSIGNEE="712020:cf51e65d-f7c5-4e37-b9f9-9b9380858e0c"  # 김승찬
+          echo "GitHub Assignee: $GITHUB_ASSIGNEE"
+          
+          case "$GITHUB_ASSIGNEE" in
+            "rtaeho")
+              JIRA_ASSIGNEE="712020:d5bf4833-dffc-4259-9ff0-d9657a3d8d1c"
+              ASSIGNEE_NAME="류태호"
               ;;
-            "류태호")  
-              JIRA_ASSIGNEE="712020:d5bf4833-dffc-4259-9ff0-d9657a3d8d1c"  # 류태호
+            "kscold")
+              JIRA_ASSIGNEE="712020:cf51e65d-f7c5-4e37-b9f9-9b9380858e0c"
+              ASSIGNEE_NAME="김승찬"
               ;;
             *)
               JIRA_ASSIGNEE=""
+              ASSIGNEE_NAME=""
               ;;
           esac
           
           echo "assignee_name=$ASSIGNEE_NAME" >> $GITHUB_OUTPUT
           echo "jira_assignee=$JIRA_ASSIGNEE" >> $GITHUB_OUTPUT
-          echo "✅ Assignee: $ASSIGNEE_NAME -> $JIRA_ASSIGNEE"
+          echo "✅ GitHub Assignee: $GITHUB_ASSIGNEE -> Jira: $JIRA_ASSIGNEE ($ASSIGNEE_NAME)"
 
       - name: Extract Issue Description
         id: extract-description
         run: |
-          # 작업 설명 부분만 추출 (Story 번호와 담당자 제외)
-          DESCRIPTION=$(echo "${{ github.event.issue.body }}" | sed -n '/작업 설명/,/담당자/p' | sed '1d;$d' | xargs)
+          # 작업 설명 부분만 추출
+          DESCRIPTION=$(echo "${{ github.event.issue.body }}" | sed -n '/작업 설명/,/완료 조건/p' | sed '1d;$d' | sed '/^$/d' | head -10 | tr '\n' ' ')
           if [ -z "$DESCRIPTION" ]; then
             DESCRIPTION="GitHub에서 생성된 작업"
           fi
@@ -62,19 +66,16 @@ jobs:
       - name: Create Jira Subtask
         id: create-subtask
         run: |
-          # 담당자 필드 조건부 추가
-          ASSIGNEE_FIELD=""
-          if [ -n "${{ steps.extract-assignee.outputs.jira_assignee }}" ]; then
-            ASSIGNEE_FIELD='"assignee": {"accountId": "${{ steps.extract-assignee.outputs.jira_assignee }}"},'
-          fi
+          echo "Creating Jira Sub-task for story: ${{ steps.extract-jira-key.outputs.jira_key }}"
+          echo "Assignee: ${{ steps.extract-assignee.outputs.jira_assignee }}"
+          echo "Description: ${{ steps.extract-description.outputs.description }}"
           
-          # ADF 형식으로 간단한 설명 생성
+          # 기본 페이로드 생성
           PAYLOAD=$(jq -n \
             --arg project "PP" \
             --arg parent "${{ steps.extract-jira-key.outputs.jira_key }}" \
             --arg summary "${{ github.event.issue.title }}" \
             --arg description "${{ steps.extract-description.outputs.description }}" \
-            --arg assignee "${{ steps.extract-assignee.outputs.jira_assignee }}" \
             '{
               "fields": {
                 "project": {"key": $project},
@@ -96,8 +97,16 @@ jobs:
                   ]
                 },
                 "issuetype": {"name": "하위 작업"}
-              } + (if $assignee != "" then {"assignee": {"accountId": $assignee}} else {} end)
+              }
             }')
+          
+          # 담당자가 있으면 추가
+          if [ -n "${{ steps.extract-assignee.outputs.jira_assignee }}" ]; then
+            PAYLOAD=$(echo "$PAYLOAD" | jq \
+              --arg assignee "${{ steps.extract-assignee.outputs.jira_assignee }}" \
+              '.fields.assignee = {"accountId": $assignee}')
+            echo "✅ Added assignee to payload"
+          fi
           
           echo "Sending payload:"
           echo "$PAYLOAD"
