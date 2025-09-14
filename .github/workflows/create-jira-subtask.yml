@@ -4,7 +4,7 @@ on:
   issues:
     types: [opened]
 
-permissions:  # ← 권한 추가
+permissions:
   issues: write
   contents: read
 
@@ -14,94 +14,45 @@ jobs:
     if: startsWith(github.event.issue.title, '[TASK]')
     
     steps:
-      - name: Extract and Build Jira Story Key
+      - name: Extract Jira Story Key
         id: extract-jira-key
         run: |
-          echo "Extracting story number from issue body..."
-          
-          # 숫자만 추출
           STORY_NUMBER=$(echo "${{ github.event.issue.body }}" | grep -oE '[0-9]+' | head -1)
-          
           if [ -z "$STORY_NUMBER" ]; then
-            echo "❌ No story number found in issue body"
+            echo "❌ No story number found"
             exit 1
           fi
-          
-          # PP- 접두사 추가
           JIRA_KEY="PP-$STORY_NUMBER"
-          
           echo "jira_key=$JIRA_KEY" >> $GITHUB_OUTPUT
-          echo "✅ Built Jira Key: $JIRA_KEY (from number: $STORY_NUMBER)"
-
-      - name: Validate Jira Story exists
-        id: validate-story
-        run: |
-          echo "Validating Jira Story: ${{ steps.extract-jira-key.outputs.jira_key }}"
-          
-          RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" \
-            -H "Authorization: Basic ${{ secrets.JIRA_TOKEN }}" \
-            -H "Accept: application/json" \
-            "${{ secrets.JIRA_BASE_URL }}/rest/api/3/issue/${{ steps.extract-jira-key.outputs.jira_key }}")
-          
-          HTTP_CODE=$(echo "$RESPONSE" | grep "HTTP_CODE:" | cut -d: -f2)
-          
-          if [ "$HTTP_CODE" != "200" ]; then
-            echo "❌ Jira Story not found: ${{ steps.extract-jira-key.outputs.jira_key }}"
-            exit 1
-          fi
-          
-          echo "✅ Jira Story validated: ${{ steps.extract-jira-key.outputs.jira_key }}"
-
-      - name: Prepare Issue Data
-        id: prepare-data
-        run: |
-          # 이슈 제목과 본문을 안전하게 처리
-          ISSUE_TITLE=$(echo '${{ github.event.issue.title }}' | sed 's/"/\\"/g' | tr -d '\n\r')
-          ISSUE_BODY=$(echo '${{ github.event.issue.body }}' | sed 's/"/\\"/g' | tr '\n' ' ' | tr '\r' ' ')
-          ISSUE_URL="${{ github.event.issue.html_url }}"
-          
-          echo "issue_title=$ISSUE_TITLE" >> $GITHUB_OUTPUT
-          echo "issue_body=$ISSUE_BODY" >> $GITHUB_OUTPUT  
-          echo "issue_url=$ISSUE_URL" >> $GITHUB_OUTPUT
+          echo "✅ Built Jira Key: $JIRA_KEY"
 
       - name: Create Jira Subtask
         id: create-subtask
         run: |
-          echo "Creating Jira Sub-task for story: ${{ steps.extract-jira-key.outputs.jira_key }}"
-          
-          # JSON 페이로드를 파일로 생성 (특수문자 문제 해결)
-          cat > /tmp/jira_payload.json << 'EOF'
-          {
-            "fields": {
-              "project": {
-                "key": "PP"
-              },
-              "parent": {
-                "key": "${{ steps.extract-jira-key.outputs.jira_key }}"
-              },
-              "summary": "${{ steps.prepare-data.outputs.issue_title }}",
-              "description": "GitHub Issue: ${{ steps.prepare-data.outputs.issue_url }}\n\nDescription: ${{ steps.prepare-data.outputs.issue_body }}",
-              "issuetype": {
-                "name": "Sub-task"
+          # 안전한 JSON 생성 (jq 사용)
+          PAYLOAD=$(jq -n \
+            --arg project "PP" \
+            --arg parent "${{ steps.extract-jira-key.outputs.jira_key }}" \
+            --arg summary "${{ github.event.issue.title }}" \
+            --arg description "GitHub Issue: ${{ github.event.issue.html_url }}" \
+            '{
+              "fields": {
+                "project": {"key": $project},
+                "parent": {"key": $parent},
+                "summary": $summary,
+                "description": $description,
+                "issuetype": {"name": "Sub-task"}
               }
-            }
-          }
-          EOF
+            }')
           
-          # 실제 값들로 치환
-          sed -i 's/\${{ steps.extract-jira-key.outputs.jira_key }}/${{ steps.extract-jira-key.outputs.jira_key }}/g' /tmp/jira_payload.json
-          sed -i 's/\${{ steps.prepare-data.outputs.issue_title }}/${{ steps.prepare-data.outputs.issue_title }}/g' /tmp/jira_payload.json
-          sed -i 's/\${{ steps.prepare-data.outputs.issue_url }}/${{ steps.prepare-data.outputs.issue_url }}/g' /tmp/jira_payload.json
-          sed -i 's/\${{ steps.prepare-data.outputs.issue_body }}/${{ steps.prepare-data.outputs.issue_body }}/g' /tmp/jira_payload.json
-          
-          echo "Payload to send:"
-          cat /tmp/jira_payload.json
+          echo "Sending payload:"
+          echo "$PAYLOAD"
           
           RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" -X POST \
             -H "Authorization: Basic ${{ secrets.JIRA_TOKEN }}" \
             -H "Content-Type: application/json" \
             -H "Accept: application/json" \
-            --data-binary @/tmp/jira_payload.json \
+            -d "$PAYLOAD" \
             ${{ secrets.JIRA_BASE_URL }}/rest/api/3/issue)
           
           HTTP_CODE=$(echo "$RESPONSE" | grep "HTTP_CODE:" | cut -d: -f2)
@@ -111,46 +62,53 @@ jobs:
           echo "Response: $RESPONSE_BODY"
           
           if [ "$HTTP_CODE" = "201" ]; then
-            JIRA_ISSUE_KEY=$(echo $RESPONSE_BODY | jq -r '.key')
+            JIRA_ISSUE_KEY=$(echo "$RESPONSE_BODY" | jq -r '.key')
             echo "✅ Created Jira Sub-task: $JIRA_ISSUE_KEY"
             echo "jira_issue_key=$JIRA_ISSUE_KEY" >> $GITHUB_OUTPUT
           else
-            echo "❌ Failed to create Jira Sub-task"
-            echo "Error response: $RESPONSE_BODY"
+            echo "❌ Failed to create Jira Sub-task: $RESPONSE_BODY"
             exit 1
           fi
 
       - name: Add Success Comment
-        if: steps.create-subtask.outputs.jira_issue_key != ''
-        uses: actions/github-script@v6
+        if: steps.create-subtask.outputs.jira_issue_key
+        uses: actions/github-script@v7
         with:
           script: |
-            github.rest.issues.createComment({
+            const jiraIssueKey = '${{ steps.create-subtask.outputs.jira_issue_key }}';
+            const parentStory = '${{ steps.extract-jira-key.outputs.jira_key }}';
+            const jiraBaseUrl = '${{ secrets.JIRA_BASE_URL }}';
+            
+            await github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
               body: `🔗 **Jira Sub-task 생성 완료**
 
-            **Sub-task:** [${{ steps.create-subtask.outputs.jira_issue_key }}](${{ secrets.JIRA_BASE_URL }}/browse/${{ steps.create-subtask.outputs.jira_issue_key }})
-            **Parent Story:** [${{ steps.extract-jira-key.outputs.jira_key }}](${{ secrets.JIRA_BASE_URL }}/browse/${{ steps.extract-jira-key.outputs.jira_key }})
+            **Sub-task:** [${jiraIssueKey}](${jiraBaseUrl}/browse/${jiraIssueKey})
+            **Parent Story:** [${parentStory}](${jiraBaseUrl}/browse/${parentStory})
 
             > 이 GitHub 이슈와 Jira Sub-task가 자동으로 연결되었습니다.`
             });
 
-      - name: Add GitHub Issue Link to Jira
-        if: steps.create-subtask.outputs.jira_issue_key != ''
+      - name: Add GitHub Link to Jira
+        if: steps.create-subtask.outputs.jira_issue_key
         run: |
-          curl -X POST \
+          LINK_PAYLOAD=$(jq -n \
+            --arg url "${{ github.event.issue.html_url }}" \
+            --arg title "GitHub Issue #${{ github.event.issue.number }}" \
+            --arg summary "${{ github.event.issue.title }}" \
+            '{
+              "object": {
+                "url": $url,
+                "title": $title,
+                "summary": $summary,
+                "icon": {"url16x16": "https://github.com/favicon.ico"}
+              }
+            }')
+          
+          curl -s -X POST \
             -H "Authorization: Basic ${{ secrets.JIRA_TOKEN }}" \
             -H "Content-Type: application/json" \
-            ${{ secrets.JIRA_BASE_URL }}/rest/api/3/issue/${{ steps.extract-jira-key.outputs.jira_key }}/remotelink \
-            -d '{
-              "object": {
-                "url": "${{ github.event.issue.html_url }}",
-                "title": "GitHub Issue #${{ github.event.issue.number }}",
-                "summary": "${{ github.event.issue.title }}",
-                "icon": {
-                  "url16x16": "https://github.com/favicon.ico"
-                }
-              }
-            }'
+            -d "$LINK_PAYLOAD" \
+            ${{ secrets.JIRA_BASE_URL }}/rest/api/3/issue/${{ steps.extract-jira-key.outputs.jira_key }}/remotelink
