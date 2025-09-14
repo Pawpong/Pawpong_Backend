@@ -152,7 +152,7 @@ export class AvailablePetDto {
 
 export class ReceivedApplicationResponseDto {
     @ApiProperty({
-        description: '받은 입양 신청 목록'
+        description: '받은 입양 신청 목록',
     })
     applications: Array<{
         applicationId: string;
@@ -166,7 +166,7 @@ export class ReceivedApplicationResponseDto {
     }>;
 
     @ApiProperty({
-        description: '페이지네이션 정보'
+        description: '페이지네이션 정보',
     })
     pageInfo: {
         currentPage: number;
@@ -179,7 +179,7 @@ export class ReceivedApplicationResponseDto {
 
 export class BreederDashboardResponseDto {
     @ApiProperty({
-        description: '브리더 기본 정보'
+        description: '브리더 기본 정보',
     })
     breederInfo: {
         breederId: string;
@@ -190,7 +190,7 @@ export class BreederDashboardResponseDto {
     };
 
     @ApiProperty({
-        description: '프로필 정보'
+        description: '프로필 정보',
     })
     profileInfo: {
         verificationInfo: {
@@ -203,7 +203,7 @@ export class BreederDashboardResponseDto {
     };
 
     @ApiProperty({
-        description: '통계 정보'
+        description: '통계 정보',
     })
     statisticsInfo: {
         totalApplicationCount: number;
@@ -215,7 +215,7 @@ export class BreederDashboardResponseDto {
     };
 
     @ApiProperty({
-        description: '최근 입양 신청 목록'
+        description: '최근 입양 신청 목록',
     })
     recentApplicationList: Array<{
         applicationId: string;
@@ -226,12 +226,12 @@ export class BreederDashboardResponseDto {
     }>;
 
     @ApiProperty({
-        description: '분양 가능한 반려동물 수'
+        description: '분양 가능한 반려동물 수',
     })
     availablePetCount: number;
 
     @ApiProperty({
-        description: '최근 후기들'
+        description: '최근 후기들',
     })
     recentReviews: Array<{
         reviewId: string;

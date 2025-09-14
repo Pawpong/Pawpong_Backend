@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { PageInfoDto } from '../page-info.dto';
+import { PageInfoDto } from './page-info.dto';
 import { PaginationBuilder } from './pagination-builder.dto';
 
 /**

@@ -22,10 +22,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
      * 토큰이 유효할 때 호출되어 사용자 정보를 반환합니다.
      */
     async validate(payload: any) {
-        return { 
-            userId: payload.sub, 
-            email: payload.email, 
-            role: payload.role 
+        return {
+            userId: payload.sub,
+            email: payload.email,
+            role: payload.role,
         };
     }
 }

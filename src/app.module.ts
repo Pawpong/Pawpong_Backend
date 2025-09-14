@@ -2,10 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { WinstonModule } from 'nest-winston';
 
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
-
-import { winstonConfig } from './common/logger/winston.config';
+import { winstonConfig } from './common/config/winston.config';
 import { CustomLoggerService } from './common/logger/custom-logger.service';
 
 import { DatabaseModule } from './common/database/database.module';
@@ -31,7 +28,7 @@ import { HealthModule } from './api/health/health.module';
         AdminModule,
         HealthModule,
     ],
-    controllers: [AppController],
-    providers: [AppService, CustomLoggerService],
+    controllers: [],
+    providers: [CustomLoggerService],
 })
 export class AppModule {}

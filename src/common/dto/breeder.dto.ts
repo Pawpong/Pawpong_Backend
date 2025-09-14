@@ -63,7 +63,7 @@ export class BreederSearchDto {
 
 export class BreederSearchResponseDto {
     @ApiProperty({
-        description: '브리더 목록'
+        description: '브리더 목록',
     })
     breeders: Array<{
         breederId: string;
@@ -78,7 +78,7 @@ export class BreederSearchResponseDto {
     }>;
 
     @ApiProperty({
-        description: '페이지네이션 정보'
+        description: '페이지네이션 정보',
     })
     pageInfo: {
         currentPage: number;
@@ -91,27 +91,27 @@ export class BreederSearchResponseDto {
 
 export class BreederProfileResponseDto {
     @ApiProperty({
-        description: '브리더 고유 ID'
+        description: '브리더 고유 ID',
     })
     breederId: string;
 
     @ApiProperty({
-        description: '브리더 이름'
+        description: '브리더 이름',
     })
     breederName: string;
 
     @ApiProperty({
-        description: '이메일 주소'
+        description: '이메일 주소',
     })
     emailAddress: string;
 
     @ApiProperty({
-        description: '프로필 설명'
+        description: '프로필 설명',
     })
     description: string;
 
     @ApiProperty({
-        description: '위치 정보'
+        description: '위치 정보',
     })
     location: {
         city: string;
@@ -120,17 +120,17 @@ export class BreederProfileResponseDto {
     };
 
     @ApiProperty({
-        description: '전문 분야'
+        description: '전문 분야',
     })
     specialization: string;
 
     @ApiProperty({
-        description: '경험 연수'
+        description: '경험 연수',
     })
     experienceYears: number;
 
     @ApiProperty({
-        description: '인증 정보'
+        description: '인증 정보',
     })
     verification: {
         status: string;
@@ -139,12 +139,12 @@ export class BreederProfileResponseDto {
     };
 
     @ApiProperty({
-        description: '프로필 사진들'
+        description: '프로필 사진들',
     })
     profilePhotos: string[];
 
     @ApiProperty({
-        description: '분양 가능한 반려동물들'
+        description: '분양 가능한 반려동물들',
     })
     availablePets: Array<{
         petId: string;
@@ -159,7 +159,7 @@ export class BreederProfileResponseDto {
     }>;
 
     @ApiProperty({
-        description: '후기 통계'
+        description: '후기 통계',
     })
     reviewStats: {
         totalReviews: number;
@@ -170,7 +170,7 @@ export class BreederProfileResponseDto {
     };
 
     @ApiProperty({
-        description: '최근 후기들'
+        description: '최근 후기들',
     })
     recentReviews: Array<{
         reviewId: string;
@@ -183,7 +183,7 @@ export class BreederProfileResponseDto {
     }>;
 
     @ApiProperty({
-        description: '계정 생성일'
+        description: '계정 생성일',
     })
     createdAt: Date;
 }
