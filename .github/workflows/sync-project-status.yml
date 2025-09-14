@@ -1,11 +1,8 @@
 name: Sync Project Status to Jira
 
 on:
-  issues:
-    types: [opened, edited]
-  # Projects v2는 직접 이벤트가 없으므로 주기적 체크 방식 사용
   schedule:
-    - cron: '*/1 * * * *'  # 5분마다 실행
+    - cron: '*/15 * * * *'  # 15분마다 실행
   workflow_dispatch:  # 수동 실행 가능
 
 permissions:
@@ -24,108 +21,128 @@ jobs:
           ISSUES_RESPONSE=$(curl -s \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -H "Accept: application/vnd.github.v3+json" \
-            "https://api.github.com/repos/${{ github.repository }}/issues?state=open&sort=updated&per_page=10")
+            "https://api.github.com/repos/${{ github.repository }}/issues?state=open&sort=updated&per_page=5")
           
           # 이슈 번호들 추출
-          ISSUE_NUMBERS=$(echo "$ISSUES_RESPONSE" | jq -r '.[].number' | head -5)
+          ISSUE_NUMBERS=$(echo "$ISSUES_RESPONSE" | jq -r '.[].number')
           
           echo "Recent issues: $ISSUE_NUMBERS"
           echo "issue_numbers<<EOF" >> $GITHUB_OUTPUT
           echo "$ISSUE_NUMBERS" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      - name: Check Project Status for Issues
-        id: check-projects
+      - name: Check Project Status for Each Issue
         run: |
-          # GraphQL을 사용해서 Projects 정보 가져오기
           ISSUE_NUMBERS="${{ steps.get-issues.outputs.issue_numbers }}"
           
           for ISSUE_NUMBER in $ISSUE_NUMBERS; do
-            echo "Checking issue #$ISSUE_NUMBER"
+            echo "=== Checking issue #$ISSUE_NUMBER ==="
             
-            # GraphQL 쿼리로 이슈의 프로젝트 정보 가져오기
-            QUERY=$(cat << 'EOF'
-          {
-            "query": "query($owner: String!, $repo: String!, $issueNumber: Int!) {
-              repository(owner: $owner, name: $repo) {
-                issue(number: $issueNumber) {
-                  projectItems(first: 10) {
-                    nodes {
-                      id
-                      fieldValues(first: 10) {
+            # GraphQL 쿼리 (올바른 JSON 형식)
+            QUERY_JSON=$(jq -n \
+              --arg owner "${{ github.repository_owner }}" \
+              --arg repo "$(echo '${{ github.repository }}' | cut -d'/' -f2)" \
+              --argjson issueNumber "$ISSUE_NUMBER" \
+              '{
+                query: "query($owner: String!, $repo: String!, $issueNumber: Int!) {
+                  repository(owner: $owner, name: $repo) {
+                    issue(number: $issueNumber) {
+                      number
+                      title
+                      projectItems(first: 10) {
                         nodes {
-                          ... on ProjectV2ItemFieldSingleSelectValue {
-                            name
-                            field {
-                              ... on ProjectV2FieldCommon {
+                          id
+                          fieldValues(first: 10) {
+                            nodes {
+                              ... on ProjectV2ItemFieldSingleSelectValue {
                                 name
+                                field {
+                                  ... on ProjectV2FieldCommon {
+                                    name
+                                  }
+                                }
                               }
                             }
                           }
+                          project {
+                            title
+                            number
+                          }
                         }
-                      }
-                      project {
-                        title
                       }
                     }
                   }
+                }",
+                variables: {
+                  owner: $owner,
+                  repo: $repo,
+                  issueNumber: $issueNumber
                 }
-              }
-            }",
-            "variables": {
-              "owner": "${{ github.repository_owner }}",
-              "repo": "${{ github.event.repository.name || 'Pawpong_Backend' }}",
-              "issueNumber": ISSUE_NUMBER
-            }
-          }
-          EOF
-          )
+              }')
+            
+            echo "Sending GraphQL query:"
+            echo "$QUERY_JSON" | jq '.'
             
             PROJECT_RESPONSE=$(curl -s -X POST \
               -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
               -H "Content-Type: application/json" \
-              -d "$QUERY" \
+              -d "$QUERY_JSON" \
               https://api.github.com/graphql)
             
-            echo "Project response for issue #$ISSUE_NUMBER:"
+            echo "GraphQL response:"
             echo "$PROJECT_RESPONSE" | jq '.'
+            
+            # 오류 체크
+            if echo "$PROJECT_RESPONSE" | jq -e '.errors' > /dev/null; then
+              echo "❌ GraphQL Error for issue #$ISSUE_NUMBER"
+              echo "$PROJECT_RESPONSE" | jq '.errors'
+              continue
+            fi
             
             # Status 필드 값 추출
             STATUS=$(echo "$PROJECT_RESPONSE" | jq -r '
-              .data.repository.issue.projectItems.nodes[0].fieldValues.nodes[] |
+              .data.repository.issue.projectItems.nodes[]? |
+              .fieldValues.nodes[]? |
               select(.field.name == "Status") |
               .name // empty
-            ')
+            ' | head -1)
             
-            if [ -n "$STATUS" ]; then
-              echo "Issue #$ISSUE_NUMBER Status: $STATUS"
+            if [ -n "$STATUS" ] && [ "$STATUS" != "null" ]; then
+              echo "✅ Issue #$ISSUE_NUMBER Status: $STATUS"
               
               # Jira 상태 매핑 및 업데이트
               case "$STATUS" in
                 "Todo"|"To Do"|"할 일")
-                  ./update_jira_status.sh "$ISSUE_NUMBER" "할 일"
+                  echo "Mapping to: 할 일"
+                  bash -c "./update_jira_status.sh '$ISSUE_NUMBER' '할 일'"
                   ;;
                 "In Progress"|"진행 중")
-                  ./update_jira_status.sh "$ISSUE_NUMBER" "진행 중"
+                  echo "Mapping to: 진행 중"  
+                  bash -c "./update_jira_status.sh '$ISSUE_NUMBER' '진행 중'"
                   ;;
                 "Done"|"완료")
-                  ./update_jira_status.sh "$ISSUE_NUMBER" "완료"
+                  echo "Mapping to: 완료"
+                  bash -c "./update_jira_status.sh '$ISSUE_NUMBER' '완료'"
                   ;;
                 *)
-                  echo "Unknown status: $STATUS"
+                  echo "⚠️ Unknown status: $STATUS"
                   ;;
               esac
+            else
+              echo "ℹ️ No project status found for issue #$ISSUE_NUMBER"
             fi
+            
+            echo "---"
           done
 
-      - name: Create Update Script
+      - name: Create Jira Update Script
         run: |
           cat > update_jira_status.sh << 'EOF'
           #!/bin/bash
           ISSUE_NUMBER=$1
           TARGET_STATUS=$2
           
-          echo "Updating Jira status for issue #$ISSUE_NUMBER to $TARGET_STATUS"
+          echo "🔄 Updating Jira status for issue #$ISSUE_NUMBER to '$TARGET_STATUS'"
           
           # GitHub 이슈의 댓글에서 Jira 링크 찾기
           COMMENTS_RESPONSE=$(curl -s \
@@ -134,20 +151,25 @@ jobs:
             https://api.github.com/repos/${{ github.repository }}/issues/$ISSUE_NUMBER/comments)
           
           # Jira 이슈 키 추출
-          JIRA_ISSUE_KEY=$(echo "$COMMENTS_RESPONSE" | jq -r '.[].body' | grep -oE 'PP-[0-9]+' | head -1)
+          JIRA_ISSUE_KEY=$(echo "$COMMENTS_RESPONSE" | jq -r '.[].body // ""' | grep -oE 'PP-[0-9]+' | head -1)
           
           if [ -z "$JIRA_ISSUE_KEY" ]; then
             echo "❌ No Jira issue found for #$ISSUE_NUMBER"
             exit 0
           fi
           
-          echo "Found Jira issue: $JIRA_ISSUE_KEY"
+          echo "📝 Found Jira issue: $JIRA_ISSUE_KEY"
           
           # 현재 상태 확인
           CURRENT_RESPONSE=$(curl -s \
             -H "Authorization: Basic ${{ secrets.JIRA_TOKEN }}" \
             -H "Accept: application/json" \
             "${{ secrets.JIRA_BASE_URL }}/rest/api/3/issue/$JIRA_ISSUE_KEY")
+          
+          if ! echo "$CURRENT_RESPONSE" | jq -e '.fields' > /dev/null; then
+            echo "❌ Failed to get Jira issue details"
+            exit 0
+          fi
           
           CURRENT_STATUS=$(echo "$CURRENT_RESPONSE" | jq -r '.fields.status.name')
           
@@ -156,6 +178,8 @@ jobs:
             exit 0
           fi
           
+          echo "🔄 Current: $CURRENT_STATUS → Target: $TARGET_STATUS"
+          
           # 전환 가능한 상태 조회
           TRANSITIONS_RESPONSE=$(curl -s \
             -H "Authorization: Basic ${{ secrets.JIRA_TOKEN }}" \
@@ -163,12 +187,16 @@ jobs:
             "${{ secrets.JIRA_BASE_URL }}/rest/api/3/issue/$JIRA_ISSUE_KEY/transitions")
           
           # 원하는 전환 ID 찾기
-          TRANSITION_ID=$(echo "$TRANSITIONS_RESPONSE" | jq -r ".transitions[] | select(.name | test(\"$TARGET_STATUS\"; \"i\")) | .id" | head -1)
+          TRANSITION_ID=$(echo "$TRANSITIONS_RESPONSE" | jq -r ".transitions[]? | select(.name | test(\"$TARGET_STATUS\"; \"i\")) | .id" | head -1)
           
           if [ -z "$TRANSITION_ID" ] || [ "$TRANSITION_ID" = "null" ]; then
             echo "❌ No transition found for: $TARGET_STATUS"
+            echo "Available transitions:"
+            echo "$TRANSITIONS_RESPONSE" | jq -r '.transitions[]? | "- \(.name) (ID: \(.id))"'
             exit 0
           fi
+          
+          echo "🎯 Found transition ID: $TRANSITION_ID"
           
           # 상태 변경
           RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" -X POST \
@@ -180,9 +208,10 @@ jobs:
           HTTP_CODE=$(echo "$RESPONSE" | grep "HTTP_CODE:" | cut -d: -f2)
           
           if [ "$HTTP_CODE" = "204" ]; then
-            echo "✅ Updated $JIRA_ISSUE_KEY: $CURRENT_STATUS → $TARGET_STATUS"
+            echo "✅ Successfully updated $JIRA_ISSUE_KEY: $CURRENT_STATUS → $TARGET_STATUS"
           else
             echo "❌ Failed to update $JIRA_ISSUE_KEY"
+            echo "Response: $(echo "$RESPONSE" | sed '/HTTP_CODE:/d')"
           fi
           EOF
           
