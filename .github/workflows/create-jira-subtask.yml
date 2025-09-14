@@ -11,7 +11,7 @@ permissions:
 jobs:
   create-jira-subtask:
     runs-on: ubuntu-latest
-    if: startsWith(github.event.issue.title, '[TASK]')
+    # [TASK] 조건 제거 - 모든 이슈에서 실행
     
     steps:
       - name: Extract Jira Story Key
@@ -26,15 +26,55 @@ jobs:
           echo "jira_key=$JIRA_KEY" >> $GITHUB_OUTPUT
           echo "✅ Built Jira Key: $JIRA_KEY"
 
+      - name: Extract Assignee
+        id: extract-assignee
+        run: |
+          # 담당자 이름을 Jira 사용자 ID로 매핑
+          ASSIGNEE_NAME=$(echo "${{ github.event.issue.body }}" | grep -A1 "담당자" | tail -1 | xargs)
+          
+          case "$ASSIGNEE_NAME" in
+            "김승찬")
+              JIRA_ASSIGNEE="712020:cf51e65d-f7c5-4e37-b9f9-9b9380858e0c"  # 김승찬
+              ;;
+            "류태호")  
+              JIRA_ASSIGNEE="712020:d5bf4833-dffc-4259-9ff0-d9657a3d8d1c"  # 류태호
+              ;;
+            *)
+              JIRA_ASSIGNEE=""
+              ;;
+          esac
+          
+          echo "assignee_name=$ASSIGNEE_NAME" >> $GITHUB_OUTPUT
+          echo "jira_assignee=$JIRA_ASSIGNEE" >> $GITHUB_OUTPUT
+          echo "✅ Assignee: $ASSIGNEE_NAME -> $JIRA_ASSIGNEE"
+
+      - name: Extract Issue Description
+        id: extract-description
+        run: |
+          # 작업 설명 부분만 추출 (Story 번호와 담당자 제외)
+          DESCRIPTION=$(echo "${{ github.event.issue.body }}" | sed -n '/작업 설명/,/담당자/p' | sed '1d;$d' | xargs)
+          if [ -z "$DESCRIPTION" ]; then
+            DESCRIPTION="GitHub에서 생성된 작업"
+          fi
+          echo "description=$DESCRIPTION" >> $GITHUB_OUTPUT
+          echo "✅ Description: $DESCRIPTION"
+
       - name: Create Jira Subtask
         id: create-subtask
         run: |
-          # ADF 형식으로 description 생성
+          # 담당자 필드 조건부 추가
+          ASSIGNEE_FIELD=""
+          if [ -n "${{ steps.extract-assignee.outputs.jira_assignee }}" ]; then
+            ASSIGNEE_FIELD='"assignee": {"accountId": "${{ steps.extract-assignee.outputs.jira_assignee }}"},'
+          fi
+          
+          # ADF 형식으로 간단한 설명 생성
           PAYLOAD=$(jq -n \
             --arg project "PP" \
             --arg parent "${{ steps.extract-jira-key.outputs.jira_key }}" \
             --arg summary "${{ github.event.issue.title }}" \
-            --arg github_url "${{ github.event.issue.html_url }}" \
+            --arg description "${{ steps.extract-description.outputs.description }}" \
+            --arg assignee "${{ steps.extract-assignee.outputs.jira_assignee }}" \
             '{
               "fields": {
                 "project": {"key": $project},
@@ -49,35 +89,14 @@ jobs:
                       "content": [
                         {
                           "type": "text",
-                          "text": "GitHub Issue: "
-                        },
-                        {
-                          "type": "text",
-                          "text": $github_url,
-                          "marks": [
-                            {
-                              "type": "link",
-                              "attrs": {
-                                "href": $github_url
-                              }
-                            }
-                          ]
-                        }
-                      ]
-                    },
-                    {
-                      "type": "paragraph",
-                      "content": [
-                        {
-                          "type": "text",
-                          "text": "이 작업은 GitHub에서 자동으로 생성된 하위 작업입니다."
+                          "text": $description
                         }
                       ]
                     }
                   ]
                 },
                 "issuetype": {"name": "하위 작업"}
-              }
+              } + (if $assignee != "" then {"assignee": {"accountId": $assignee}} else {} end)
             }')
           
           echo "Sending payload:"
@@ -113,6 +132,12 @@ jobs:
             const jiraIssueKey = '${{ steps.create-subtask.outputs.jira_issue_key }}';
             const parentStory = '${{ steps.extract-jira-key.outputs.jira_key }}';
             const jiraBaseUrl = '${{ secrets.JIRA_BASE_URL }}';
+            const assigneeName = '${{ steps.extract-assignee.outputs.assignee_name }}';
+            
+            let assigneeText = '';
+            if (assigneeName) {
+              assigneeText = `\n**담당자:** ${assigneeName}`;
+            }
             
             await github.rest.issues.createComment({
               issue_number: context.issue.number,
@@ -121,29 +146,7 @@ jobs:
               body: `🔗 **Jira 하위 작업 생성 완료**
 
             **하위 작업:** [${jiraIssueKey}](${jiraBaseUrl}/browse/${jiraIssueKey})
-            **상위 스토리:** [${parentStory}](${jiraBaseUrl}/browse/${parentStory})
+            **상위 스토리:** [${parentStory}](${jiraBaseUrl}/browse/${parentStory})${assigneeText}
 
-            > 이 GitHub 이슈와 Jira 하위 작업이 자동으로 연결되었습니다.`
+            > GitHub 이슈와 Jira 하위 작업이 자동 연결되었습니다.`
             });
-
-      - name: Add GitHub Link to Jira
-        if: steps.create-subtask.outputs.jira_issue_key
-        run: |
-          LINK_PAYLOAD=$(jq -n \
-            --arg url "${{ github.event.issue.html_url }}" \
-            --arg title "GitHub Issue #${{ github.event.issue.number }}" \
-            --arg summary "${{ github.event.issue.title }}" \
-            '{
-              "object": {
-                "url": $url,
-                "title": $title,
-                "summary": $summary,
-                "icon": {"url16x16": "https://github.com/favicon.ico"}
-              }
-            }')
-          
-          curl -s -X POST \
-            -H "Authorization: Basic ${{ secrets.JIRA_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            -d "$LINK_PAYLOAD" \
-            ${{ secrets.JIRA_BASE_URL }}/rest/api/3/issue/${{ steps.extract-jira-key.outputs.jira_key }}/remotelink
