@@ -61,13 +61,13 @@ jobs:
           
           FULL_BODY="${{ github.event.issue.body }}"
           
-          # 방법: "### 작업 설명" 다음부터 끝까지 (또는 다음 ###까지)
+          # "### 작업 설명" 다음부터 끝까지 추출
           DESCRIPTION=$(echo "$FULL_BODY" | awk '
             BEGIN { found=0; content="" }
             /^### 작업 설명/ { found=1; next }
             found && /^###/ { found=0 }
             found && NF > 0 { 
-              if (content != "") content = content "\n"
+              if (content != "") content = content " "
               content = content $0 
             }
             END { print content }
@@ -78,7 +78,16 @@ jobs:
             DESCRIPTION="작업 내용이 입력되지 않았습니다."
           fi
           
-          echo "description=$DESCRIPTION" >> $GITHUB_OUTPUT
+          # 특수문자와 줄바꿈 처리 (GitHub Actions output용)
+          DESCRIPTION=$(echo "$DESCRIPTION" | tr '\n' ' ' | tr '\r' ' ' | sed 's/[[:space:]]\+/ /g' | xargs)
+          
+          # GitHub Actions output에 안전하게 저장
+          {
+            echo "description<<EOF"
+            echo "$DESCRIPTION"
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
+          
           echo "✅ Final Description:"
           echo "[$DESCRIPTION]"
 
