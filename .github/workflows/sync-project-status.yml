@@ -1,0 +1,193 @@
+name: Sync Project Status to Jira
+
+on:
+  project_card:
+    types: [moved, created]
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  sync-status:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Get Project Card Info
+        id: get-card-info
+        if: github.event_name == 'project_card'
+        run: |
+          # 프로젝트 카드 정보 가져오기
+          CARD_RESPONSE=$(curl -s \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "${{ github.event.project_card.url }}")
+          
+          echo "Card Response:"
+          echo "$CARD_RESPONSE"
+          
+          # 연결된 이슈 URL 추출
+          CONTENT_URL=$(echo "$CARD_RESPONSE" | jq -r '.content_url // empty')
+          
+          if [ -z "$CONTENT_URL" ]; then
+            echo "❌ No linked issue found"
+            exit 0
+          fi
+          
+          # 이슈 번호 추출
+          ISSUE_NUMBER=$(echo "$CONTENT_URL" | grep -oE '[0-9]+$')
+          
+          echo "issue_number=$ISSUE_NUMBER" >> $GITHUB_OUTPUT
+          echo "✅ Found Issue: #$ISSUE_NUMBER"
+
+      - name: Get Column Name
+        id: get-column
+        if: github.event_name == 'project_card' && steps.get-card-info.outputs.issue_number
+        run: |
+          # 칼럼 정보 가져오기
+          COLUMN_RESPONSE=$(curl -s \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "${{ github.event.project_card.column_url }}")
+          
+          COLUMN_NAME=$(echo "$COLUMN_RESPONSE" | jq -r '.name')
+          
+          echo "column_name=$COLUMN_NAME" >> $GITHUB_OUTPUT
+          echo "✅ Column Name: $COLUMN_NAME"
+          
+          # Jira 상태 매핑
+          case "$COLUMN_NAME" in
+            "Todo"|"To Do"|"할 일")
+              JIRA_STATUS="할 일"
+              TRANSITION_NAME="할 일"
+              ;;
+            "In Progress"|"진행 중"|"In progress")
+              JIRA_STATUS="진행 중"
+              TRANSITION_NAME="진행 중"
+              ;;
+            "Done"|"완료")
+              JIRA_STATUS="완료"
+              TRANSITION_NAME="완료"
+              ;;
+            *)
+              JIRA_STATUS=""
+              TRANSITION_NAME=""
+              ;;
+          esac
+          
+          echo "jira_status=$JIRA_STATUS" >> $GITHUB_OUTPUT
+          echo "transition_name=$TRANSITION_NAME" >> $GITHUB_OUTPUT
+          echo "✅ Mapped to Jira Status: $JIRA_STATUS"
+
+      - name: Find Jira Issue
+        id: find-jira
+        if: steps.get-column.outputs.jira_status
+        run: |
+          # 이슈 번호 설정
+          if [ "${{ github.event_name }}" = "project_card" ]; then
+            ISSUE_NUMBER="${{ steps.get-card-info.outputs.issue_number }}"
+          else
+            ISSUE_NUMBER="${{ github.event.issue.number }}"
+          fi
+          
+          echo "Looking for Jira issue in GitHub issue #$ISSUE_NUMBER"
+          
+          # GitHub 이슈의 댓글에서 Jira 링크 찾기
+          COMMENTS_RESPONSE=$(curl -s \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/issues/$ISSUE_NUMBER/comments)
+          
+          # Jira 하위 작업 키 추출
+          JIRA_ISSUE_KEY=$(echo "$COMMENTS_RESPONSE" | jq -r '.[].body' | grep -oE 'PP-[0-9]+' | head -1)
+          
+          if [ -z "$JIRA_ISSUE_KEY" ]; then
+            echo "❌ No Jira issue found in comments"
+            exit 0
+          fi
+          
+          echo "jira_issue_key=$JIRA_ISSUE_KEY" >> $GITHUB_OUTPUT
+          echo "✅ Found Jira Issue: $JIRA_ISSUE_KEY"
+
+      - name: Get Available Transitions
+        id: get-transitions
+        if: steps.find-jira.outputs.jira_issue_key
+        run: |
+          JIRA_KEY="${{ steps.find-jira.outputs.jira_issue_key }}"
+          
+          # 현재 상태 확인
+          CURRENT_RESPONSE=$(curl -s \
+            -H "Authorization: Basic ${{ secrets.JIRA_TOKEN }}" \
+            -H "Accept: application/json" \
+            "${{ secrets.JIRA_BASE_URL }}/rest/api/3/issue/$JIRA_KEY")
+          
+          CURRENT_STATUS=$(echo "$CURRENT_RESPONSE" | jq -r '.fields.status.name')
+          echo "current_status=$CURRENT_STATUS" >> $GITHUB_OUTPUT
+          echo "✅ Current Status: $CURRENT_STATUS"
+          
+          # 원하는 상태와 같으면 건너뛰기
+          TARGET_STATUS="${{ steps.get-column.outputs.jira_status }}"
+          if [ "$CURRENT_STATUS" = "$TARGET_STATUS" ]; then
+            echo "✅ Already in target status: $TARGET_STATUS"
+            exit 0
+          fi
+          
+          # 사용 가능한 전환 조회
+          TRANSITIONS_RESPONSE=$(curl -s \
+            -H "Authorization: Basic ${{ secrets.JIRA_TOKEN }}" \
+            -H "Accept: application/json" \
+            "${{ secrets.JIRA_BASE_URL }}/rest/api/3/issue/$JIRA_KEY/transitions")
+          
+          echo "Available transitions:"
+          echo "$TRANSITIONS_RESPONSE" | jq '.transitions[] | {id: .id, name: .name}'
+          
+          # 원하는 전환 ID 찾기
+          TRANSITION_ID=$(echo "$TRANSITIONS_RESPONSE" | jq -r ".transitions[] | select(.name | test(\"${{ steps.get-column.outputs.transition_name }}\"; \"i\")) | .id" | head -1)
+          
+          if [ -z "$TRANSITION_ID" ] || [ "$TRANSITION_ID" = "null" ]; then
+            echo "❌ No transition found for: ${{ steps.get-column.outputs.transition_name }}"
+            exit 0
+          fi
+          
+          echo "transition_id=$TRANSITION_ID" >> $GITHUB_OUTPUT
+          echo "✅ Found Transition ID: $TRANSITION_ID"
+
+      - name: Update Jira Status
+        if: steps.get-transitions.outputs.transition_id
+        run: |
+          JIRA_KEY="${{ steps.find-jira.outputs.jira_issue_key }}"
+          TRANSITION_ID="${{ steps.get-transitions.outputs.transition_id }}"
+          TARGET_STATUS="${{ steps.get-column.outputs.jira_status }}"
+          CURRENT_STATUS="${{ steps.get-transitions.outputs.current_status }}"
+          
+          echo "Updating Jira Issue: $JIRA_KEY"
+          echo "From: $CURRENT_STATUS → To: $TARGET_STATUS"
+          echo "Transition ID: $TRANSITION_ID"
+          
+          # Jira 상태 변경
+          RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" -X POST \
+            -H "Authorization: Basic ${{ secrets.JIRA_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"transition\":{\"id\":\"$TRANSITION_ID\"}}" \
+            "${{ secrets.JIRA_BASE_URL }}/rest/api/3/issue/$JIRA_KEY/transitions")
+          
+          HTTP_CODE=$(echo "$RESPONSE" | grep "HTTP_CODE:" | cut -d: -f2)
+          
+          if [ "$HTTP_CODE" = "204" ]; then
+            echo "✅ Successfully updated Jira status: $JIRA_KEY → $TARGET_STATUS"
+            
+            # GitHub 이슈에 댓글 추가
+            ISSUE_NUMBER="${{ steps.get-card-info.outputs.issue_number || github.event.issue.number }}"
+            curl -X POST \
+              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              https://api.github.com/repos/${{ github.repository }}/issues/$ISSUE_NUMBER/comments \
+              -d '{
+                "body": "🔄 **Jira 상태 동기화**\n\n['"$JIRA_KEY"']('"${{ secrets.JIRA_BASE_URL }}"'/browse/'"$JIRA_KEY"') 상태가 **'"$TARGET_STATUS"'**로 변경되었습니다.\n\n> GitHub Projects의 칼럼 이동으로 자동 처리됨"
+              }'
+          else
+            echo "❌ Failed to update Jira status"
+            echo "Response: $RESPONSE"
+          fi
