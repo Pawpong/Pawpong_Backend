@@ -1,0 +1,41 @@
+name: 🔧 Task
+description: 새로운 작업 생성 (Jira Sub-task로 자동 연결)
+title: "[TASK] "
+labels: ["task"]
+body:
+  - type: dropdown
+    id: jira-story
+    attributes:
+      label: 연결할 Jira Story
+      description: 이 작업이 속할 Jira Story를 선택하세요
+      options:
+        - PROJ-101 - 사용자 로그인 기능
+        - PROJ-102 - 상품 검색 기능  
+        - PROJ-103 - 결제 시스템 구축
+        - PROJ-104 - 알림 기능 개발
+      default: 0
+    validations:
+      required: true
+  
+  - type: textarea
+    id: description
+    attributes:
+      label: 작업 설명
+      description: 구체적인 작업 내용을 작성하세요
+      placeholder: |
+        예시:
+        - API 엔드포인트 개발
+        - 프론트엔드 컴포넌트 구현
+        - 테스트 케이스 작성
+    validations:
+      required: true
+  
+  - type: checkboxes
+    id: acceptance-criteria
+    attributes:
+      label: 완료 조건 (Acceptance Criteria)
+      options:
+        - label: 기능 구현 완료
+        - label: 단위 테스트 통과
+        - label: 코드 리뷰 완료
+        - label: 문서 업데이트 완료
