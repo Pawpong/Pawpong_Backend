@@ -55,13 +55,32 @@ jobs:
       - name: Extract Issue Description
         id: extract-description
         run: |
-          # 작업 설명 부분만 추출
-          DESCRIPTION=$(echo "${{ github.event.issue.body }}" | sed -n '/작업 설명/,/완료 조건/p' | sed '1d;$d' | sed '/^$/d' | head -10 | tr '\n' ' ')
-          if [ -z "$DESCRIPTION" ]; then
-            DESCRIPTION="GitHub에서 생성된 작업"
+          echo "=== Debugging Issue Body ==="
+          echo "${{ github.event.issue.body }}"
+          echo "============================"
+          
+          FULL_BODY="${{ github.event.issue.body }}"
+          
+          # 방법: "### 작업 설명" 다음부터 끝까지 (또는 다음 ###까지)
+          DESCRIPTION=$(echo "$FULL_BODY" | awk '
+            BEGIN { found=0; content="" }
+            /^### 작업 설명/ { found=1; next }
+            found && /^###/ { found=0 }
+            found && NF > 0 { 
+              if (content != "") content = content "\n"
+              content = content $0 
+            }
+            END { print content }
+          ')
+          
+          # 빈 값 처리
+          if [ -z "$DESCRIPTION" ] || [ "$DESCRIPTION" = " " ]; then
+            DESCRIPTION="작업 내용이 입력되지 않았습니다."
           fi
+          
           echo "description=$DESCRIPTION" >> $GITHUB_OUTPUT
-          echo "✅ Description: $DESCRIPTION"
+          echo "✅ Final Description:"
+          echo "[$DESCRIPTION]"
 
       - name: Create Jira Subtask
         id: create-subtask
