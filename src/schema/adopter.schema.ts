@@ -319,6 +319,12 @@ export class Adopter {
     password_hash: string;
 
     /**
+     * 리프레시 토큰 (JWT 재발급용)
+     */
+    @Prop()
+    refresh_token?: string;
+
+    /**
      * 사용자 실명
      */
     @Prop({ required: true })
@@ -335,6 +341,12 @@ export class Adopter {
      */
     @Prop()
     profile_image_url?: string;
+
+    /**
+     * 관심 반려동물 타입 (강아지/고양이)
+     */
+    @Prop({ enum: ['dog', 'cat'] })
+    interested_pet_type?: string;
 
     /**
      * 사용자 역할 (고정값: adopter)

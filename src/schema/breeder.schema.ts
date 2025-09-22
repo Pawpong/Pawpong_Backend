@@ -1,5 +1,19 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
+import { 
+    SocialProvider, 
+    UserStatus, 
+    VerificationStatus, 
+    BreederPlan, 
+    BreederLevel,
+    PetType,
+    PetGender,
+    PetSize,
+    FurLength,
+    PetStatus,
+    ApplicationStatus,
+    ReviewType
+} from '../common/enum/user.enum';
 
 export type BreederDocument = Breeder & Document;
 
@@ -47,6 +61,12 @@ export class BreederVerification {
     plan: string;
 
     /**
+     * 브리더 레벨 (new: 뉴, elite: 엘리트)
+     */
+    @Prop({ required: true, enum: ['new', 'elite'], default: 'new' })
+    level: string;
+
+    /**
      * 인증 신청 제출 일시
      */
     @Prop()
@@ -84,9 +104,9 @@ export class BreederVerification {
 @Schema({ _id: false })
 export class BreederProfile {
     /**
-     * 브리더 소개글
+     * 브리더 소개글 (공백 포함 최대 1500자)
      */
-    @Prop({ required: true })
+    @Prop({ required: true, maxlength: 1500 })
     description: string;
 
     /**
@@ -107,10 +127,10 @@ export class BreederProfile {
     };
 
     /**
-     * 브리더 프로필 사진 URL 배열 (최대 3장 제한)
+     * 브리더 대표 사진 URL 배열 (최대 3장 제한)
      */
     @Prop({ type: [String], validate: [arrayLimit, '{PATH} exceeds the limit of 3'] })
-    photos: string[];
+    representativePhotos: string[];
 
     /**
      * 분양 가격 범위
@@ -539,6 +559,12 @@ export class BreederStats {
     totalApplications: number;
 
     /**
+     * 총 찜 수
+     */
+    @Prop({ default: 0 })
+    totalFavorites: number;
+
+    /**
      * 완료된 입양 건수
      */
     @Prop({ default: 0 })
@@ -646,6 +672,12 @@ export class Breeder {
     password?: string;
 
     /**
+     * 리프레시 토큰 (JWT 재발급용)
+     */
+    @Prop()
+    refreshToken?: string;
+
+    /**
      * 브리더 이름/업체명
      */
     @Prop({ required: true })
@@ -662,6 +694,38 @@ export class Breeder {
      */
     @Prop()
     profileImage?: string;
+
+    /**
+     * 반려동물 타입 (강아지/고양이)
+     */
+    @Prop({ required: true, enum: ['dog', 'cat'] })
+    petType: string;
+
+    /**
+     * 세부 품종명
+     */
+    @Prop({ required: true })
+    detailBreed: string;
+
+    /**
+     * 입양비 노출 설정 (range: 범위 노출, consultation: 상담 후 공개)
+     */
+    @Prop({ required: true, enum: ['range', 'consultation'], default: 'range' })
+    priceDisplay: string;
+
+    /**
+     * 입양비 범위 (최소-최대)
+     */
+    @Prop({ 
+        type: {
+            min: { type: Number, required: true },
+            max: { type: Number, required: true }
+        }
+    })
+    priceRange: {
+        min: number;
+        max: number;
+    };
 
     /**
      * 소셜 로그인 정보
