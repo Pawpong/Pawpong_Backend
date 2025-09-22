@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { JwtService } from '@nestjs/jwt';
@@ -10,6 +10,8 @@ import { RegisterAdopterRequestDto } from './dto/request/register-adopter-reques
 import { RegisterBreederRequestDto } from './dto/request/register-breeder-request.dto';
 import { LoginRequestDto } from './dto/request/login-request.dto';
 import { AuthResponseDto } from './dto/response/auth-response.dto';
+import { RefreshTokenRequestDto } from './dto/request/refresh-token-request.dto';
+import { TokenResponseDto } from './dto/response/token-response.dto';
 import { SocialProvider, UserStatus, VerificationStatus, BreederPlan } from '../../common/enum/user.enum';
 
 @Injectable()
@@ -19,6 +21,44 @@ export class AuthService {
         @InjectModel(Breeder.name) private breederModel: Model<BreederDocument>,
         private jwtService: JwtService,
     ) {}
+
+    /**
+     * Access 토큰과 Refresh 토큰을 생성합니다.
+     */
+    private generateTokens(userId: string, email: string, role: string) {
+        const payload = {
+            sub: userId,
+            email,
+            role,
+        };
+
+        // Access 토큰 (1시간)
+        const accessToken = this.jwtService.sign(payload, {
+            expiresIn: '1h',
+        });
+
+        // Refresh 토큰 (7일)
+        const refreshToken = this.jwtService.sign(
+            { ...payload, type: 'refresh' },
+            {
+                expiresIn: '7d',
+            },
+        );
+
+        return {
+            accessToken,
+            refreshToken,
+            accessTokenExpiresIn: 3600, // 1시간 (초)
+            refreshTokenExpiresIn: 604800, // 7일 (초)
+        };
+    }
+
+    /**
+     * Refresh 토큰을 해시하여 저장합니다.
+     */
+    private async hashRefreshToken(refreshToken: string): Promise<string> {
+        return bcrypt.hash(refreshToken, 10);
+    }
 
     async registerAdopter(registerAdopterDto: RegisterAdopterRequestDto): Promise<AuthResponseDto> {
         const existingAdopter = await this.adopterModel.findOne({
@@ -49,15 +89,23 @@ export class AuthService {
 
         const savedAdopter = await adopter.save();
 
-        const payload = {
-            sub: (savedAdopter._id as any).toString(),
-            email: savedAdopter.email_address,
-            role: 'adopter',
-        };
+        // 토큰 생성
+        const tokens = this.generateTokens(
+            (savedAdopter._id as any).toString(),
+            savedAdopter.email_address,
+            'adopter',
+        );
+
+        // Refresh 토큰 해시 후 저장
+        const hashedRefreshToken = await this.hashRefreshToken(tokens.refreshToken);
+        savedAdopter.refresh_token = hashedRefreshToken;
+        await savedAdopter.save();
 
         return {
-            accessToken: this.jwtService.sign(payload),
-            expiresIn: 86400, // 24 hours in seconds
+            accessToken: tokens.accessToken,
+            refreshToken: tokens.refreshToken,
+            accessTokenExpiresIn: tokens.accessTokenExpiresIn,
+            refreshTokenExpiresIn: tokens.refreshTokenExpiresIn,
             userInfo: {
                 userId: (savedAdopter._id as any).toString(),
                 emailAddress: savedAdopter.email_address,
@@ -106,15 +154,23 @@ export class AuthService {
 
         const savedBreeder = await breeder.save();
 
-        const payload = {
-            sub: (savedBreeder._id as any).toString(),
-            email: savedBreeder.email,
-            role: 'breeder',
-        };
+        // 토큰 생성
+        const tokens = this.generateTokens(
+            (savedBreeder._id as any).toString(),
+            savedBreeder.email,
+            'breeder',
+        );
+
+        // Refresh 토큰 해시 후 저장
+        const hashedRefreshToken = await this.hashRefreshToken(tokens.refreshToken);
+        savedBreeder.refreshToken = hashedRefreshToken;
+        await savedBreeder.save();
 
         return {
-            accessToken: this.jwtService.sign(payload),
-            expiresIn: 86400,
+            accessToken: tokens.accessToken,
+            refreshToken: tokens.refreshToken,
+            accessTokenExpiresIn: tokens.accessTokenExpiresIn,
+            refreshTokenExpiresIn: tokens.refreshTokenExpiresIn,
             userInfo: {
                 userId: (savedBreeder._id as any).toString(),
                 emailAddress: savedBreeder.email,
@@ -203,15 +259,23 @@ export class AuthService {
             await breeder.save();
         }
 
-        const payload = {
-            sub: (user._id as any).toString(),
-            email,
-            role,
-        };
+        // 토큰 생성
+        const tokens = this.generateTokens((user._id as any).toString(), email, role);
+
+        // Refresh 토큰 해시 후 저장
+        const hashedRefreshToken = await this.hashRefreshToken(tokens.refreshToken);
+        if (role === 'adopter') {
+            (user as any).refresh_token = hashedRefreshToken;
+        } else {
+            (user as any).refreshToken = hashedRefreshToken;
+        }
+        await user.save();
 
         return {
-            accessToken: this.jwtService.sign(payload),
-            expiresIn: 86400,
+            accessToken: tokens.accessToken,
+            refreshToken: tokens.refreshToken,
+            accessTokenExpiresIn: tokens.accessTokenExpiresIn,
+            refreshTokenExpiresIn: tokens.refreshTokenExpiresIn,
             userInfo: {
                 userId: (user._id as any).toString(),
                 emailAddress: email,
@@ -231,5 +295,89 @@ export class AuthService {
             return this.breederModel.findById(userId);
         }
         return null;
+    }
+
+    /**
+     * Refresh 토큰을 사용하여 새로운 Access 토큰을 발급합니다.
+     */
+    async refreshToken(refreshTokenDto: RefreshTokenRequestDto): Promise<TokenResponseDto> {
+        try {
+            // Refresh 토큰 검증
+            const payload = this.jwtService.verify(refreshTokenDto.refreshToken);
+
+            // Refresh 토큰인지 확인
+            if (!payload.type || payload.type !== 'refresh') {
+                throw new UnauthorizedException('유효하지 않은 리프레시 토큰입니다.');
+            }
+
+            // 사용자 조회
+            let user: any;
+            let hashedToken: string;
+
+            if (payload.role === 'adopter') {
+                user = await this.adopterModel.findById(payload.sub);
+                hashedToken = user?.refresh_token;
+            } else if (payload.role === 'breeder') {
+                user = await this.breederModel.findById(payload.sub);
+                hashedToken = user?.refreshToken;
+            } else {
+                throw new UnauthorizedException('유효하지 않은 사용자 역할입니다.');
+            }
+
+            if (!user) {
+                throw new UnauthorizedException('사용자를 찾을 수 없습니다.');
+            }
+
+            // 저장된 Refresh 토큰과 비교
+            if (!hashedToken) {
+                throw new UnauthorizedException('리프레시 토큰이 존재하지 않습니다.');
+            }
+
+            const isTokenValid = await bcrypt.compare(refreshTokenDto.refreshToken, hashedToken);
+            if (!isTokenValid) {
+                throw new UnauthorizedException('유효하지 않은 리프레시 토큰입니다.');
+            }
+
+            // 새로운 토큰 생성
+            const tokens = this.generateTokens(
+                payload.sub,
+                payload.email,
+                payload.role,
+            );
+
+            // 새 Refresh 토큰 해시 후 저장
+            const newHashedRefreshToken = await this.hashRefreshToken(tokens.refreshToken);
+            if (payload.role === 'adopter') {
+                user.refresh_token = newHashedRefreshToken;
+            } else {
+                user.refreshToken = newHashedRefreshToken;
+            }
+            await user.save();
+
+            return tokens;
+        } catch (error) {
+            if (error.name === 'TokenExpiredError') {
+                throw new UnauthorizedException('리프레시 토큰이 만료되었습니다.');
+            }
+            if (error.name === 'JsonWebTokenError') {
+                throw new UnauthorizedException('유효하지 않은 토큰 형식입니다.');
+            }
+            throw error;
+        }
+    }
+
+    /**
+     * 로그아웃 시 Refresh 토큰을 제거합니다.
+     */
+    async logout(userId: string, role: string): Promise<void> {
+        if (role === 'adopter') {
+            await this.adopterModel.findByIdAndUpdate(userId, { 
+                refresh_token: null 
+            });
+        } else if (role === 'breeder') {
+            await this.breederModel.findByIdAndUpdate(userId, { 
+                refreshToken: null 
+            });
+        }
     }
 }

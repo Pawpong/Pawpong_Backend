@@ -84,14 +84,34 @@ export class AuthResponseDto {
     accessToken: string;
 
     /**
-     * 토큰 만료 시간 (초 단위)
-     * @example 86400
+     * JWT 리프레시 토큰
+     * @example "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
      */
     @ApiProperty({
-        description: '토큰 만료 시간 (초 단위)',
-        example: 86400
+        description: 'JWT 리프레시 토큰',
+        example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
     })
-    expiresIn: number;
+    refreshToken: string;
+
+    /**
+     * 액세스 토큰 만료 시간 (초 단위)
+     * @example 3600
+     */
+    @ApiProperty({
+        description: '액세스 토큰 만료 시간 (초 단위)',
+        example: 3600
+    })
+    accessTokenExpiresIn: number;
+
+    /**
+     * 리프레시 토큰 만료 시간 (초 단위)
+     * @example 604800
+     */
+    @ApiProperty({
+        description: '리프레시 토큰 만료 시간 (초 단위)',
+        example: 604800
+    })
+    refreshTokenExpiresIn: number;
 
     /**
      * 인증된 사용자 정보
