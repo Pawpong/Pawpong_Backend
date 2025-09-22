@@ -2,11 +2,13 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 
+import { VerificationStatus, PetStatus } from '../../common/enum/user.enum';
+
 import { Breeder, BreederDocument } from '../../schema/breeder.schema';
+
 import { BreederSearchRequestDto } from './dto/request/breederSearch-request.dto';
 import { BreederSearchResponseDto } from './dto/response/breeder-search-response.dto';
 import { BreederProfileResponseDto } from './dto/response/breeder-profileresponse.dto';
-import { VerificationStatus, PetStatus } from '../../common/enum/user.enum';
 import { PaginationBuilder } from '../../common/dto/pagination/pagination-builder.dto';
 
 @Injectable()

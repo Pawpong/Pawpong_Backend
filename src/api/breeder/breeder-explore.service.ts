@@ -1,0 +1,198 @@
+import { Injectable, BadRequestException } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { Breeder, BreederDocument } from '../../schema/breeder.schema';
+import { Adopter, AdopterDocument } from '../../schema/adopter.schema';
+import { SearchBreederRequestDto, BreederSortBy } from './dto/request/search-breeder-request.dto';
+import { BreederCardResponseDto } from './dto/response/breeder-card-response.dto';
+import { PaginationResponseDto } from '../../common/dto/pagination/pagination-response.dto';
+import { PaginationBuilder } from '../../common/dto/pagination/pagination-builder.dto';
+
+/**
+ * 브리더 탐색 서비스
+ * 공개 브리더 검색 및 필터링 기능을 제공합니다.
+ */
+@Injectable()
+export class BreederExploreService {
+    constructor(
+        @InjectModel(Breeder.name) private breederModel: Model<BreederDocument>,
+        @InjectModel(Adopter.name) private adopterModel: Model<AdopterDocument>,
+    ) {}
+
+    /**
+     * 브리더 탐색/검색 기능
+     */
+    async searchBreeders(
+        searchDto: SearchBreederRequestDto,
+        userId?: string,
+    ): Promise<PaginationResponseDto<BreederCardResponseDto>> {
+        const { 
+            petType, 
+            dogSize, 
+            catFurLength, 
+            province, 
+            city, 
+            isAdoptionAvailable, 
+            breederLevel, 
+            sortBy, 
+            page = 1, 
+            take = 20 
+        } = searchDto;
+
+        // 기본 필터 조건
+        const filter: any = {
+            'verification.status': 'approved', // 승인된 브리더만
+            status: 'active', // 활성 상태만
+            petType: petType, // 반려동물 타입
+        };
+
+        // 강아지 크기 필터 (강아지일 때만)
+        if (petType === 'dog' && dogSize) {
+            filter['availablePets.size'] = dogSize;
+        }
+
+        // 고양이 털 길이 필터 (고양이일 때만)  
+        if (petType === 'cat' && catFurLength) {
+            filter['availablePets.furLength'] = catFurLength;
+        }
+
+        // 지역 필터
+        if (province && city) {
+            filter['profile.location.city'] = province;
+            filter['profile.location.district'] = city;
+        } else if (province) {
+            filter['profile.location.city'] = province;
+        }
+
+        // 입양 가능 여부 필터
+        if (isAdoptionAvailable === true) {
+            filter['availablePets'] = {
+                $elemMatch: { status: 'available' }
+            };
+        }
+
+        // 브리더 레벨 필터
+        if (breederLevel) {
+            filter['verification.level'] = breederLevel;
+        }
+
+        // 정렬 옵션
+        let sort: any = {};
+        switch (sortBy) {
+            case BreederSortBy.LATEST:
+                sort = { createdAt: -1 };
+                break;
+            case BreederSortBy.FAVORITE:
+                sort = { 'stats.totalFavorites': -1 };
+                break;
+            case BreederSortBy.REVIEW:
+                sort = { 'stats.totalReviews': -1 };
+                break;
+            case BreederSortBy.PRICE_ASC:
+                sort = { 'priceRange.min': 1 };
+                break;
+            case BreederSortBy.PRICE_DESC:
+                sort = { 'priceRange.max': -1 };
+                break;
+            default:
+                sort = { createdAt: -1 };
+        }
+
+        // 페이지네이션 계산
+        const skip = (page - 1) * take;
+
+        // 데이터 조회
+        const [breeders, totalItems] = await Promise.all([
+            this.breederModel
+                .find(filter)
+                .sort(sort)
+                .skip(skip)
+                .limit(take)
+                .lean()
+                .exec(),
+            this.breederModel.countDocuments(filter),
+        ]);
+
+        // 사용자의 찜 목록 가져오기
+        let favoritedBreederIds: string[] = [];
+        if (userId) {
+            const adopter = await this.adopterModel.findById(userId).lean();
+            if (adopter) {
+                favoritedBreederIds = adopter.favorite_breeder_list?.map(f => f.favorite_breeder_id) || [];
+            }
+        }
+
+        // 카드 데이터로 변환
+        const cards: BreederCardResponseDto[] = breeders.map(breeder => {
+            // 입양 가능 여부 확인
+            const hasAvailablePets = breeder.availablePets?.some(pet => pet.status === 'available') || false;
+
+            return {
+                breederId: breeder._id.toString(),
+                breederName: breeder.name,
+                breederLevel: breeder.verification?.level || 'new',
+                location: breeder.profile?.location ? 
+                    `${breeder.profile.location.city} ${breeder.profile.location.district}` : '',
+                mainBreed: breeder.detailBreed,
+                isAdoptionAvailable: hasAvailablePets,
+                priceRange: userId && breeder.priceDisplay === 'range' ? {
+                    min: breeder.priceRange?.min || 0,
+                    max: breeder.priceRange?.max || 0,
+                    display: breeder.priceDisplay,
+                } : breeder.priceDisplay === 'consultation' ? {
+                    min: 0,
+                    max: 0,
+                    display: 'consultation',
+                } : undefined,
+                favoriteCount: breeder.stats?.totalFavorites || 0,
+                isFavorited: favoritedBreederIds.includes(breeder._id.toString()),
+                representativePhotos: breeder.profile?.representativePhotos || [],
+                profileImage: breeder.profileImage,
+                totalReviews: breeder.stats?.totalReviews || 0,
+                averageRating: breeder.stats?.averageRating || 0,
+                createdAt: (breeder as any).createdAt || new Date(),
+            };
+        });
+
+        // 페이지네이션 응답 생성
+        return new PaginationBuilder<BreederCardResponseDto>()
+            .setData(cards)
+            .setTotalCount(totalItems)
+            .setPage(page)
+            .setTake(take)
+            .build();
+    }
+
+    /**
+     * 인기 브리더 목록 조회
+     */
+    async getPopularBreeders(limit: number = 10): Promise<BreederCardResponseDto[]> {
+        const breeders = await this.breederModel
+            .find({
+                'verification.status': 'approved',
+                status: 'active',
+            })
+            .sort({ 'stats.totalFavorites': -1, 'stats.averageRating': -1 })
+            .limit(limit)
+            .lean()
+            .exec();
+
+        return breeders.map(breeder => ({
+            breederId: breeder._id.toString(),
+            breederName: breeder.name,
+            breederLevel: breeder.verification?.level || 'new',
+            location: breeder.profile?.location ? 
+                `${breeder.profile.location.city} ${breeder.profile.location.district}` : '',
+            mainBreed: breeder.detailBreed,
+            isAdoptionAvailable: breeder.availablePets?.some(pet => pet.status === 'available') || false,
+            priceRange: undefined, // 로그인 필요
+            favoriteCount: breeder.stats?.totalFavorites || 0,
+            isFavorited: false,
+            representativePhotos: breeder.profile?.representativePhotos || [],
+            profileImage: breeder.profileImage,
+            totalReviews: breeder.stats?.totalReviews || 0,
+            averageRating: breeder.stats?.averageRating || 0,
+            createdAt: (breeder as any).createdAt || new Date(),
+        }));
+    }
+}

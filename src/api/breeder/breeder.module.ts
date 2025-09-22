@@ -1,12 +1,16 @@
 import { Module } from '@nestjs/common';
+
 import { BreederController } from './breeder.controller';
+
 import { BreederService } from './breeder.service';
-import { BreederDatabaseModule } from '../../common/database/database.module';
+import { BreederExploreService } from './breeder-explore.service';
+
+import { BreederDatabaseModule, AdopterDatabaseModule } from '../../common/database/database.module';
 
 @Module({
-    imports: [BreederDatabaseModule],
+    imports: [BreederDatabaseModule, AdopterDatabaseModule],
     controllers: [BreederController],
-    providers: [BreederService],
-    exports: [BreederService],
+    providers: [BreederService, BreederExploreService],
+    exports: [BreederService, BreederExploreService],
 })
 export class BreederModule {}

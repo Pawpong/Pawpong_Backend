@@ -1,63 +1,174 @@
-# 브리더 (Breeder) 도메인
+# 브리더 도메인 (Breeder Domain)
 
 ## 개요
-브리더 검색 및 조회 기능을 제공하는 공개 도메인입니다. 입양자들이 브리더를 찾고 정보를 확인할 수 있는 기능을 담당합니다.
+
+브리더 도메인은 반려동물 브리더들의 공개 프로필과 탐색 기능을 제공합니다.  
+입양자들이 브리더를 검색하고, 필터링하며, 상세 정보를 조회할 수 있는 API를 포함합니다.
+
+## 도메인 구조
+
+```
+src/api/breeder/
+├── breeder.controller.ts         # 브리더 API 컨트롤러
+├── breeder.service.ts            # 브리더 비즈니스 로직
+├── breeder-explore.service.ts    # 브리더 탐색 전용 서비스
+├── breeder.module.ts              # 브리더 모듈 정의
+├── dto/
+│   ├── request/                  # 요청 DTO
+│   │   ├── search-breeder-request.dto.ts
+│   │   └── breederSearch-request.dto.ts (레거시)
+│   └── response/                 # 응답 DTO
+│       ├── breeder-card-response.dto.ts
+│       ├── breeder-search-response.dto.ts
+│       └── breeder-profileresponse.dto.ts
+├── swagger/                      # 스웨거 문서
+│   └── index.ts
+└── README.md
+```
 
 ## 주요 기능
-- 브리더 검색 및 필터링 (위치, 품종, 가격대, 인증 상태)
-- 브리더 프로필 상세 조회
-- 브리더 후기 조회
-- 브리더 통계 정보 조회
-- 인기 브리더 목록 제공
 
-## API 엔드포인트
+### 1. 브리더 탐색 (`GET /api/breeder/explore`)
+- **설명**: 반려동물 타입별로 브리더를 탐색하고 필터링
+- **인증**: 선택적 (로그인 시 추가 정보 제공)
+- **필터 옵션**:
+  - 반려동물 타입 (강아지/고양이)
+  - 크기/털길이 필터
+  - 지역 (광역시도 + 시군구)
+  - 입양 가능 여부
+  - 브리더 레벨 (NEW/ELITE)
+- **정렬 옵션**: 최신순, 찜순, 리뷰순, 가격순
 
-### 검색 및 조회
-- `GET /api/breeder/search` - 브리더 검색 (필터링 지원)
-- `GET /api/breeder/:id` - 브리더 프로필 상세 조회
-- `GET /api/breeder/:id/reviews` - 브리더 후기 목록
-- `GET /api/breeder/:id/pets` - 브리더 반려동물 목록
+### 2. 인기 브리더 조회 (`GET /api/breeder/popular`)
+- **설명**: 찜과 평점이 높은 인기 브리더 Top 10
+- **인증**: 불필요
+- **특징**: 캐시된 통계 데이터 활용
 
-### 통계 및 랭킹
-- `GET /api/breeder/:id/stats` - 브리더 통계 정보
-- `GET /api/breeder/popular` - 인기 브리더 목록
-- `GET /api/breeder/trending` - 트렌딩 브리더 목록
+### 3. 브리더 프로필 상세 (`GET /api/breeder/:id`)
+- **설명**: 특정 브리더의 상세 정보 조회
+- **인증**: 필수
+- **포함 정보**:
+  - 기본 정보 및 인증 상태
+  - 대표 사진 (최대 3장)
+  - 분양 중인 아이들
+  - 부모견/부모묘 정보
+  - 후기 및 평점
 
-## 검색 필터 옵션
-- 위치 (시/도, 시/군/구)
-- 반려동물 품종
-- 가격대 (최소/최대)
-- 인증 상태 (verified/all)
-- 평점 (최소 평점)
-- 정렬 (평점순, 리뷰수순, 최신순)
+### 4. 브리더 검색 - 레거시 (`GET /api/breeder/search`)
+- **설명**: 하위 호환성을 위한 기존 검색 API
+- **인증**: 불필요
+- **상태**: Deprecated (새로운 API는 `/explore` 사용 권장)
 
-## 데이터 구조
-브리더 프로필 정보는 성능 최적화를 위해 임베딩된 구조로 설계:
-- 기본 정보 (이름, 위치, 연락처)
-- 인증 정보 (상태, 인증일)
-- 프로필 정보 (사진, 설명, 전문 분야)
-- 통계 정보 (평점, 리뷰수, 입양 건수)
-- 부모견/부모묘 정보
-- 분양 가능한 반려동물 목록
+## 데이터 모델
+
+### BreederCardResponseDto
+```typescript
+{
+  breederId: string;           // 브리더 ID
+  breederName: string;          // 브리더명
+  breederLevel: string;         // 레벨 (new/elite)
+  location: string;             // 지역
+  mainBreed: string;            // 대표 품종
+  isAdoptionAvailable: boolean; // 입양 가능 여부
+  priceRange?: {                // 가격 범위 (로그인 시)
+    min: number;
+    max: number;
+    display: string;
+  };
+  favoriteCount: number;        // 찜 개수
+  isFavorited: boolean;         // 현재 사용자 찜 여부
+  representativePhotos: string[]; // 대표 사진
+  profileImage?: string;        // 프로필 이미지
+  totalReviews: number;         // 총 리뷰 수
+  averageRating: number;        // 평균 평점
+  createdAt: Date;              // 등록일
+}
+```
+
+## 필터링 전략
+
+### 반려동물 타입별 필터
+- **강아지**: 크기별 (소형/중형/대형)
+- **고양이**: 털 길이별 (단모/장모)
+
+### 지역 필터
+- 2단계 계층 구조: 광역시/도 → 시/군/구
+- 예: "경기도" → "파주시"
+
+### 가격 표시 정책
+- **로그인 전**: 가격 정보 미노출
+- **로그인 후**: 
+  - `range`: 가격 범위 표시
+  - `consultation`: "상담 후 공개" 표시
+
+## API 예시
+
+### 브리더 탐색
+```http
+GET /api/breeder/explore?petType=dog&dogSize=small&province=경기도&city=파주시&sortBy=latest&page=1&take=20
+
+Response:
+{
+  "success": true,
+  "code": 200,
+  "item": {
+    "item": [...],
+    "pageInfo": {
+      "currentPage": 1,
+      "pageSize": 20,
+      "totalItems": 100,
+      "totalPages": 5,
+      "hasNextPage": true,
+      "hasPrevPage": false
+    }
+  },
+  "message": "브리더 목록이 조회되었습니다.",
+  "timestamp": "2024-01-01T00:00:00.000Z"
+}
+```
 
 ## 성능 최적화
-- MongoDB 인덱싱으로 검색 성능 향상
-- 임베딩 구조로 단일 쿼리 데이터 조회
-- 캐시된 통계 정보 활용
-- 페이지네이션으로 대용량 데이터 처리
 
-## 접근 권한
-- 대부분의 API는 인증된 사용자만 접근 가능
-- 일부 기본 정보는 공개 접근 허용 (추후 정책에 따라 조정)
+### 인덱싱 전략
+```javascript
+// 복합 인덱스로 검색 성능 최적화
+{
+  'verification.status': 1,
+  'status': 1,
+  'petType': 1,
+  'profile.location.city': 1,
+  'createdAt': -1
+}
+```
 
-## 의존성
-- Breeder Schema (브리더 정보)
-- JWT 인증 가드
-- 페이지네이션 모듈
-- 검색 인덱스
+### 캐싱 전략
+- 브리더 통계 정보 임베딩
+- 인기 브리더 목록 주기적 갱신
 
-## 확장 계획
-- 지도 기반 브리더 검색
-- 실시간 알림 시스템
-- 브리더 인증 뱃지 시스템
-- AI 기반 추천 시스템
+## 보안 고려사항
+
+1. **가격 정보 보호**: 로그인한 사용자에게만 노출
+2. **개인정보 보호**: 연락처 등 민감정보 제외
+3. **인증 상태 검증**: 승인된 브리더만 노출
+
+## 테스트
+
+```bash
+# 단위 테스트
+yarn test src/api/breeder
+
+# E2E 테스트
+yarn test:e2e test/breeder
+```
+
+## 연관 도메인
+
+- **Breeder-Management**: 브리더 자체 관리 기능
+- **Adopter**: 입양자의 찜, 신청 기능
+- **Admin**: 브리더 승인 및 관리
+
+## 참고사항
+
+- 브리더 탐색은 공개 API이지만 상세 정보는 인증 필요
+- 모든 응답은 `ApiResponseDto` 형식으로 통일
+- 페이지네이션은 `PaginationResponseDto` 사용
