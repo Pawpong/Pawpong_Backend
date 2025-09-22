@@ -20,7 +20,19 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "test:e2e:watch": "jest --config ./test/jest-e2e.json --watch",
+    "test:e2e:cov": "jest --config ./test/jest-e2e.json --coverage",
+    "test:unit": "jest --testPathPattern=src",
+    "test:all": "yarn test && yarn test:e2e",
+    "pm2:start:dev": "./scripts/pm2-startup.sh development",
+    "pm2:start:prod": "./scripts/pm2-startup.sh production",
+    "pm2:stop": "pm2 stop all",
+    "pm2:restart": "pm2 restart all",
+    "pm2:reload": "pm2 reload all",
+    "pm2:logs": "pm2 logs",
+    "pm2:monit": "pm2 monit",
+    "pm2:status": "pm2 status"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.6",
