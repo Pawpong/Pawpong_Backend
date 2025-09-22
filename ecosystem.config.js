@@ -18,15 +18,15 @@ module.exports = {
             // 환경 변수
             env: {
                 NODE_ENV: 'production',
-                PORT: 8082,
+                PORT: 8080,
             },
             env_development: {
                 NODE_ENV: 'development',
-                PORT: 8082,
+                PORT: 8080,
             },
             env_staging: {
                 NODE_ENV: 'staging',
-                PORT: 8082,
+                PORT: 8080,
             },
             
             // 자동 재시작 설정

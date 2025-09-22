@@ -26,7 +26,7 @@ module.exports = {
             // 환경 변수 설정
             env_production: {
                 NODE_ENV: 'production',
-                PORT: 8082,
+                PORT: 8080,
                 
                 // MongoDB 연결
                 MONGODB_URI: process.env.MONGODB_URI || 'mongodb://localhost:27017/pawpong',
