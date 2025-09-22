@@ -1,275 +1,426 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
-import { MongooseModule } from '@nestjs/mongoose';
-import { MongoMemoryServer } from 'mongodb-memory-server';
-import { AppModule } from '../src/app.module';
+import { createTestingApp, AuthHelper, TestDataHelper, ResponseValidator } from './test-utils';
 
-/**
- * Adopter API End-to-End 테스트
- * 입양자 관련 모든 API 엔드포인트를 테스트합니다.
- * - 입양 신청 관리
- * - 후기 작성
- * - 즐겨찾기 관리
- * - 신고 기능
- * - 프로필 관리
- */
-describe('Adopter API (e2e)', () => {
-  let app: INestApplication;
-  let mongod: MongoMemoryServer;
-  let adopterToken: string;
-  let breederToken: string;
-  let breederId: string;
+describe('Adopter API E2E Tests', () => {
+    let app: INestApplication;
+    let authHelper: AuthHelper;
+    let adopterToken: string;
+    let adopterId: string;
+    let breederToken: string;
+    let breederId: string;
 
-  beforeAll(async () => {
-    // 메모리 내 MongoDB 서버 시작
-    mongod = await MongoMemoryServer.create();
-    const uri = mongod.getUri();
+    beforeAll(async () => {
+        app = await createTestingApp();
+        authHelper = new AuthHelper(app);
 
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [MongooseModule.forRoot(uri), AppModule],
-    })
-      .overrideModule(AppModule)
-      .compile();
+        // 입양자 토큰 생성
+        const adopterAuth = await authHelper.getAdopterToken();
+        adopterToken = adopterAuth.accessToken;
+        adopterId = adopterAuth.userId;
 
-    app = moduleFixture.createNestApplication();
-    await app.init();
+        // 테스트용 브리더 토큰 생성
+        const breederAuth = await authHelper.getBreederToken();
+        breederToken = breederAuth.accessToken;
+        breederId = breederAuth.userId;
+    });
 
-    // 테스트용 입양자 생성 및 로그인
-    const adopterResponse = await request(app.getHttpServer())
-      .post('/api/auth/register/adopter')
-      .send({
-        email: 'adopter@test.com',
-        password: 'testpassword123',
-        name: 'Test Adopter',
-        phone: '010-1234-5678',
-      });
-    adopterToken = adopterResponse.body.access_token;
+    afterAll(async () => {
+        await app.close();
+    });
 
-    // 테스트용 브리더 생성 및 로그인
-    const breederResponse = await request(app.getHttpServer())
-      .post('/api/auth/register/breeder')
-      .send({
-        email: 'breeder@test.com',
-        password: 'testpassword123',
-        name: 'Test Breeder',
-        phone: '010-9876-5432',
-        businessNumber: '123-45-67890',
-        businessName: 'Test Pet Farm',
-      });
-    breederToken = breederResponse.body.access_token;
-    breederId = breederResponse.body.user.id;
-  });
+    describe('POST /api/adopter/application', () => {
+        it('입양 신청 제출 성공', async () => {
+            const applicationData = {
+                targetBreederId: breederId,
+                petId: 'test-pet-id',
+                ...TestDataHelper.getApplicationData(),
+            };
 
-  afterAll(async () => {
-    await app.close();
-    await mongod.stop();
-  });
+            const response = await request(app.getHttpServer())
+                .post('/api/adopter/application')
+                .set('Authorization', `Bearer ${adopterToken}`)
+                .send(applicationData)
+                .expect(200);
 
-  describe('Application Management', () => {
-    const applicationData = {
-      breederId: 'test-breeder-id',
-      petId: 'test-pet-id',
-      message: 'I would like to adopt this pet',
-      experienceLevel: 'beginner',
-      livingEnvironment: 'apartment',
-      hasOtherPets: false,
-    };
+            ResponseValidator.validateApiResponse(response);
+            expect(response.body.message).toBe('입양 신청이 성공적으로 제출되었습니다.');
+        });
 
-    it('POST /api/adopter/application - 입양 신청 생성 성공', async () => {
-      // 실제 브리더 ID로 업데이트
-      applicationData.breederId = breederId;
+        it('인증 없이 입양 신청 실패', async () => {
+            const applicationData = {
+                targetBreederId: breederId,
+                petId: 'test-pet-id',
+                ...TestDataHelper.getApplicationData(),
+            };
 
-      return request(app.getHttpServer())
-        .post('/api/adopter/application')
-        .set('Authorization', `Bearer ${adopterToken}`)
-        .send(applicationData)
-        .expect(201)
-        .expect((res) => {
-          expect(res.body.applicationId).toBeDefined();
-          expect(res.body.status).toBe('pending');
+            await request(app.getHttpServer())
+                .post('/api/adopter/application')
+                .send(applicationData)
+                .expect(401);
+        });
+
+        it('필수 필드 누락시 입양 신청 실패', async () => {
+            const applicationData = {
+                // targetBreederId 누락
+                petId: 'test-pet-id',
+                expectedPrice: 1500000,
+            };
+
+            const response = await request(app.getHttpServer())
+                .post('/api/adopter/application')
+                .set('Authorization', `Bearer ${adopterToken}`)
+                .send(applicationData)
+                .expect(400);
+
+            expect(response.body.success).toBe(false);
+        });
+
+        it('존재하지 않는 브리더에게 입양 신청 실패', async () => {
+            const applicationData = {
+                targetBreederId: 'invalid-breeder-id',
+                petId: 'test-pet-id',
+                ...TestDataHelper.getApplicationData(),
+            };
+
+            const response = await request(app.getHttpServer())
+                .post('/api/adopter/application')
+                .set('Authorization', `Bearer ${adopterToken}`)
+                .send(applicationData)
+                .expect(400);
+
+            expect(response.body.success).toBe(false);
+            expect(response.body.error).toContain('브리더를 찾을 수 없습니다');
+        });
+
+        it('중복 입양 신청 방지', async () => {
+            const applicationData = {
+                targetBreederId: breederId,
+                petId: 'duplicate-test-pet',
+                ...TestDataHelper.getApplicationData(),
+            };
+
+            // 첫 번째 신청
+            await request(app.getHttpServer())
+                .post('/api/adopter/application')
+                .set('Authorization', `Bearer ${adopterToken}`)
+                .send(applicationData)
+                .expect(200);
+
+            // 중복 신청 시도
+            const response = await request(app.getHttpServer())
+                .post('/api/adopter/application')
+                .set('Authorization', `Bearer ${adopterToken}`)
+                .send(applicationData)
+                .expect(400);
+
+            expect(response.body.success).toBe(false);
+            expect(response.body.error).toContain('이미 신청');
         });
     });
 
-    it('POST /api/adopter/application - 인증되지 않은 요청 실패', () => {
-      return request(app.getHttpServer())
-        .post('/api/adopter/application')
-        .send(applicationData)
-        .expect(401);
-    });
+    describe('POST /api/adopter/review', () => {
+        it('브리더 후기 작성 성공', async () => {
+            const reviewData = {
+                targetBreederId: breederId,
+                applicationId: 'test-application-id',
+                ...TestDataHelper.getReviewData(),
+            };
 
-    it('POST /api/adopter/application - 중복 신청 방지', () => {
-      return request(app.getHttpServer())
-        .post('/api/adopter/application')
-        .set('Authorization', `Bearer ${adopterToken}`)
-        .send(applicationData)
-        .expect(400);
-    });
-  });
+            const response = await request(app.getHttpServer())
+                .post('/api/adopter/review')
+                .set('Authorization', `Bearer ${adopterToken}`)
+                .send(reviewData)
+                .expect(200);
 
-  describe('Review Management', () => {
-    const reviewData = {
-      breederId: '',
-      rating: 5,
-      comment: 'Great breeder, very professional and caring',
-      petHealthRating: 5,
-      communicationRating: 4,
-    };
+            ResponseValidator.validateApiResponse(response);
+            expect(response.body.message).toBe('후기가 성공적으로 작성되었습니다.');
+        });
 
-    beforeEach(() => {
-      reviewData.breederId = breederId;
-    });
+        it('평점 범위 초과시 후기 작성 실패', async () => {
+            const reviewData = {
+                targetBreederId: breederId,
+                applicationId: 'test-application-id',
+                rating: 6, // 5점 만점 초과
+                content: '테스트 후기',
+            };
 
-    it('POST /api/adopter/review - 후기 작성 성공', () => {
-      return request(app.getHttpServer())
-        .post('/api/adopter/review')
-        .set('Authorization', `Bearer ${adopterToken}`)
-        .send(reviewData)
-        .expect(201)
-        .expect((res) => {
-          expect(res.body.reviewId).toBeDefined();
-          expect(res.body.rating).toBe(reviewData.rating);
+            const response = await request(app.getHttpServer())
+                .post('/api/adopter/review')
+                .set('Authorization', `Bearer ${adopterToken}`)
+                .send(reviewData)
+                .expect(400);
+
+            expect(response.body.success).toBe(false);
+        });
+
+        it('입양 신청 없이 후기 작성 실패', async () => {
+            const reviewData = {
+                targetBreederId: breederId,
+                applicationId: 'non-existent-application',
+                ...TestDataHelper.getReviewData(),
+            };
+
+            const response = await request(app.getHttpServer())
+                .post('/api/adopter/review')
+                .set('Authorization', `Bearer ${adopterToken}`)
+                .send(reviewData)
+                .expect(400);
+
+            expect(response.body.success).toBe(false);
+            expect(response.body.error).toContain('입양 신청');
+        });
+
+        it('중복 후기 작성 방지', async () => {
+            const reviewData = {
+                targetBreederId: breederId,
+                applicationId: 'duplicate-review-test',
+                ...TestDataHelper.getReviewData(),
+            };
+
+            // 첫 번째 후기
+            await request(app.getHttpServer())
+                .post('/api/adopter/review')
+                .set('Authorization', `Bearer ${adopterToken}`)
+                .send(reviewData)
+                .expect(200);
+
+            // 중복 후기 시도
+            const response = await request(app.getHttpServer())
+                .post('/api/adopter/review')
+                .set('Authorization', `Bearer ${adopterToken}`)
+                .send(reviewData)
+                .expect(400);
+
+            expect(response.body.success).toBe(false);
+            expect(response.body.error).toContain('이미 작성');
         });
     });
 
-    it('POST /api/adopter/review - 유효하지 않은 평점', () => {
-      return request(app.getHttpServer())
-        .post('/api/adopter/review')
-        .set('Authorization', `Bearer ${adopterToken}`)
-        .send({
-          ...reviewData,
-          rating: 6, // 1-5 범위를 벗어남
-        })
-        .expect(400);
-    });
+    describe('POST /api/adopter/favorite', () => {
+        it('브리더 즐겨찾기 추가 성공', async () => {
+            const favoriteData = {
+                breederId: breederId,
+            };
 
-    it('POST /api/adopter/review - 중복 후기 작성 방지', () => {
-      return request(app.getHttpServer())
-        .post('/api/adopter/review')
-        .set('Authorization', `Bearer ${adopterToken}`)
-        .send(reviewData)
-        .expect(400);
-    });
-  });
+            const response = await request(app.getHttpServer())
+                .post('/api/adopter/favorite')
+                .set('Authorization', `Bearer ${adopterToken}`)
+                .send(favoriteData)
+                .expect(200);
 
-  describe('Favorite Management', () => {
-    const favoriteData = {
-      breederId: '',
-    };
+            ResponseValidator.validateApiResponse(response);
+            expect(response.body.message).toBe('즐겨찾기에 성공적으로 추가되었습니다.');
+        });
 
-    beforeEach(() => {
-      favoriteData.breederId = breederId;
-    });
+        it('이미 즐겨찾기한 브리더 추가시 실패', async () => {
+            const favoriteData = {
+                breederId: breederId,
+            };
 
-    it('POST /api/adopter/favorite - 즐겨찾기 추가 성공', () => {
-      return request(app.getHttpServer())
-        .post('/api/adopter/favorite')
-        .set('Authorization', `Bearer ${adopterToken}`)
-        .send(favoriteData)
-        .expect(201)
-        .expect((res) => {
-          expect(res.body.success).toBe(true);
+            // 첫 번째 즐겨찾기
+            await request(app.getHttpServer())
+                .post('/api/adopter/favorite')
+                .set('Authorization', `Bearer ${adopterToken}`)
+                .send(favoriteData);
+
+            // 중복 즐겨찾기 시도
+            const response = await request(app.getHttpServer())
+                .post('/api/adopter/favorite')
+                .set('Authorization', `Bearer ${adopterToken}`)
+                .send(favoriteData)
+                .expect(400);
+
+            expect(response.body.success).toBe(false);
+            expect(response.body.error).toContain('이미 즐겨찾기');
+        });
+
+        it('존재하지 않는 브리더 즐겨찾기 실패', async () => {
+            const favoriteData = {
+                breederId: 'invalid-breeder-id',
+            };
+
+            const response = await request(app.getHttpServer())
+                .post('/api/adopter/favorite')
+                .set('Authorization', `Bearer ${adopterToken}`)
+                .send(favoriteData)
+                .expect(400);
+
+            expect(response.body.success).toBe(false);
+            expect(response.body.error).toContain('브리더를 찾을 수 없습니다');
         });
     });
 
-    it('DELETE /api/adopter/favorite/:breederId - 즐겨찾기 제거 성공', () => {
-      return request(app.getHttpServer())
-        .delete(`/api/adopter/favorite/${breederId}`)
-        .set('Authorization', `Bearer ${adopterToken}`)
-        .expect(200)
-        .expect((res) => {
-          expect(res.body.success).toBe(true);
+    describe('DELETE /api/adopter/favorite/:breederId', () => {
+        let favoritedBreederId: string;
+
+        beforeAll(async () => {
+            // 삭제 테스트를 위해 먼저 즐겨찾기 추가
+            const breederAuth = await authHelper.getBreederToken();
+            favoritedBreederId = breederAuth.userId;
+
+            await request(app.getHttpServer())
+                .post('/api/adopter/favorite')
+                .set('Authorization', `Bearer ${adopterToken}`)
+                .send({ breederId: favoritedBreederId })
+                .expect(200);
+        });
+
+        it('즐겨찾기 삭제 성공', async () => {
+            const response = await request(app.getHttpServer())
+                .delete(`/api/adopter/favorite/${favoritedBreederId}`)
+                .set('Authorization', `Bearer ${adopterToken}`)
+                .expect(200);
+
+            ResponseValidator.validateApiResponse(response);
+            expect(response.body.message).toBe('즐겨찾기에서 성공적으로 삭제되었습니다.');
+        });
+
+        it('즐겨찾기하지 않은 브리더 삭제 시도시 실패', async () => {
+            const response = await request(app.getHttpServer())
+                .delete(`/api/adopter/favorite/not-favorited-breeder`)
+                .set('Authorization', `Bearer ${adopterToken}`)
+                .expect(400);
+
+            expect(response.body.success).toBe(false);
+            expect(response.body.error).toContain('즐겨찾기 목록에 없습니다');
         });
     });
 
-    it('POST /api/adopter/favorite - 중복 즐겨찾기 방지', () => {
-      // 다시 추가
-      return request(app.getHttpServer())
-        .post('/api/adopter/favorite')
-        .set('Authorization', `Bearer ${adopterToken}`)
-        .send(favoriteData)
-        .then(() => {
-          // 중복 추가 시도
-          return request(app.getHttpServer())
-            .post('/api/adopter/favorite')
-            .set('Authorization', `Bearer ${adopterToken}`)
-            .send(favoriteData)
-            .expect(400);
+    describe('POST /api/adopter/report', () => {
+        it('브리더 신고 제출 성공', async () => {
+            const reportData = {
+                targetBreederId: breederId,
+                reason: 'fraud',
+                description: '허위 정보를 제공했습니다.',
+                evidence: ['screenshot1.jpg', 'screenshot2.jpg'],
+            };
+
+            const response = await request(app.getHttpServer())
+                .post('/api/adopter/report')
+                .set('Authorization', `Bearer ${adopterToken}`)
+                .send(reportData)
+                .expect(200);
+
+            ResponseValidator.validateApiResponse(response);
+            expect(response.body.message).toBe('신고가 성공적으로 제출되었습니다.');
         });
-    });
-  });
 
-  describe('Report Management', () => {
-    const reportData = {
-      breederId: '',
-      reason: 'inappropriate_content',
-      description: 'This breeder posted inappropriate content',
-      evidence: ['screenshot1.jpg', 'screenshot2.jpg'],
-    };
+        it('신고 사유 없이 제출시 실패', async () => {
+            const reportData = {
+                targetBreederId: breederId,
+                // reason 누락
+                description: '테스트 신고',
+            };
 
-    beforeEach(() => {
-      reportData.breederId = breederId;
-    });
+            const response = await request(app.getHttpServer())
+                .post('/api/adopter/report')
+                .set('Authorization', `Bearer ${adopterToken}`)
+                .send(reportData)
+                .expect(400);
 
-    it('POST /api/adopter/report - 신고 제출 성공', () => {
-      return request(app.getHttpServer())
-        .post('/api/adopter/report')
-        .set('Authorization', `Bearer ${adopterToken}`)
-        .send(reportData)
-        .expect(201)
-        .expect((res) => {
-          expect(res.body.reportId).toBeDefined();
-          expect(res.body.status).toBe('pending');
+            expect(response.body.success).toBe(false);
         });
-    });
 
-    it('POST /api/adopter/report - 필수 필드 누락', () => {
-      return request(app.getHttpServer())
-        .post('/api/adopter/report')
-        .set('Authorization', `Bearer ${adopterToken}`)
-        .send({
-          breederId: breederId,
-          reason: 'inappropriate_content',
-          // description 누락
-        })
-        .expect(400);
-    });
-  });
+        it('동일 브리더 중복 신고 방지', async () => {
+            const reportData = {
+                targetBreederId: breederId,
+                reason: 'spam',
+                description: '스팸 메시지를 보냅니다.',
+            };
 
-  describe('Profile Management', () => {
-    it('GET /api/adopter/profile - 프로필 조회 성공', () => {
-      return request(app.getHttpServer())
-        .get('/api/adopter/profile')
-        .set('Authorization', `Bearer ${adopterToken}`)
-        .expect(200)
-        .expect((res) => {
-          expect(res.body.email).toBe('adopter@test.com');
-          expect(res.body.name).toBe('Test Adopter');
+            // 첫 번째 신고
+            await request(app.getHttpServer())
+                .post('/api/adopter/report')
+                .set('Authorization', `Bearer ${adopterToken}`)
+                .send(reportData)
+                .expect(200);
+
+            // 중복 신고 시도
+            const response = await request(app.getHttpServer())
+                .post('/api/adopter/report')
+                .set('Authorization', `Bearer ${adopterToken}`)
+                .send(reportData)
+                .expect(400);
+
+            expect(response.body.success).toBe(false);
+            expect(response.body.error).toContain('이미 신고');
         });
     });
 
-    it('PATCH /api/adopter/profile - 프로필 업데이트 성공', () => {
-      const updateData = {
-        name: 'Updated Adopter Name',
-        phone: '010-0000-0000',
-        profileImage: 'https://example.com/new-image.jpg',
-      };
+    describe('GET /api/adopter/profile', () => {
+        it('입양자 프로필 조회 성공', async () => {
+            const response = await request(app.getHttpServer())
+                .get('/api/adopter/profile')
+                .set('Authorization', `Bearer ${adopterToken}`)
+                .expect(200);
 
-      return request(app.getHttpServer())
-        .patch('/api/adopter/profile')
-        .set('Authorization', `Bearer ${adopterToken}`)
-        .send(updateData)
-        .expect(200)
-        .expect((res) => {
-          expect(res.body.name).toBe(updateData.name);
-          expect(res.body.phone).toBe(updateData.phone);
+            ResponseValidator.validateApiResponse(response);
+            expect(response.body.message).toBe('입양자 프로필이 조회되었습니다.');
+            
+            // 프로필 필드 확인
+            expect(response.body.item).toHaveProperty('userId');
+            expect(response.body.item).toHaveProperty('email');
+            expect(response.body.item).toHaveProperty('name');
+            expect(response.body.item).toHaveProperty('phone');
+            expect(response.body.item).toHaveProperty('favoriteBreeder');
+            expect(response.body.item).toHaveProperty('adoptionApplications');
+            expect(response.body.item).toHaveProperty('reviews');
+        });
+
+        it('인증 없이 프로필 조회 실패', async () => {
+            await request(app.getHttpServer())
+                .get('/api/adopter/profile')
+                .expect(401);
         });
     });
 
-    it('GET /api/adopter/profile - 인증되지 않은 요청 실패', () => {
-      return request(app.getHttpServer())
-        .get('/api/adopter/profile')
-        .expect(401);
+    describe('PATCH /api/adopter/profile', () => {
+        it('입양자 프로필 수정 성공', async () => {
+            const updateData = {
+                name: '수정된 이름',
+                phone: '010-9999-9999',
+                profileImage: 'new-profile.jpg',
+            };
+
+            const response = await request(app.getHttpServer())
+                .patch('/api/adopter/profile')
+                .set('Authorization', `Bearer ${adopterToken}`)
+                .send(updateData)
+                .expect(200);
+
+            ResponseValidator.validateApiResponse(response);
+            expect(response.body.message).toBe('프로필이 성공적으로 수정되었습니다.');
+        });
+
+        it('이메일 수정 시도시 실패', async () => {
+            const updateData = {
+                email: 'newemail@test.com', // 이메일은 수정 불가
+                name: '테스트',
+            };
+
+            const response = await request(app.getHttpServer())
+                .patch('/api/adopter/profile')
+                .set('Authorization', `Bearer ${adopterToken}`)
+                .send(updateData)
+                .expect(400);
+
+            expect(response.body.success).toBe(false);
+            expect(response.body.error).toContain('이메일은 변경할 수 없습니다');
+        });
+
+        it('잘못된 전화번호 형식으로 수정 실패', async () => {
+            const updateData = {
+                phone: '123456', // 잘못된 형식
+            };
+
+            const response = await request(app.getHttpServer())
+                .patch('/api/adopter/profile')
+                .set('Authorization', `Bearer ${adopterToken}`)
+                .send(updateData)
+                .expect(400);
+
+            expect(response.body.success).toBe(false);
+        });
     });
-  });
 });
