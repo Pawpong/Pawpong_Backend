@@ -32,7 +32,8 @@
     "pm2:reload": "pm2 reload all",
     "pm2:logs": "pm2 logs",
     "pm2:monit": "pm2 monit",
-    "pm2:status": "pm2 status"
+    "pm2:status": "pm2 status",
+    "seed:mock": "ts-node scripts/seed-mock-data.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.6",
