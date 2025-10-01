@@ -13,11 +13,11 @@ export class BreederExploreSwaggerDocs {
             강아지/고양이 타입별로 브리더를 탐색합니다.
             
             ## 필터 옵션
-            - **반려동물 타입**: 강아지(dog) 또는 고양이(cat)
-            - **크기/털길이**: 강아지는 크기별, 고양이는 털길이별 필터
-            - **지역**: 광역시/도 + 시군구 단위 필터
-            - **입양 가능 여부**: 현재 입양 가능한 개체가 있는 브리더만
-            - **브리더 레벨**: NEW 또는 ELITE
+            - **반려동물 타입**: 강아지(dog) 또는 고양이(cat) - 단일 선택 필수
+            - **크기/털길이**: 강아지는 크기별, 고양이는 털길이별 필터 - **중복 선택 가능**
+            - **지역**: 광역시/도 + 시군구 단위 필터 - **중복 선택 가능**
+            - **입양 가능 여부**: 체크 안 함(전체), 체크(입양 가능한 개체 1마리 이상)
+            - **브리더 레벨**: NEW 또는 ELITE - **중복 선택 가능**
             
             ## 정렬 기준
             - latest: 최신 등록순
@@ -29,6 +29,11 @@ export class BreederExploreSwaggerDocs {
             ## 로그인 시 추가 정보
             - 가격 범위 노출
             - 찜 여부 표시
+            
+            ## 중복 선택 가능 필터 사용 예시
+            - 강아지 크기: ?dogSize[]=small&dogSize[]=medium
+            - 지역: ?province[]=경기도&province[]=서울특별시&city[]=파주시&city[]=강남구
+            - 브리더 레벨: ?breederLevel[]=new&breederLevel[]=elite
         `,
         responseType: PaginationResponseDto<BreederCardResponseDto>,
     };
@@ -81,22 +86,33 @@ export class BreederExploreSwaggerDocs {
 export const BREEDER_EXPLORE_EXAMPLES = {
     dogSearch: {
         petType: 'dog',
-        dogSize: 'small',
-        province: '경기도',
-        city: '파주시',
+        dogSize: ['small', 'medium'],
+        province: ['경기도', '서울특별시'],
+        city: ['파주시', '강남구'],
         isAdoptionAvailable: true,
-        breederLevel: 'new',
+        breederLevel: ['new'],
         sortBy: 'latest',
         page: 1,
         take: 20,
     },
     catSearch: {
         petType: 'cat',
-        catFurLength: 'short',
-        province: '서울특별시',
-        city: '강남구',
-        isAdoptionAvailable: false,
+        catFurLength: ['short', 'long'],
+        province: ['서울특별시'],
+        city: ['강남구', '서초구'],
+        breederLevel: ['new', 'elite'],
         sortBy: 'favorite',
+        page: 1,
+        take: 20,
+    },
+    multipleFilters: {
+        petType: 'dog',
+        dogSize: ['small', 'medium', 'large'],
+        province: ['경기도', '서울특별시', '인천광역시'],
+        city: ['파주시', '강남구', '연수구'],
+        isAdoptionAvailable: true,
+        breederLevel: ['new', 'elite'],
+        sortBy: 'review',
         page: 1,
         take: 20,
     },

@@ -11,7 +11,7 @@ export class BreederCardResponseDto {
      */
     @ApiProperty({
         description: '브리더 ID',
-        example: '507f1f77bcf86cd799439011',
+        example: '68dd57b1ae55c118139f6be3',
     })
     breederId: string;
 
@@ -21,7 +21,7 @@ export class BreederCardResponseDto {
      */
     @ApiProperty({
         description: '브리더명',
-        example: '해피독 브리더',
+        example: '바람개비 펫',
     })
     breederName: string;
 
@@ -42,7 +42,7 @@ export class BreederCardResponseDto {
      */
     @ApiProperty({
         description: '지역',
-        example: '경기도 파주시',
+        example: '서울특별시 마포구',
     })
     location: string;
 
@@ -52,7 +52,7 @@ export class BreederCardResponseDto {
      */
     @ApiProperty({
         description: '대표 품종',
-        example: '말티즈',
+        example: '허스키',
     })
     mainBreed: string;
 
@@ -67,12 +67,14 @@ export class BreederCardResponseDto {
     isAdoptionAvailable: boolean;
 
     /**
-     * 가격 범위 (로그인 시에만 노출)
-     * @example { "min": 1000000, "max": 2000000 }
+     * 가격 범위 정보
+     * - range: 최소/최대 가격 표시
+     * - consultation: 상담 후 결정
+     * @example { "min": 1000000, "max": 2000000, "display": "range" }
      */
     @ApiProperty({
-        description: '가격 범위',
-        example: { min: 1000000, max: 2000000 },
+        description: '가격 범위 정보 (range: 가격표시, consultation: 상담후결정)',
+        example: { min: 0, max: 0, display: 'consultation' },
         required: false,
     })
     priceRange?: {
@@ -87,7 +89,7 @@ export class BreederCardResponseDto {
      */
     @ApiProperty({
         description: '찜 개수',
-        example: 42,
+        example: 16,
     })
     favoriteCount: number;
 
@@ -107,7 +109,7 @@ export class BreederCardResponseDto {
      */
     @ApiProperty({
         description: '대표 사진 URL 배열',
-        example: ['https://example.com/photo1.jpg', 'https://example.com/photo2.jpg'],
+        example: ['https://example.com/photos/rep-29-1.jpg', 'https://example.com/photos/rep-29-2.jpg'],
         isArray: true,
     })
     representativePhotos: string[];
@@ -118,7 +120,7 @@ export class BreederCardResponseDto {
      */
     @ApiProperty({
         description: '프로필 이미지 URL',
-        example: 'https://example.com/profile.jpg',
+        example: 'https://example.com/profiles/breeder-29.jpg',
         required: false,
     })
     profileImage?: string;
@@ -129,7 +131,7 @@ export class BreederCardResponseDto {
      */
     @ApiProperty({
         description: '총 리뷰 개수',
-        example: 15,
+        example: 0,
     })
     totalReviews: number;
 
@@ -139,7 +141,7 @@ export class BreederCardResponseDto {
      */
     @ApiProperty({
         description: '평균 평점',
-        example: 4.5,
+        example: 0,
     })
     averageRating: number;
 
@@ -149,7 +151,7 @@ export class BreederCardResponseDto {
      */
     @ApiProperty({
         description: '등록일',
-        example: '2024-01-15T09:00:00.000Z',
+        example: '2025-10-01T16:32:49.506Z',
     })
     createdAt: Date;
 }
