@@ -145,48 +145,54 @@ export class BreederService {
         return {
             breederId: breeder._id.toString(),
             breederName: breeder.name,
-            breederEmail: breeder.email,
+            breederLevel: breeder.verification?.level || 'new',
+            detailBreed: breeder.detailBreed,
+            location: breeder.profile?.location ? 
+                `${breeder.profile.location.city} ${breeder.profile.location.district}` : '',
+            priceRange: breeder.priceDisplay === 'range' ? breeder.priceRange : undefined,
+            profileImage: breeder.profileImage,
+            favoriteCount: breeder.stats?.totalFavorites || 0,
+            isFavorited: false, // 로그인 상태에서 설정 필요
             description: breeder.profile?.description || '',
-            location: breeder.profile?.location || { city: '', district: '', address: '' },
-            specialization: breeder.profile?.specialization?.[0] || '',
-            experienceYears: breeder.profile?.experienceYears || 0,
-            verification: {
-                status: breeder.verification?.status || 'pending',
-                plan: breeder.verification?.plan || 'basic',
-                verifiedAt: breeder.verification?.reviewedAt || new Date(),
-            },
-            profilePhotos: breeder.profile?.photos || [],
+            representativePhotos: breeder.profile?.representativePhotos || [],
             availablePets: (breeder.availablePets?.filter((pet: any) => pet.isActive) || []).map((pet: any) => ({
                 petId: pet.petId,
                 name: pet.name,
                 breed: pet.breed,
-                type: pet.type,
-                age:
-                    Math.floor(
-                        (new Date().getTime() - new Date(pet.birthDate).getTime()) / (1000 * 60 * 60 * 24 * 365),
-                    ) || 0,
+                gender: pet.gender,
+                birthDate: pet.birthDate,
                 price: pet.price,
-                photos: pet.photos,
-                description: pet.description,
                 status: pet.status,
+                photo: pet.photos?.[0] || '', // 첫 번째 사진만
             })),
-            reviewStats: {
-                totalReviews: breeder.stats?.totalReviews || 0,
-                averageRating: breeder.stats?.averageRating || 0,
-                ratingDistribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
-            },
-            recentReviews: (breeder.reviews?.filter((review: any) => review.isVisible) || [])
+            parentPets: (breeder.parentPets?.filter((pet: any) => pet.isActive) || []).map((pet: any) => ({
+                petId: pet.petId,
+                name: pet.name,
+                breed: pet.breed,
+                gender: pet.gender,
+                birthDate: this.calculateBirthDateFromAge(pet.age),
+            })),
+            reviews: (breeder.reviews?.filter((review: any) => review.isVisible) || [])
                 .slice(-5)
                 .map((review: any) => ({
                     reviewId: review.reviewId,
+                    writtenAt: review.writtenAt,
+                    type: review.type,
                     adopterName: review.adopterName,
                     rating: review.rating,
                     content: review.content,
-                    petHealthRating: review.petHealthRating || 0,
-                    communicationRating: review.communicationRating || 0,
-                    createdAt: review.createdAt,
+                    photo: review.photos?.[0] || undefined, // 첫 번째 사진만
                 })),
+            reviewStats: {
+                totalReviews: breeder.stats?.totalReviews || 0,
+                averageRating: breeder.stats?.averageRating || 0,
+            },
             createdAt: breeder.createdAt,
         };
+    }
+
+    private calculateBirthDateFromAge(age: number): Date {
+        const now = new Date();
+        return new Date(now.getFullYear() - age, now.getMonth(), now.getDate());
     }
 }

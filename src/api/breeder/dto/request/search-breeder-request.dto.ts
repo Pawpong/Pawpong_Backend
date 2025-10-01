@@ -28,61 +28,69 @@ export class SearchBreederRequestDto {
     petType: string;
 
     /**
-     * 강아지 크기 필터 (소형/중형/대형)
-     * @example "small"
+     * 강아지 크기 필터 (소형/중형/대형) - 중복 선택 가능
+     * @example ["small", "medium"]
      */
     @ApiPropertyOptional({
-        description: '강아지 크기 (dog 타입일 때만)',
+        description: '강아지 크기 필터 (dog 타입일 때만)',
         enum: PetSize,
-        example: 'small',
+        isArray: true,
+        example: ['large'],
     })
     @IsOptional()
-    @IsEnum(PetSize)
-    dogSize?: string;
+    @IsEnum(PetSize, { each: true })
+    @Type(() => String)
+    dogSize?: string[];
 
     /**
-     * 고양이 털 길이 필터 (장모/단모)
-     * @example "short"
+     * 고양이 털 길이 필터 (장모/단모) - 중복 선택 가능
+     * @example ["short", "long"]
      */
     @ApiPropertyOptional({
-        description: '고양이 털 길이 (cat 타입일 때만)',
+        description: '고양이 털길이 필터 (cat 타입일 때만)',
         enum: FurLength,
-        example: 'short',
+        isArray: true,
+        example: ['long'],
     })
     @IsOptional()
-    @IsEnum(FurLength)
-    catFurLength?: string;
+    @IsEnum(FurLength, { each: true })
+    @Type(() => String)
+    catFurLength?: string[];
 
     /**
-     * 지역 필터 (광역시/도)
-     * @example "경기도"
+     * 지역 필터 (광역시/도) - 중복 선택 가능
+     * @example ["경기도", "서울특별시"]
      */
     @ApiPropertyOptional({
-        description: '지역 (광역시/도)',
-        example: '경기도',
+        description: '지역 필터 (광역시/도)',
+        isArray: true,
+        example: ['경상북도'],
     })
     @IsOptional()
-    @IsString()
-    province?: string;
+    @IsString({ each: true })
+    @Type(() => String)
+    province?: string[];
 
     /**
-     * 지역 필터 (시/군/구)
-     * @example "파주시"
+     * 지역 필터 (시/군/구) - 중복 선택 가능
+     * @example ["파주시", "강남구"]
      */
     @ApiPropertyOptional({
-        description: '지역 (시/군/구)',
-        example: '파주시',
+        description: '지역 필터 (시/군/구)',
+        isArray: true,
+        example: ['포항시'],
     })
     @IsOptional()
-    @IsString()
-    city?: string;
+    @IsString({ each: true })
+    @Type(() => String)
+    city?: string[];
 
     /**
      * 입양 가능 여부 필터
      * @example true
      */
     @ApiPropertyOptional({
-        description: '입양 가능 여부',
+        description: '입양 가능 여부 필터',
         example: true,
     })
     @IsOptional()
@@ -90,17 +98,19 @@ export class SearchBreederRequestDto {
     isAdoptionAvailable?: boolean;
 
     /**
-     * 브리더 레벨 필터
-     * @example "new"
+     * 브리더 레벨 필터 - 중복 선택 가능
+     * @example ["new", "elite"]
      */
     @ApiPropertyOptional({
-        description: '브리더 레벨',
+        description: '브리더 레벨 필터',
         enum: BreederLevel,
-        example: 'new',
+        isArray: true,
+        example: ['new'],
     })
     @IsOptional()
-    @IsEnum(BreederLevel)
-    breederLevel?: string;
+    @IsEnum(BreederLevel, { each: true })
+    @Type(() => String)
+    breederLevel?: string[];
 
     /**
      * 정렬 기준

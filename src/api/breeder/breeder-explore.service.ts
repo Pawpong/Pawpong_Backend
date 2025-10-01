@@ -47,21 +47,25 @@ export class BreederExploreService {
         };
 
         // 강아지 크기 필터 (강아지일 때만)
-        if (petType === 'dog' && dogSize) {
-            filter['availablePets.size'] = dogSize;
+        if (petType === 'dog' && dogSize && dogSize.length > 0) {
+            filter['availablePets.size'] = { $in: dogSize };
         }
 
         // 고양이 털 길이 필터 (고양이일 때만)  
-        if (petType === 'cat' && catFurLength) {
-            filter['availablePets.furLength'] = catFurLength;
+        if (petType === 'cat' && catFurLength && catFurLength.length > 0) {
+            filter['availablePets.furLength'] = { $in: catFurLength };
         }
 
         // 지역 필터
-        if (province && city) {
-            filter['profile.location.city'] = province;
-            filter['profile.location.district'] = city;
-        } else if (province) {
-            filter['profile.location.city'] = province;
+        if (province && province.length > 0 && city && city.length > 0) {
+            filter['$and'] = [
+                { 'profile.location.city': { $in: province } },
+                { 'profile.location.district': { $in: city } }
+            ];
+        } else if (province && province.length > 0) {
+            filter['profile.location.city'] = { $in: province };
+        } else if (city && city.length > 0) {
+            filter['profile.location.district'] = { $in: city };
         }
 
         // 입양 가능 여부 필터
@@ -72,8 +76,8 @@ export class BreederExploreService {
         }
 
         // 브리더 레벨 필터
-        if (breederLevel) {
-            filter['verification.level'] = breederLevel;
+        if (breederLevel && breederLevel.length > 0) {
+            filter['verification.level'] = { $in: breederLevel };
         }
 
         // 정렬 옵션
@@ -135,7 +139,7 @@ export class BreederExploreService {
                     `${breeder.profile.location.city} ${breeder.profile.location.district}` : '',
                 mainBreed: breeder.detailBreed,
                 isAdoptionAvailable: hasAvailablePets,
-                priceRange: userId && breeder.priceDisplay === 'range' ? {
+                priceRange: breeder.priceDisplay === 'range' ? {
                     min: breeder.priceRange?.min || 0,
                     max: breeder.priceRange?.max || 0,
                     display: breeder.priceDisplay,
@@ -143,7 +147,11 @@ export class BreederExploreService {
                     min: 0,
                     max: 0,
                     display: 'consultation',
-                } : undefined,
+                } : {
+                    min: breeder.priceRange?.min || 0,
+                    max: breeder.priceRange?.max || 0,
+                    display: breeder.priceDisplay || 'range',
+                },
                 favoriteCount: breeder.stats?.totalFavorites || 0,
                 isFavorited: favoritedBreederIds.includes(breeder._id.toString()),
                 representativePhotos: breeder.profile?.representativePhotos || [],

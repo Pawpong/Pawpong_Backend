@@ -272,6 +272,18 @@ export class AvailablePet {
     breed: string;
 
     /**
+     * 강아지 크기 (소형/중형/대형)
+     */
+    @Prop({ enum: ['small', 'medium', 'large'] })
+    size?: string;
+
+    /**
+     * 고양이 털 길이 (단모/장모)
+     */
+    @Prop({ enum: ['short', 'long'] })
+    furLength?: string;
+
+    /**
      * 출생일
      */
     @Prop({ required: true })
