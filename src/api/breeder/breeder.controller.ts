@@ -37,7 +37,7 @@ export class BreederController {
     @Get('explore')
     @ApiPaginatedEndpoint({
         summary: '브리더 탐색',
-        description: '강아지/고양이 타입별로 브리더를 탐색하고 필터링합니다.',
+        description: '강아지/고양이 브리더를 검색하고 다양한 조건으로 필터링할 수 있습니다.',
         responseType: BreederCardResponseDto,
         isPublic: true,
     })
@@ -52,7 +52,7 @@ export class BreederController {
     @Get('popular')
     @ApiEndpoint({
         summary: '인기 브리더 조회',
-        description: '찜이 많고 평점이 높은 인기 브리더 Top 10',
+        description: '찜이 많고 평점이 높은 인기 브리더 Top 10을 조회합니다. 로그인 없이도 이용 가능하며, 가격 정보는 제외됩니다.',
         responseType: BreederCardResponseDto,
         isPublic: true,
     })
@@ -62,18 +62,18 @@ export class BreederController {
     }
 
     @Get(':id')
-    @UseGuards(JwtAuthGuard)
+    // @UseGuards(JwtAuthGuard) // 임시로 주석 처리
     @ApiEndpoint({
         summary: '브리더 프로필 상세',
         description: '특정 브리더의 상세 정보를 조회합니다.',
         responseType: BreederProfileResponseDto,
-        isPublic: false,
+        isPublic: true, // 공개 API로 변경
     })
     async getBreederProfile(
         @Param('id') breederId: string,
-        @CurrentUser() user: any,
+        @CurrentUser() user?: any, // 선택적 파라미터로 변경
     ): Promise<ApiResponseDto<BreederProfileResponseDto>> {
-        const result = await this.breederService.getBreederProfile(breederId, user.userId);
+        const result = await this.breederService.getBreederProfile(breederId, user?.userId);
         return ApiResponseDto.success(result, '브리더 프로필이 조회되었습니다.');
     }
 }
