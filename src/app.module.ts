@@ -12,6 +12,7 @@ import { AdopterModule } from './api/adopter/adopter.module';
 import { BreederManagementModule } from './api/breeder-management/breeder-management.module';
 import { AdminModule } from './api/admin/admin.module';
 import { HealthModule } from './api/health/health.module';
+import { UploadModule } from './api/upload/upload.module';
 
 @Module({
     imports: [
@@ -27,6 +28,7 @@ import { HealthModule } from './api/health/health.module';
         BreederManagementModule,
         AdminModule,
         HealthModule,
+        UploadModule,
     ],
     controllers: [],
     providers: [CustomLoggerService],
