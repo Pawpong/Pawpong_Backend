@@ -758,6 +758,12 @@ export class Breeder {
     lastLoginAt: Date;
 
     /**
+     * 마케팅 정보 수신 동의 여부
+     */
+    @Prop({ default: false })
+    marketingAgreed: boolean;
+
+    /**
      * 브리더 인증 정보 (필수)
      */
     @Prop({ type: BreederVerification, required: true })
