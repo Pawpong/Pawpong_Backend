@@ -1,6 +1,7 @@
-import { Controller, Post, Body, HttpCode, HttpStatus, UseGuards, Get, Req, Res } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, HttpStatus, UseGuards, Get, Req, Res, UseInterceptors, UploadedFile, UploadedFiles } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
+import { FileInterceptor, FileFieldsInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 
 import { CurrentUser } from '../../common/decorator/current-user.decorator';
@@ -32,30 +33,36 @@ export class AuthController {
     ) {}
 
     @Post('register/adopter')
+    @UseInterceptors(FileInterceptor('profileImage'))
     @ApiEndpoint({
         summary: '입양자 회원가입',
-        description: '새로운 입양자 계정을 생성합니다.',
+        description: '새로운 입양자 계정을 생성합니다. 프로필 이미지는 선택사항입니다. data 필드에 JSON 문자열로 전송하세요.',
         responseType: AuthResponseDto,
         isPublic: true,
     })
     async registerAdopter(
-        @Body() registerAdopterDto: RegisterAdopterRequestDto,
+        @Body('data') dataString: string,
+        @UploadedFile() profileImage?: Express.Multer.File,
     ): Promise<ApiResponseDto<AuthResponseDto>> {
-        const result = await this.authService.registerAdopter(registerAdopterDto);
+        const registerAdopterDto: RegisterAdopterRequestDto = JSON.parse(dataString);
+        const result = await this.authService.registerAdopter(registerAdopterDto, profileImage);
         return ApiResponseDto.success(result, '입양자 회원가입이 완료되었습니다.');
     }
 
     @Post('register/breeder')
+    @UseInterceptors(FileInterceptor('profileImage'))
     @ApiEndpoint({
         summary: '브리더 회원가입',
-        description: '새로운 브리더 정보를 생성합니다.',
+        description: '새로운 브리더 정보를 생성합니다. 프로필 이미지는 선택사항입니다. data 필드에 JSON 문자열로 전송하세요.',
         responseType: AuthResponseDto,
         isPublic: true,
     })
     async registerBreeder(
-        @Body() registerBreederDto: RegisterBreederRequestDto,
+        @Body('data') dataString: string,
+        @UploadedFile() profileImage?: Express.Multer.File,
     ): Promise<ApiResponseDto<AuthResponseDto>> {
-        const result = await this.authService.registerBreeder(registerBreederDto);
+        const registerBreederDto: RegisterBreederRequestDto = JSON.parse(dataString);
+        const result = await this.authService.registerBreeder(registerBreederDto, profileImage);
         return ApiResponseDto.success(result, '브리더 회원가입이 완료되었습니다.');
     }
 

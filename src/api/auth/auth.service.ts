@@ -13,6 +13,7 @@ import { AuthResponseDto } from './dto/response/auth-response.dto';
 import { RefreshTokenRequestDto } from './dto/request/refresh-token-request.dto';
 import { TokenResponseDto } from './dto/response/token-response.dto';
 import { SocialProvider, UserStatus, VerificationStatus, BreederPlan } from '../../common/enum/user.enum';
+import { StorageService } from '../../common/storage/storage.service';
 
 @Injectable()
 export class AuthService {
@@ -20,6 +21,7 @@ export class AuthService {
         @InjectModel(Adopter.name) private adopterModel: Model<AdopterDocument>,
         @InjectModel(Breeder.name) private breederModel: Model<BreederDocument>,
         private jwtService: JwtService,
+        private storageService: StorageService,
     ) {}
 
     /**
@@ -60,7 +62,10 @@ export class AuthService {
         return bcrypt.hash(refreshToken, 10);
     }
 
-    async registerAdopter(registerAdopterDto: RegisterAdopterRequestDto): Promise<AuthResponseDto> {
+    async registerAdopter(
+        registerAdopterDto: RegisterAdopterRequestDto,
+        profileImageFile?: Express.Multer.File,
+    ): Promise<AuthResponseDto> {
         const existingAdopter = await this.adopterModel.findOne({
             emailAddress: registerAdopterDto.email,
         });
@@ -80,11 +85,19 @@ export class AuthService {
 
         const hashedPassword = await bcrypt.hash(registerAdopterDto.password, 10);
 
+        // 프로필 이미지 파일 업로드
+        let profileImageFileName: string | undefined;
+        if (profileImageFile) {
+            const uploadResult = await this.storageService.uploadFile(profileImageFile, 'profiles');
+            profileImageFileName = uploadResult.fileName;
+        }
+
         const adopter = new this.adopterModel({
             emailAddress: registerAdopterDto.email,
             passwordHash: hashedPassword,
             nickname: registerAdopterDto.nickname,
             phoneNumber: registerAdopterDto.phone,
+            profileImage: profileImageFileName,
             socialAuthInfo: {
                 authProvider: SocialProvider.LOCAL,
             },
@@ -128,7 +141,10 @@ export class AuthService {
         };
     }
 
-    async registerBreeder(registerBreederDto: RegisterBreederRequestDto): Promise<AuthResponseDto> {
+    async registerBreeder(
+        registerBreederDto: RegisterBreederRequestDto,
+        profileImageFile?: Express.Multer.File,
+    ): Promise<AuthResponseDto> {
         // 이메일 중복 확인
         const existingBreeder = await this.breederModel.findOne({
             email: registerBreederDto.email,
@@ -158,12 +174,19 @@ export class AuthService {
         if (registerBreederDto.plan === 'standard') plan = BreederPlan.STANDARD;
         else if (registerBreederDto.plan === 'premium') plan = BreederPlan.PREMIUM;
 
+        // 프로필 이미지 파일 업로드 (파일이 있으면 업로드, 없으면 DTO에서 받은 URL 사용)
+        let profileImageFileName: string | undefined = registerBreederDto.profileImage;
+        if (profileImageFile) {
+            const uploadResult = await this.storageService.uploadFile(profileImageFile, 'profiles');
+            profileImageFileName = uploadResult.fileName;
+        }
+
         const breeder = new this.breederModel({
             email: registerBreederDto.email,
             password: null, // 소셜 로그인이므로 비밀번호 없음
             name: registerBreederDto.name,
             phone: registerBreederDto.phone,
-            profileImage: registerBreederDto.profileImage,
+            profileImage: profileImageFileName,
             petType: registerBreederDto.petType,
             detailBreed: registerBreederDto.breeds,
             breederName: registerBreederDto.breederName,

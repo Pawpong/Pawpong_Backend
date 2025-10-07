@@ -21,6 +21,7 @@ import { ApiController, ApiEndpoint } from '../../common/decorator/swagger.decor
 import { ApiResponseDto } from '../../common/dto/response/api-response.dto';
 import { UploadResponseDto } from './dto/response/upload-response.dto';
 import { JwtAuthGuard } from '../../common/guard/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../../common/guard/optional-jwt-auth.guard';
 import { CurrentUser } from '../../common/decorator/user.decorator';
 import { Breeder, BreederDocument } from '../../schema/breeder.schema';
 import { Adopter, AdopterDocument } from '../../schema/adopter.schema';
@@ -35,18 +36,18 @@ export class UploadController {
     ) {}
 
     @Post('profile')
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(OptionalJwtAuthGuard)
     @ApiConsumes('multipart/form-data')
     @ApiEndpoint({
         summary: '프로필 이미지 업로드',
-        description: '브리더 또는 입양자의 프로필 이미지를 Google Cloud Storage에 업로드하고 자동으로 DB에 저장합니다. (최대 5MB)',
+        description: '브리더 또는 입양자의 프로필 이미지를 Google Cloud Storage에 업로드합니다. 로그인 시 자동으로 DB에 저장됩니다. (최대 5MB)',
         responseType: UploadResponseDto,
-        isPublic: false,
+        isPublic: true,
     })
     @UseInterceptors(FileInterceptor('file'))
     async uploadProfile(
         @UploadedFile() file: Express.Multer.File,
-        @CurrentUser() user: any,
+        @CurrentUser() user?: any,
     ): Promise<ApiResponseDto<UploadResponseDto>> {
         if (!file) {
             throw new BadRequestException('파일이 업로드되지 않았습니다.');
@@ -65,15 +66,17 @@ export class UploadController {
 
         const result = await this.storageService.uploadFile(file, 'profiles');
 
-        // 사용자 타입에 따라 DB 업데이트
-        if (user.role === 'breeder') {
-            await this.breederModel.findByIdAndUpdate(user.userId, {
-                profileImage: result.fileName,
-            });
-        } else if (user.role === 'adopter') {
-            await this.adopterModel.findByIdAndUpdate(user.userId, {
-                profileImage: result.fileName,
-            });
+        // 로그인 사용자인 경우에만 DB 업데이트
+        if (user) {
+            if (user.role === 'breeder') {
+                await this.breederModel.findByIdAndUpdate(user.userId, {
+                    profileImage: result.fileName,
+                });
+            } else if (user.role === 'adopter') {
+                await this.adopterModel.findByIdAndUpdate(user.userId, {
+                    profileImage: result.fileName,
+                });
+            }
         }
 
         const response = new UploadResponseDto(
@@ -82,7 +85,11 @@ export class UploadController {
             file.size,
         );
 
-        return ApiResponseDto.success(response, '프로필 이미지가 업로드되고 저장되었습니다.');
+        const message = user
+            ? '프로필 이미지가 업로드되고 저장되었습니다.'
+            : '프로필 이미지가 업로드되었습니다. (DB 저장은 로그인 후 가능)';
+
+        return ApiResponseDto.success(response, message);
     }
 
     @Post('representative-photos')

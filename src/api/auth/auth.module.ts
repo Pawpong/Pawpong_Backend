@@ -10,10 +10,12 @@ import { GoogleStrategy } from '../../common/strategy/google.strategy';
 import { NaverStrategy } from '../../common/strategy/naver.strategy';
 import { KakaoStrategy } from '../../common/strategy/kakao.strategy';
 import { AuthDatabaseModule } from '../../common/database/database.module';
+import { StorageModule } from '../../common/storage/storage.module';
 
 @Module({
     imports: [
         AuthDatabaseModule,
+        StorageModule,
         PassportModule,
         JwtModule.registerAsync({
             useFactory: async (configService: ConfigService) => ({
