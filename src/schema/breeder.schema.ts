@@ -796,7 +796,19 @@ export class Breeder {
     lastLoginAt: Date;
 
     /**
-     * 마케팅 정보 수신 동의 여부
+     * 서비스 이용약관 동의 여부 (필수)
+     */
+    @Prop({ required: true, default: false })
+    termsAgreed: boolean;
+
+    /**
+     * 개인정보 처리방침 동의 여부 (필수)
+     */
+    @Prop({ required: true, default: false })
+    privacyAgreed: boolean;
+
+    /**
+     * 마케팅 정보 수신 동의 여부 (선택)
      */
     @Prop({ default: false })
     marketingAgreed: boolean;

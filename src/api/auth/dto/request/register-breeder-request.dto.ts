@@ -10,45 +10,24 @@ import {
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 /**
- * 브리더 회원가입 요청 DTO
+ * 브리더 일반 회원가입 요청 DTO (이메일/비밀번호)
  */
 export class RegisterBreederRequestDto {
     @ApiProperty({
-        description: 'OAuth 임시 ID (소셜 로그인 시)',
-        example: 'temp_kakao_4479198661_1759597226564',
-    })
-    @IsString()
-    tempId: string;
-
-    @ApiProperty({
-        description: 'OAuth 제공자',
-        example: 'kakao',
-        enum: ['kakao', 'naver', 'google'],
-    })
-    @IsEnum(['kakao', 'naver', 'google'])
-    provider: string;
-
-    @ApiProperty({
         description: '이메일',
-        example: 'kakao_4479198661@temp.pawpong.com',
+        example: 'breeder@example.com',
     })
     @IsEmail()
     email: string;
 
     @ApiProperty({
-        description: '이름',
-        example: '비만쯔+거북이',
+        description: '비밀번호 (최소 6자)',
+        example: 'password123!',
+        minLength: 6,
     })
     @IsString()
-    name: string;
-
-    @ApiPropertyOptional({
-        description: '프로필 이미지 URL',
-        example: 'https://storage.googleapis.com/pawpong-bucket/profiles/...',
-    })
-    @IsOptional()
-    @IsString()
-    profileImage?: string;
+    @MinLength(6)
+    password: string;
 
     @ApiProperty({
         description: '전화번호',
@@ -74,11 +53,25 @@ export class RegisterBreederRequestDto {
     plan: string;
 
     @ApiProperty({
-        description: '마케팅 수신 동의',
+        description: '서비스 이용약관 동의 (필수)',
         example: true,
     })
     @IsBoolean()
-    marketingAgreed: boolean;
+    agreeTerms: boolean;
+
+    @ApiProperty({
+        description: '개인정보 처리방침 동의 (필수)',
+        example: true,
+    })
+    @IsBoolean()
+    agreePrivacy: boolean;
+
+    @ApiProperty({
+        description: '마케팅 정보 수신 동의 (선택)',
+        example: true,
+    })
+    @IsBoolean()
+    agreeMarketing: boolean;
 
     @ApiProperty({
         description: '브리더명(상호명)',
@@ -117,14 +110,6 @@ export class RegisterBreederRequestDto {
     @IsArray()
     @IsString({ each: true })
     breeds: string[];
-
-    @ApiPropertyOptional({
-        description: '브리더 프로필 사진 URL',
-        example: 'https://storage.googleapis.com/pawpong-bucket/profiles/...',
-    })
-    @IsOptional()
-    @IsString()
-    breederProfilePhoto?: string;
 
     @ApiProperty({
         description: '브리더 레벨',

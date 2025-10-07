@@ -52,8 +52,8 @@ export class AuthController {
     @Post('register/breeder')
     @UseInterceptors(FileInterceptor('profileImage'))
     @ApiEndpoint({
-        summary: '브리더 회원가입',
-        description: '새로운 브리더 정보를 생성합니다. 프로필 이미지는 선택사항입니다. data 필드에 JSON 문자열로 전송하세요.',
+        summary: '브리더 일반 회원가입 (이메일/비밀번호)',
+        description: '이메일과 비밀번호로 브리더 회원가입을 진행합니다. 프로필 이미지는 선택사항입니다. data 필드에 JSON 문자열로 전송하세요.',
         responseType: AuthResponseDto,
         isPublic: true,
     })

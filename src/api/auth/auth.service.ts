@@ -145,6 +145,15 @@ export class AuthService {
         registerBreederDto: RegisterBreederRequestDto,
         profileImageFile?: Express.Multer.File,
     ): Promise<AuthResponseDto> {
+        // 필수 약관 동의 체크
+        if (!registerBreederDto.agreeTerms) {
+            throw new BadRequestException('서비스 이용약관 동의는 필수입니다.');
+        }
+
+        if (!registerBreederDto.agreePrivacy) {
+            throw new BadRequestException('개인정보 처리방침 동의는 필수입니다.');
+        }
+
         // 이메일 중복 확인
         const existingBreeder = await this.breederModel.findOne({
             email: registerBreederDto.email,
@@ -163,19 +172,16 @@ export class AuthService {
             throw new ConflictException('이미 등록된 전화번호입니다.');
         }
 
-        // Provider 매핑
-        let provider = SocialProvider.LOCAL;
-        if (registerBreederDto.provider === 'kakao') provider = SocialProvider.KAKAO;
-        else if (registerBreederDto.provider === 'naver') provider = SocialProvider.NAVER;
-        else if (registerBreederDto.provider === 'google') provider = SocialProvider.GOOGLE;
-
         // Plan 매핑
         let plan = BreederPlan.BASIC;
         if (registerBreederDto.plan === 'standard') plan = BreederPlan.STANDARD;
         else if (registerBreederDto.plan === 'premium') plan = BreederPlan.PREMIUM;
 
-        // 프로필 이미지 파일 업로드 (파일이 있으면 업로드, 없으면 DTO에서 받은 URL 사용)
-        let profileImageFileName: string | undefined = registerBreederDto.profileImage;
+        // 비밀번호 해시
+        const hashedPassword = await bcrypt.hash(registerBreederDto.password, 10);
+
+        // 프로필 이미지 파일 업로드
+        let profileImageFileName: string | undefined;
         if (profileImageFile) {
             const uploadResult = await this.storageService.uploadFile(profileImageFile, 'profiles');
             profileImageFileName = uploadResult.fileName;
@@ -183,8 +189,8 @@ export class AuthService {
 
         const breeder = new this.breederModel({
             email: registerBreederDto.email,
-            password: null, // 소셜 로그인이므로 비밀번호 없음
-            name: registerBreederDto.name,
+            password: hashedPassword,
+            name: registerBreederDto.breederName,
             phone: registerBreederDto.phone,
             profileImage: profileImageFileName,
             petType: registerBreederDto.petType,
@@ -196,10 +202,10 @@ export class AuthService {
                 district: registerBreederDto.district,
             },
             breederLevel: registerBreederDto.breederLevel,
-            breederProfilePhoto: registerBreederDto.breederProfilePhoto,
+            breederProfilePhoto: undefined,
             socialAuth: {
-                provider: provider,
-                providerId: registerBreederDto.tempId,
+                provider: SocialProvider.LOCAL,
+                providerId: null,
             },
             status: UserStatus.ACTIVE,
             verification: {
@@ -208,8 +214,14 @@ export class AuthService {
                 level: 'new',
                 documents: [],
             },
-            marketingAgreed: registerBreederDto.marketingAgreed,
+            marketingAgreed: registerBreederDto.agreeMarketing,
+            termsAgreed: registerBreederDto.agreeTerms,
+            privacyAgreed: registerBreederDto.agreePrivacy,
             priceDisplay: 'consultation',
+            priceRange: {
+                min: 0,
+                max: 0,
+            },
             parentPets: [],
             availablePets: [],
             receivedApplications: [],
