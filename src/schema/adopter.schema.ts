@@ -423,23 +423,26 @@ AdopterSchema.index({ emailAddress: 1 }, { unique: true });
 // 2. 닉네임 - 유니크 인덱스 (중복 방지)
 AdopterSchema.index({ nickname: 1 }, { unique: true });
 
-// 3. 계정 상태별 조회 - 관리자 대시보드용
+// 3. 전화번호 - 유니크 인덱스 (중복 가입 방지, sparse: true로 null 허용)
+AdopterSchema.index({ phoneNumber: 1 }, { unique: true, sparse: true });
+
+// 4. 계정 상태별 조회 - 관리자 대시보드용
 AdopterSchema.index({ accountStatus: 1, createdAt: -1 });
 
-// 4. 활성 사용자 최근 활동 조회 - 사용자 분석용
+// 5. 활성 사용자 최근 활동 조회 - 사용자 분석용
 AdopterSchema.index({ accountStatus: 1, lastActivityAt: -1 });
 
-// 5. 입양 신청 관련 복합 인덱스 - 신청 내역 조회 최적화
+// 6. 입양 신청 관련 복합 인덱스 - 신청 내역 조회 최적화
 AdopterSchema.index({
     'adoptionApplicationList.targetBreederId': 1,
     'adoptionApplicationList.applicationStatus': 1,
     'adoptionApplicationList.appliedAt': -1,
 });
 
-// 6. 즐겨찾기 브리더 조회 최적화
+// 7. 즐겨찾기 브리더 조회 최적화
 AdopterSchema.index({ 'favoriteBreederList.favoriteBreederId': 1 });
 
-// 7. 후기 작성자별 조회 - 브리더가 받은 후기 조회용
+// 8. 후기 작성자별 조회 - 브리더가 받은 후기 조회용
 AdopterSchema.index({
     'writtenReviewList.targetBreederId': 1,
     'writtenReviewList.isVisible': 1,
