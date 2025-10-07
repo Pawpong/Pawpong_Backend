@@ -88,19 +88,29 @@ export class RegisterBreederRequestDto {
     @IsString()
     introduction?: string;
 
-    @ApiProperty({
+    @ApiPropertyOptional({
         description: '시/도',
         example: '서울특별시',
     })
+    @IsOptional()
     @IsString()
-    city: string;
+    city?: string;
 
-    @ApiProperty({
+    @ApiPropertyOptional({
         description: '시/군/구',
         example: '강남구',
     })
+    @IsOptional()
     @IsString()
-    district: string;
+    district?: string;
+
+    @ApiPropertyOptional({
+        description: '지역 (시/도 + 시/군/구 조합 형식)',
+        example: '서울특별시 강남구',
+    })
+    @IsOptional()
+    @IsString()
+    location?: string;
 
     @ApiProperty({
         description: '품종 목록 (최대 5개)',

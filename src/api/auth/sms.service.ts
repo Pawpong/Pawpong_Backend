@@ -4,6 +4,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import CoolsmsMessageService from 'coolsms-node-sdk';
 import { Adopter, AdopterDocument } from '../../schema/adopter.schema';
+import { Breeder, BreederDocument } from '../../schema/breeder.schema';
 
 interface VerificationCode {
     phone: string;
@@ -23,6 +24,7 @@ export class SmsService {
     constructor(
         private readonly configService: ConfigService,
         @InjectModel(Adopter.name) private adopterModel: Model<AdopterDocument>,
+        @InjectModel(Breeder.name) private breederModel: Model<BreederDocument>,
     ) {
         const apiKey = this.configService.get<string>('COOLSMS_API_KEY');
         const apiSecret = this.configService.get<string>('COOLSMS_API_SECRET');
@@ -35,9 +37,14 @@ export class SmsService {
     async sendVerificationCode(phone: string): Promise<{ success: boolean; message: string }> {
         const normalizedPhone = this.normalizePhoneNumber(phone);
 
-        // 전화번호 중복 체크
+        // 전화번호 중복 체크 (입양자 + 브리더)
         const existingAdopter = await this.adopterModel.findOne({ phoneNumber: normalizedPhone }).exec();
         if (existingAdopter) {
+            throw new BadRequestException('이미 등록된 전화번호입니다.');
+        }
+
+        const existingBreeder = await this.breederModel.findOne({ phone: normalizedPhone }).exec();
+        if (existingBreeder) {
             throw new BadRequestException('이미 등록된 전화번호입니다.');
         }
 

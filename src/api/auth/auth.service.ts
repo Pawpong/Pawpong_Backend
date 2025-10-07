@@ -154,62 +154,142 @@ export class AuthService {
         };
     }
 
+    /**
+     * 브리더 일반 회원가입 (이메일/비밀번호)
+     */
     async registerBreeder(
         registerBreederDto: RegisterBreederRequestDto,
         profileImageFile?: Express.Multer.File,
     ): Promise<AuthResponseDto> {
-        // 필수 약관 동의 체크
-        if (!registerBreederDto.agreeTerms) {
+        this.logger.logStart(
+            'registerBreeder',
+            '브리더 일반 회원가입 처리',
+            { email: registerBreederDto.email, breederName: registerBreederDto.breederName },
+            'AuthService',
+        );
+
+        await this.validateBreederRegistration(registerBreederDto);
+        const hashedPassword = await this.hashPassword(registerBreederDto.password);
+        const profileImageFileName = await this.uploadProfileImageIfProvided(profileImageFile);
+
+        const breeder = await this.createBreederDocument(
+            registerBreederDto,
+            hashedPassword,
+            profileImageFileName,
+        );
+
+        const savedBreeder = await breeder.save();
+        this.logger.logDbOperation('registerBreeder', 'create', 'breeders', savedBreeder);
+
+        const authResponse = await this.generateBreederAuthResponse(savedBreeder);
+
+        this.logger.logSuccess(
+            'registerBreeder',
+            '브리더 회원가입 완료',
+            { userId: savedBreeder._id, email: savedBreeder.email },
+            'AuthService',
+        );
+
+        return authResponse;
+    }
+
+    /**
+     * 브리더 회원가입 유효성 검증 (단일 책임 원칙)
+     */
+    private async validateBreederRegistration(dto: RegisterBreederRequestDto): Promise<void> {
+        if (!dto.agreeTerms) {
             throw new BadRequestException('서비스 이용약관 동의는 필수입니다.');
         }
 
-        if (!registerBreederDto.agreePrivacy) {
+        if (!dto.agreePrivacy) {
             throw new BadRequestException('개인정보 처리방침 동의는 필수입니다.');
         }
 
-        // 이메일 중복 확인
-        const existingBreeder = await this.breederModel.findOne({
-            email: registerBreederDto.email,
-        });
+        await this.checkBreederEmailDuplicate(dto.email);
+        await this.checkBreederPhoneDuplicate(dto.phone);
+    }
+
+    /**
+     * 브리더 이메일 중복 확인
+     */
+    private async checkBreederEmailDuplicate(email: string): Promise<void> {
+        const existingBreeder = await this.breederModel.findOne({ email });
 
         if (existingBreeder) {
             throw new ConflictException('이미 가입된 이메일입니다.');
         }
+    }
 
-        // 전화번호 중복 확인
-        const normalizedPhone = this.normalizePhoneNumber(registerBreederDto.phone);
+    /**
+     * 브리더 전화번호 중복 확인
+     */
+    private async checkBreederPhoneDuplicate(phone: string): Promise<void> {
+        const normalizedPhone = this.normalizePhoneNumber(phone);
+
         if (normalizedPhone) {
-            const existingPhone = await this.breederModel.findOne({
-                phone: normalizedPhone,
-            });
+            const existingPhone = await this.breederModel.findOne({ phone: normalizedPhone });
 
             if (existingPhone) {
                 throw new ConflictException('이미 등록된 전화번호입니다.');
             }
         }
+    }
 
-        // Plan 매핑
-        let plan = BreederPlan.BASIC;
-        if (registerBreederDto.plan === 'pro') plan = BreederPlan.PRO;
+    /**
+     * 비밀번호 해시 생성
+     */
+    private async hashPassword(password: string): Promise<string> {
+        return bcrypt.hash(password, 10);
+    }
 
-        // 비밀번호 해시
-        const hashedPassword = await bcrypt.hash(registerBreederDto.password, 10);
+    /**
+     * 프로필 이미지 업로드 (제공된 경우)
+     */
+    private async uploadProfileImageIfProvided(file?: Express.Multer.File): Promise<string | undefined> {
+        if (!file) return undefined;
 
-        // 프로필 이미지 파일 업로드
-        let profileImageFileName: string | undefined;
-        if (profileImageFile) {
-            const uploadResult = await this.storageService.uploadFile(profileImageFile, 'profiles');
-            profileImageFileName = uploadResult.fileName;
+        const uploadResult = await this.storageService.uploadFile(file, 'profiles');
+        return uploadResult.fileName;
+    }
+
+    /**
+     * 지역 정보 파싱 (location 문자열 -> city, district 분리)
+     */
+    private parseLocation(dto: RegisterBreederRequestDto): { city: string; district: string } {
+        if (dto.city && dto.district) {
+            return { city: dto.city, district: dto.district };
         }
 
-        const breeder = new this.breederModel({
-            email: registerBreederDto.email,
+        if (dto.location) {
+            const parts = dto.location.trim().split(' ');
+            if (parts.length >= 2) {
+                return { city: parts[0], district: parts.slice(1).join(' ') };
+            }
+            throw new BadRequestException('지역 정보 형식이 올바르지 않습니다. (예: 서울특별시 강남구)');
+        }
+
+        throw new BadRequestException('지역 정보가 필요합니다. (city + district 또는 location)');
+    }
+
+    /**
+     * 브리더 문서 생성
+     */
+    private createBreederDocument(
+        dto: RegisterBreederRequestDto,
+        hashedPassword: string,
+        profileImageFileName?: string,
+    ): any {
+        const plan = dto.plan === 'pro' ? BreederPlan.PRO : BreederPlan.BASIC;
+        const { city, district } = this.parseLocation(dto);
+
+        return new this.breederModel({
+            email: dto.email,
             password: hashedPassword,
-            name: registerBreederDto.breederName,
-            phone: this.normalizePhoneNumber(registerBreederDto.phone),
+            name: dto.breederName,
+            phone: this.normalizePhoneNumber(dto.phone),
             profileImage: profileImageFileName,
-            petType: registerBreederDto.petType,
-            breeds: registerBreederDto.breeds,
+            petType: dto.petType,
+            breeds: dto.breeds,
             socialAuth: {
                 provider: SocialProvider.LOCAL,
                 providerId: null,
@@ -218,33 +298,38 @@ export class AuthService {
             verification: {
                 status: VerificationStatus.PENDING,
                 plan: plan,
-                level: registerBreederDto.breederLevel,
+                level: dto.breederLevel,
                 documents: [],
             },
-            marketingAgreed: registerBreederDto.agreeMarketing,
-            termsAgreed: registerBreederDto.agreeTerms,
-            privacyAgreed: registerBreederDto.agreePrivacy,
+            marketingAgreed: dto.agreeMarketing,
+            termsAgreed: dto.agreeTerms,
+            privacyAgreed: dto.agreePrivacy,
             profile: {
-                description: registerBreederDto.introduction || '안녕하세요',
+                description: dto.introduction || '안녕하세요',
                 location: {
-                    city: registerBreederDto.city,
-                    district: registerBreederDto.district,
+                    city: city,
+                    district: district,
                 },
                 representativePhotos: [],
-                specialization: [registerBreederDto.petType],
+                specialization: [dto.petType],
                 experienceYears: 0,
             },
         });
+    }
 
-        const savedBreeder = await breeder.save();
+    /**
+     * 브리더 인증 응답 생성 (토큰 발급 및 저장)
+     */
+    private async generateBreederAuthResponse(breeder: any): Promise<AuthResponseDto> {
+        const tokens = this.generateTokens(
+            (breeder._id as any).toString(),
+            breeder.email,
+            'breeder',
+        );
 
-        // 토큰 생성
-        const tokens = this.generateTokens((savedBreeder._id as any).toString(), savedBreeder.email, 'breeder');
-
-        // Refresh 토큰 해시 후 저장
         const hashedRefreshToken = await this.hashRefreshToken(tokens.refreshToken);
-        savedBreeder.refreshToken = hashedRefreshToken;
-        await savedBreeder.save();
+        breeder.refreshToken = hashedRefreshToken;
+        await breeder.save();
 
         return {
             accessToken: tokens.accessToken,
@@ -252,12 +337,12 @@ export class AuthService {
             accessTokenExpiresIn: tokens.accessTokenExpiresIn,
             refreshTokenExpiresIn: tokens.refreshTokenExpiresIn,
             userInfo: {
-                userId: (savedBreeder._id as any).toString(),
-                emailAddress: savedBreeder.email,
-                nickname: savedBreeder.name,
+                userId: (breeder._id as any).toString(),
+                emailAddress: breeder.email,
+                nickname: breeder.name,
                 userRole: 'breeder',
-                accountStatus: savedBreeder.status,
-                profileImageUrl: savedBreeder.profileImage,
+                accountStatus: breeder.status,
+                profileImageUrl: breeder.profileImage,
             },
             message: '브리더 회원가입이 완료되었습니다.',
         };

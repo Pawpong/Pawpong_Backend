@@ -8,11 +8,21 @@
 
 ### 1. 회원가입
 
-- 입양자 회원가입 (`POST /api/auth/register/adopter`)
-- 브리더 회원가입 (`POST /api/auth/register/breeder`)
+#### 입양자 회원가입 (`POST /api/auth/register/adopter`)
 - 이메일, 닉네임, 전화번호 중복 체크
 - 비밀번호 bcrypt 해싱
 - 전화번호 자동 정규화 (하이픈 제거)
+- 프로필 이미지 업로드 (선택사항)
+
+#### 브리더 회원가입 (`POST /api/auth/register/breeder`)
+- 이메일, 전화번호 중복 체크
+- 비밀번호 bcrypt 해싱
+- 필수 약관 동의 체크 (서비스 이용약관, 개인정보 처리방침)
+- 지역 정보 파싱 (location 문자열 -> city, district 분리)
+- 프로필 이미지 업로드 (선택사항)
+- 품종 목록 최대 5개 제한
+- 요금제 선택 (basic, pro)
+- 브리더 레벨 선택 (new, elite)
 
 ### 2. 로그인
 
@@ -23,13 +33,15 @@
 ### 3. SMS 인증
 
 - 인증코드 발송 (`POST /api/auth/phone/send-code`)
-    - 전화번호 중복 체크
+    - 입양자/브리더 전화번호 중복 체크
     - 6자리 랜덤 코드 생성
     - CoolSMS로 발송
     - 3분 만료 시간
+    - 재발송 제한 (3분 이내 재발송 불가)
 - 인증코드 검증 (`POST /api/auth/phone/verify-code`)
     - 5회 시도 제한
     - 만료 시간 확인
+    - 인증 완료 후 verification map에 저장
 
 ### 4. 소셜 로그인 플로우
 
@@ -72,29 +84,44 @@ auth/
 #### Private 메서드 (단일 책임 원칙)
 
 ```typescript
-// 검증 관련
+// 입양자 검증 관련
 private async validateDuplicateUser(email: string, nickname: string)
 private async checkEmailDuplicate(email: string)
 private async checkNicknameDuplicate(nickname: string)
 
-// 생성 관련
-private async createAdopter(dto: RegisterAdopterRequestDto)
-private async createBreeder(dto: RegisterBreederRequestDto)
+// 브리더 검증 관련
+private async validateBreederRegistration(dto: RegisterBreederRequestDto)
+private async checkBreederEmailDuplicate(email: string)
+private async checkBreederPhoneDuplicate(phone: string)
+
+// 파일 업로드
+private async uploadProfileImageIfProvided(file?: Express.Multer.File)
+
+// 브리더 생성 관련
+private parseLocation(dto: RegisterBreederRequestDto)
+private createBreederDocument(dto: RegisterBreederRequestDto, hashedPassword: string, profileImageFileName?: string)
+private async generateBreederAuthResponse(breeder: any)
 
 // 헬퍼 메서드
 private async hashPassword(password: string)
 private normalizePhoneNumber(phone?: string)
 private generateTokens(userId: string, email: string, role: string)
+private async hashRefreshToken(refreshToken: string)
 ```
 
 #### Public 메서드
 
 ```typescript
-async registerAdopter(dto: RegisterAdopterRequestDto)
-async registerBreeder(dto: RegisterBreederRequestDto)
+async registerAdopter(dto: RegisterAdopterRequestDto, profileImageFile?: Express.Multer.File)
+async registerBreeder(dto: RegisterBreederRequestDto, profileImageFile?: Express.Multer.File)
 async login(dto: LoginRequestDto)
-async handleSocialLogin(user: any)
-async completeSocialRegistration(profile: any, additionalInfo: any)
+async refreshToken(dto: RefreshTokenRequestDto)
+async logout(userId: string, role: string)
+async handleSocialLogin(profile: SocialProfile)
+async completeSocialRegistration(profile: SocialProfile, additionalInfo: AdditionalInfo)
+async completeSocialRegistrationWithTempId(dto: TempIdDto)
+async checkEmailDuplicate(email: string)
+async checkNicknameDuplicate(nickname: string)
 ```
 
 ### SmsService
