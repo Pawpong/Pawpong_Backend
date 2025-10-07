@@ -4,17 +4,20 @@ import { Model } from 'mongoose';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 
+import { SocialProvider, UserStatus, VerificationStatus, BreederPlan } from '../../common/enum/user.enum';
+
+import { StorageService } from 'src/common/storage/storage.service';
+import { CustomLoggerService } from '../../common/logger/custom-logger.service';
+
 import { Adopter, AdopterDocument } from '../../schema/adopter.schema';
 import { Breeder, BreederDocument } from '../../schema/breeder.schema';
+
+import { LoginRequestDto } from './dto/request/login-request.dto';
+import { RefreshTokenRequestDto } from './dto/request/refresh-token-request.dto';
 import { RegisterAdopterRequestDto } from './dto/request/register-adopter-request.dto';
 import { RegisterBreederRequestDto } from './dto/request/register-breeder-request.dto';
-import { LoginRequestDto } from './dto/request/login-request.dto';
 import { AuthResponseDto } from './dto/response/auth-response.dto';
-import { RefreshTokenRequestDto } from './dto/request/refresh-token-request.dto';
 import { TokenResponseDto } from './dto/response/token-response.dto';
-import { SocialProvider, UserStatus, VerificationStatus, BreederPlan } from '../../common/enum/user.enum';
-import { CustomLoggerService } from '../../common/logger/custom-logger.service';
-import { StorageService } from 'src/common/storage/storage.service';
 
 @Injectable()
 export class AuthService {
@@ -774,16 +777,16 @@ export class AuthService {
                 { _id: user.userId },
                 {
                     refreshToken: hashedRefreshToken,
-                    lastActivityAt: new Date()
-                }
+                    lastActivityAt: new Date(),
+                },
             );
         } else if (user.role === 'breeder') {
             await this.breederModel.updateOne(
                 { _id: user.userId },
                 {
                     refreshToken: hashedRefreshToken,
-                    lastLoginAt: new Date()
-                }
+                    lastLoginAt: new Date(),
+                },
             );
         }
 
