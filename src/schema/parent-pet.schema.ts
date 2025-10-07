@@ -31,6 +31,12 @@ export class ParentPet {
     breed: string;
 
     /**
+     * 성별 (male: 수컷, female: 암컷)
+     */
+    @Prop({ required: true, enum: ['male', 'female'] })
+    gender: string;
+
+    /**
      * 부모견/부모묘 사진 파일명 배열 (버킷에서 조회)
      */
     @Prop({ type: [String], default: [] })

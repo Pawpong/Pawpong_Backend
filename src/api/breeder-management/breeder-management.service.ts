@@ -182,16 +182,13 @@ export class BreederManagementService {
             throw new BadRequestException('브리더 정보를 찾을 수 없습니다.');
         }
 
-        if (parentPetDto.photoUrls && parentPetDto.photoUrls.length > 1) {
-            throw new BadRequestException('부모견/부모묘는 사진을 1장까지만 등록할 수 있습니다.');
-        }
-
         const parentPet = new this.parentPetModel({
             breederId: userId,
-            name: parentPetDto.petName,
-            breed: parentPetDto.breedName,
-            photos: parentPetDto.photoUrls || [],
-            description: '',
+            name: parentPetDto.name,
+            breed: parentPetDto.breed,
+            gender: parentPetDto.gender,
+            photos: [],
+            description: parentPetDto.description || '',
             isActive: true,
         });
 
@@ -215,14 +212,11 @@ export class BreederManagementService {
             throw new BadRequestException('해당 부모견/부모묘를 찾을 수 없습니다.');
         }
 
-        if (updateData.photoUrls && updateData.photoUrls.length > 1) {
-            throw new BadRequestException('부모견/부모묘는 사진을 1장까지만 등록할 수 있습니다.');
-        }
-
         const updateFields: any = {};
-        if (updateData.petName) updateFields.name = updateData.petName;
-        if (updateData.breedName) updateFields.breed = updateData.breedName;
-        if (updateData.photoUrls) updateFields.photos = updateData.photoUrls;
+        if (updateData.name) updateFields.name = updateData.name;
+        if (updateData.breed) updateFields.breed = updateData.breed;
+        if (updateData.gender) updateFields.gender = updateData.gender;
+        if (updateData.description !== undefined) updateFields.description = updateData.description;
 
         await this.parentPetModel.findByIdAndUpdate(petId, { $set: updateFields });
 
@@ -269,19 +263,20 @@ export class BreederManagementService {
             throw new BadRequestException('브리더 정보를 찾을 수 없습니다.');
         }
 
-        if (availablePetDto.photoUrls && availablePetDto.photoUrls.length > 1) {
-            throw new BadRequestException('분양 개체는 사진을 1장까지만 등록할 수 있습니다.');
-        }
-
         const availablePet = new this.availablePetModel({
             breederId: userId,
-            name: availablePetDto.petName,
-            breed: availablePetDto.breedName,
+            name: availablePetDto.name,
+            breed: availablePetDto.breed,
+            gender: availablePetDto.gender,
             birthDate: new Date(availablePetDto.birthDate),
-            price: availablePetDto.adoptionPrice,
+            price: availablePetDto.price,
             status: 'available',
-            photos: availablePetDto.photoUrls || [],
-            description: '',
+            photos: [],
+            description: availablePetDto.description || '',
+            parentInfo: availablePetDto.parentInfo ? {
+                mother: availablePetDto.parentInfo.mother,
+                father: availablePetDto.parentInfo.father,
+            } : undefined,
         });
 
         const savedPet = await availablePet.save();
@@ -304,16 +299,19 @@ export class BreederManagementService {
             throw new BadRequestException('해당 분양 개체를 찾을 수 없습니다.');
         }
 
-        if (updateData.photoUrls && updateData.photoUrls.length > 1) {
-            throw new BadRequestException('분양 개체는 사진을 1장까지만 등록할 수 있습니다.');
-        }
-
         const updateFields: any = {};
-        if (updateData.petName) updateFields.name = updateData.petName;
-        if (updateData.breedName) updateFields.breed = updateData.breedName;
+        if (updateData.name) updateFields.name = updateData.name;
+        if (updateData.breed) updateFields.breed = updateData.breed;
+        if (updateData.gender) updateFields.gender = updateData.gender;
         if (updateData.birthDate) updateFields.birthDate = new Date(updateData.birthDate);
-        if (updateData.adoptionPrice) updateFields.price = updateData.adoptionPrice;
-        if (updateData.photoUrls) updateFields.photos = updateData.photoUrls;
+        if (updateData.price) updateFields.price = updateData.price;
+        if (updateData.description !== undefined) updateFields.description = updateData.description;
+        if (updateData.parentInfo) {
+            updateFields.parentInfo = {
+                mother: updateData.parentInfo.mother,
+                father: updateData.parentInfo.father,
+            };
+        }
 
         await this.availablePetModel.findByIdAndUpdate(petId, { $set: updateFields });
 

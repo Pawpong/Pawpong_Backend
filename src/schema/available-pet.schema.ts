@@ -31,6 +31,12 @@ export class AvailablePet {
     breed: string;
 
     /**
+     * 성별 (male: 수컷, female: 암컷)
+     */
+    @Prop({ required: true, enum: ['male', 'female'] })
+    gender: string;
+
+    /**
      * 출생일
      */
     @Prop({ required: true })
