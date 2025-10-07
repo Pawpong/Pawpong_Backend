@@ -67,6 +67,14 @@ export class AuthService {
         return bcrypt.hash(refreshToken, 10);
     }
 
+    /**
+     * 전화번호 정규화 (하이픈 제거, 숫자만)
+     */
+    private normalizePhoneNumber(phone?: string): string | undefined {
+        if (!phone) return undefined;
+        return phone.replace(/[^0-9]/g, '');
+    }
+
     async registerAdopter(
         registerAdopterDto: RegisterAdopterRequestDto,
         profileImageFile?: Express.Multer.File,
@@ -101,7 +109,7 @@ export class AuthService {
             emailAddress: registerAdopterDto.email,
             passwordHash: hashedPassword,
             nickname: registerAdopterDto.nickname,
-            phoneNumber: registerAdopterDto.phone,
+            phoneNumber: this.normalizePhoneNumber(registerAdopterDto.phone),
             profileImage: profileImageFileName,
             socialAuthInfo: {
                 authProvider: SocialProvider.LOCAL,
@@ -169,12 +177,15 @@ export class AuthService {
         }
 
         // 전화번호 중복 확인
-        const existingPhone = await this.breederModel.findOne({
-            phone: registerBreederDto.phone,
-        });
+        const normalizedPhone = this.normalizePhoneNumber(registerBreederDto.phone);
+        if (normalizedPhone) {
+            const existingPhone = await this.breederModel.findOne({
+                phone: normalizedPhone,
+            });
 
-        if (existingPhone) {
-            throw new ConflictException('이미 등록된 전화번호입니다.');
+            if (existingPhone) {
+                throw new ConflictException('이미 등록된 전화번호입니다.');
+            }
         }
 
         // Plan 매핑
@@ -195,7 +206,7 @@ export class AuthService {
             email: registerBreederDto.email,
             password: hashedPassword,
             name: registerBreederDto.breederName,
-            phone: registerBreederDto.phone,
+            phone: this.normalizePhoneNumber(registerBreederDto.phone),
             profileImage: profileImageFileName,
             petType: registerBreederDto.petType,
             breeds: registerBreederDto.breeds,
@@ -638,7 +649,7 @@ export class AuthService {
             const adopter = new this.adopterModel({
                 emailAddress: profile.email,
                 nickname: additionalInfo.nickname,
-                phoneNumber: additionalInfo.phone,
+                phoneNumber: this.normalizePhoneNumber(additionalInfo.phone),
                 profileImageUrl: profile.profileImage,
                 socialAuthInfo: {
                     authProvider: profile.provider,
@@ -701,7 +712,7 @@ export class AuthService {
             const breeder = new this.breederModel({
                 email: profile.email,
                 name: additionalInfo.breederName,
-                phone: additionalInfo.phone,
+                phone: this.normalizePhoneNumber(additionalInfo.phone),
                 profileImage: profile.profileImage,
                 introduction: additionalInfo.introduction || '',
                 specialization: [additionalInfo.petType || 'dog'],
