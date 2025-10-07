@@ -6,6 +6,9 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { SmsService } from './sms.service';
 import { JwtStrategy } from '../../common/strategy/jwt.strategy';
+import { GoogleStrategy } from '../../common/strategy/google.strategy';
+import { NaverStrategy } from '../../common/strategy/naver.strategy';
+import { KakaoStrategy } from '../../common/strategy/kakao.strategy';
 import { AuthDatabaseModule } from '../../common/database/database.module';
 
 @Module({
@@ -23,7 +26,7 @@ import { AuthDatabaseModule } from '../../common/database/database.module';
         }),
     ],
     controllers: [AuthController],
-    providers: [AuthService, SmsService, JwtStrategy],
+    providers: [AuthService, SmsService, JwtStrategy, GoogleStrategy, NaverStrategy, KakaoStrategy],
     exports: [AuthService, SmsService],
 })
 export class AuthModule {}

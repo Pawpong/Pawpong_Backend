@@ -21,11 +21,9 @@ export class SmsService {
         const apiKey = this.configService.get<string>('COOLSMS_API_KEY');
         const apiSecret = this.configService.get<string>('COOLSMS_API_SECRET');
 
-        if (!apiKey || !apiSecret) {
-            throw new InternalServerErrorException('CoolSMS 설정이 올바르지 않습니다.');
+        if (apiKey && apiSecret) {
+            this.messageService = new CoolsmsMessageService(apiKey, apiSecret);
         }
-
-        this.messageService = new CoolsmsMessageService(apiKey, apiSecret);
     }
 
     async sendVerificationCode(phone: string): Promise<{ success: boolean; message: string }> {
@@ -45,6 +43,10 @@ export class SmsService {
         const expiresAt = new Date(Date.now() + this.CODE_EXPIRY_MINUTES * 60 * 1000);
 
         try {
+            if (!this.messageService) {
+                throw new InternalServerErrorException('SMS 서비스가 설정되지 않았습니다.');
+            }
+
             const senderPhone = this.configService.get<string>('COOLSMS_SENDER_PHONE');
 
             if (!senderPhone) {

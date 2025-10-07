@@ -371,13 +371,236 @@ export class AuthService {
      */
     async logout(userId: string, role: string): Promise<void> {
         if (role === 'adopter') {
-            await this.adopterModel.findByIdAndUpdate(userId, { 
-                refresh_token: null 
+            await this.adopterModel.findByIdAndUpdate(userId, {
+                refresh_token: null
             });
         } else if (role === 'breeder') {
-            await this.breederModel.findByIdAndUpdate(userId, { 
-                refreshToken: null 
+            await this.breederModel.findByIdAndUpdate(userId, {
+                refreshToken: null
             });
+        }
+    }
+
+    /**
+     * 이메일 중복 체크 - 입양자와 브리더 모두 확인
+     */
+    async checkEmailDuplicate(email: string): Promise<boolean> {
+        const adopter = await this.adopterModel.findOne({ email_address: email });
+        const breeder = await this.breederModel.findOne({ email: email });
+        return !!(adopter || breeder);
+    }
+
+    /**
+     * 소셜 로그인 처리 - 사용자 조회 또는 임시 생성
+     */
+    async handleSocialLogin(profile: {
+        provider: string;
+        providerId: string;
+        email: string;
+        name: string;
+        profileImage?: string;
+    }): Promise<{ needsAdditionalInfo: boolean; tempUserId?: string; user?: any }> {
+        // 기존 사용자 조회 (Adopter)
+        let adopter = await this.adopterModel.findOne({
+            'social_auth_info.auth_provider': profile.provider,
+            'social_auth_info.provider_user_id': profile.providerId,
+        });
+
+        if (adopter) {
+            // 기존 사용자 로그인
+            return {
+                needsAdditionalInfo: false,
+                user: {
+                    userId: (adopter._id as any).toString(),
+                    email: adopter.email_address,
+                    name: adopter.full_name,
+                    role: 'adopter',
+                    profileImage: adopter.profile_image_url,
+                },
+            };
+        }
+
+        // 기존 사용자 조회 (Breeder)
+        let breeder = await this.breederModel.findOne({
+            'socialAuth.provider': profile.provider,
+            'socialAuth.providerId': profile.providerId,
+        });
+
+        if (breeder) {
+            // 기존 사용자 로그인
+            return {
+                needsAdditionalInfo: false,
+                user: {
+                    userId: (breeder._id as any).toString(),
+                    email: breeder.email,
+                    name: breeder.name,
+                    role: 'breeder',
+                    profileImage: breeder.profileImage,
+                },
+            };
+        }
+
+        // 신규 사용자 - 추가 정보 필요
+        // 임시 사용자 ID 생성 (세션 또는 JWT로 관리)
+        const tempUserId = `temp_${profile.provider}_${profile.providerId}_${Date.now()}`;
+
+        return {
+            needsAdditionalInfo: true,
+            tempUserId,
+        };
+    }
+
+    /**
+     * 소셜 회원가입 완료 처리
+     */
+    async completeSocialRegistration(
+        profile: {
+            provider: string;
+            providerId: string;
+            email: string;
+            name: string;
+            profileImage?: string;
+        },
+        additionalInfo: {
+            role: 'adopter' | 'breeder';
+            phone?: string;
+            petType?: string;
+            plan?: string;
+            breederName?: string;
+            introduction?: string;
+            city?: string;
+            district?: string;
+            breeds?: string[];
+            level?: string;
+            marketingAgreed?: boolean;
+        },
+    ): Promise<AuthResponseDto> {
+        if (additionalInfo.role === 'adopter') {
+            // 입양자 생성
+            const adopter = new this.adopterModel({
+                email_address: profile.email,
+                full_name: profile.name,
+                phone_number: additionalInfo.phone,
+                profile_image_url: profile.profileImage,
+                social_auth_info: {
+                    auth_provider: profile.provider,
+                    provider_user_id: profile.providerId,
+                    provider_email: profile.email,
+                },
+                account_status: UserStatus.ACTIVE,
+                user_role: 'adopter',
+                favorite_breeder_list: [],
+                adoption_application_list: [],
+                written_review_list: [],
+                submitted_report_list: [],
+            });
+
+            const savedAdopter = await adopter.save();
+
+            // 토큰 생성
+            const tokens = this.generateTokens(
+                (savedAdopter._id as any).toString(),
+                savedAdopter.email_address,
+                'adopter',
+            );
+
+            // Refresh 토큰 저장
+            const hashedRefreshToken = await this.hashRefreshToken(tokens.refreshToken);
+            savedAdopter.refresh_token = hashedRefreshToken;
+            savedAdopter.last_activity_at = new Date();
+            await savedAdopter.save();
+
+            return {
+                accessToken: tokens.accessToken,
+                refreshToken: tokens.refreshToken,
+                accessTokenExpiresIn: tokens.accessTokenExpiresIn,
+                refreshTokenExpiresIn: tokens.refreshTokenExpiresIn,
+                userInfo: {
+                    userId: (savedAdopter._id as any).toString(),
+                    emailAddress: savedAdopter.email_address,
+                    fullName: savedAdopter.full_name,
+                    userRole: 'adopter',
+                    accountStatus: savedAdopter.account_status,
+                    profileImageUrl: savedAdopter.profile_image_url,
+                },
+                message: '소셜 회원가입이 완료되었습니다.',
+            };
+        } else {
+            // 브리더 생성
+            if (!additionalInfo.breederName || !additionalInfo.city || !additionalInfo.district) {
+                throw new BadRequestException('브리더는 브리더명, 지역이 필요합니다.');
+            }
+
+            if (!additionalInfo.breeds || additionalInfo.breeds.length === 0) {
+                throw new BadRequestException('최소 1개의 품종이 필요합니다.');
+            }
+
+            const breeder = new this.breederModel({
+                email: profile.email,
+                name: additionalInfo.breederName,
+                phone: additionalInfo.phone,
+                profileImage: profile.profileImage,
+                introduction: additionalInfo.introduction || '',
+                specialization: [additionalInfo.petType || 'dog'],
+                location: {
+                    city: additionalInfo.city,
+                    district: additionalInfo.district,
+                },
+                priceRange: {
+                    min: 0,
+                    max: 0,
+                },
+                representativePhotos: [],
+                socialAuth: {
+                    provider: profile.provider,
+                    providerId: profile.providerId,
+                    email: profile.email,
+                },
+                status: UserStatus.ACTIVE,
+                marketingAgreed: additionalInfo.marketingAgreed || false,
+                verification: {
+                    status: VerificationStatus.PENDING,
+                    plan: additionalInfo.plan === 'premium' ? BreederPlan.PREMIUM : BreederPlan.BASIC,
+                    level: additionalInfo.level || 'new',
+                    documents: [],
+                },
+                parentPets: [],
+                availablePets: [],
+                receivedApplications: [],
+                reviews: [],
+                reports: [],
+            });
+
+            const savedBreeder = await breeder.save();
+
+            // 토큰 생성
+            const tokens = this.generateTokens(
+                (savedBreeder._id as any).toString(),
+                savedBreeder.email,
+                'breeder',
+            );
+
+            // Refresh 토큰 저장
+            const hashedRefreshToken = await this.hashRefreshToken(tokens.refreshToken);
+            savedBreeder.refreshToken = hashedRefreshToken;
+            savedBreeder.lastLoginAt = new Date();
+            await savedBreeder.save();
+
+            return {
+                accessToken: tokens.accessToken,
+                refreshToken: tokens.refreshToken,
+                accessTokenExpiresIn: tokens.accessTokenExpiresIn,
+                refreshTokenExpiresIn: tokens.refreshTokenExpiresIn,
+                userInfo: {
+                    userId: (savedBreeder._id as any).toString(),
+                    emailAddress: savedBreeder.email,
+                    fullName: savedBreeder.name,
+                    userRole: 'breeder',
+                    accountStatus: savedBreeder.status,
+                    profileImageUrl: savedBreeder.profileImage,
+                },
+                message: '소셜 회원가입이 완료되었습니다.',
+            };
         }
     }
 }

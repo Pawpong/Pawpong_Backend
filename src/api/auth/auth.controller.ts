@@ -1,4 +1,7 @@
-import { Controller, Post, Body, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, HttpStatus, UseGuards, Get, Req, Res } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
+import { ConfigService } from '@nestjs/config';
+import type { Response } from 'express';
 
 import { CurrentUser } from '../../common/decorator/current-user.decorator';
 import { ApiController, ApiEndpoint } from '../../common/decorator/swagger.decorator';
@@ -12,6 +15,7 @@ import { RefreshTokenRequestDto } from './dto/request/refresh-token-request.dto'
 import { RegisterAdopterRequestDto } from './dto/request/register-adopter-request.dto';
 import { RegisterBreederRequestDto } from './dto/request/register-breeder-request.dto';
 import { SendVerificationCodeRequestDto, VerifyCodeRequestDto } from './dto/request/phone-verification-request.dto';
+import { CompleteSocialRegistrationDto } from './dto/request/social-login-request.dto';
 import { ApiResponseDto } from '../../common/dto/response/api-response.dto';
 import { AuthResponseDto } from './dto/response/auth-response.dto';
 import { TokenResponseDto } from './dto/response/token-response.dto';
@@ -23,6 +27,7 @@ export class AuthController {
     constructor(
         private readonly authService: AuthService,
         private readonly smsService: SmsService,
+        private readonly configService: ConfigService,
     ) {}
 
     @Post('register/adopter')
@@ -42,7 +47,7 @@ export class AuthController {
     @Post('register/breeder')
     @ApiEndpoint({
         summary: '브리더 회원가입',
-        description: '새로운 브리더 계정을 생성합니다.',
+        description: '새로운 브리더 ��정을 생성합니다.',
         responseType: AuthResponseDto,
         isPublic: true,
     })
@@ -120,5 +125,153 @@ export class AuthController {
     ): Promise<ApiResponseDto<PhoneVerificationResponseDto>> {
         const result = await this.smsService.verifyCode(verifyCodeDto.phone, verifyCodeDto.code);
         return ApiResponseDto.success(new PhoneVerificationResponseDto(result.success, result.message));
+    }
+
+    // ===== 소셜 로그인 =====
+
+    @Get('google')
+    @UseGuards(AuthGuard('google'))
+    @ApiEndpoint({
+        summary: '구글 로그인',
+        description: '구글 OAuth 로그인을 시작합니다.',
+        isPublic: true,
+    })
+    async googleLogin() {
+        // Guard가 Google OAuth로 리다이렉트
+    }
+
+    @Get('google/callback')
+    @UseGuards(AuthGuard('google'))
+    async googleCallback(@Req() req, @Res() res: Response) {
+        const result = await this.authService.handleSocialLogin(req.user);
+        const frontendUrl = this.configService.get<string>('FRONTEND_URL');
+
+        if (result.needsAdditionalInfo) {
+            // 추가 정보 입력 필요 - 프론트엔드로 데이터 전달
+            const redirectUrl = `${frontendUrl}/login/register/additional-info?tempId=${result.tempUserId}&provider=google&email=${req.user.email}&name=${req.user.name}&profileImage=${req.user.profileImage || ''}`;
+            return res.redirect(redirectUrl);
+        } else {
+            // 기존 사용자 - 토큰 발급 후 성공 페이지로
+            const tokens = await this.authService.completeSocialRegistration(req.user, {
+                role: result.user.role,
+            });
+            const redirectUrl = `${frontendUrl}/login/register/success?accessToken=${tokens.accessToken}&refreshToken=${tokens.refreshToken}`;
+            return res.redirect(redirectUrl);
+        }
+    }
+
+    @Get('naver')
+    @UseGuards(AuthGuard('naver'))
+    @ApiEndpoint({
+        summary: '네이버 로그인',
+        description: '네이버 OAuth 로그인을 시작합니다.',
+        isPublic: true,
+    })
+    async naverLogin() {
+        // Guard가 Naver OAuth로 리다이렉트
+    }
+
+    @Get('naver/callback')
+    @UseGuards(AuthGuard('naver'))
+    async naverCallback(@Req() req, @Res() res: Response) {
+        const result = await this.authService.handleSocialLogin(req.user);
+        const frontendUrl = this.configService.get<string>('FRONTEND_URL');
+
+        if (result.needsAdditionalInfo) {
+            const redirectUrl = `${frontendUrl}/login/register/additional-info?tempId=${result.tempUserId}&provider=naver&email=${req.user.email}&name=${req.user.name}&profileImage=${req.user.profileImage || ''}`;
+            return res.redirect(redirectUrl);
+        } else {
+            const tokens = await this.authService.completeSocialRegistration(req.user, {
+                role: result.user.role,
+            });
+            const redirectUrl = `${frontendUrl}/login/register/success?accessToken=${tokens.accessToken}&refreshToken=${tokens.refreshToken}`;
+            return res.redirect(redirectUrl);
+        }
+    }
+
+    @Get('kakao')
+    @UseGuards(AuthGuard('kakao'))
+    @ApiEndpoint({
+        summary: '카카오 로그인',
+        description: '카카오 OAuth 로그인을 시작합니다.',
+        isPublic: true,
+    })
+    async kakaoLogin() {
+        // Guard가 Kakao OAuth로 리다이렉트
+    }
+
+    @Get('kakao/callback')
+    @UseGuards(AuthGuard('kakao'))
+    async kakaoCallback(@Req() req, @Res() res: Response) {
+        const result = await this.authService.handleSocialLogin(req.user);
+        const frontendUrl = this.configService.get<string>('FRONTEND_URL');
+
+        if (result.needsAdditionalInfo) {
+            const needsEmail = req.user.needsEmail ? '&needsEmail=true' : '';
+            const redirectUrl = `${frontendUrl}/login/register/additional-info?tempId=${result.tempUserId}&provider=kakao&email=${req.user.email}&name=${req.user.name}&profileImage=${req.user.profileImage || ''}${needsEmail}`;
+            return res.redirect(redirectUrl);
+        } else {
+            const tokens = await this.authService.completeSocialRegistration(req.user, {
+                role: result.user.role,
+            });
+            const redirectUrl = `${frontendUrl}/login/register/success?accessToken=${tokens.accessToken}&refreshToken=${tokens.refreshToken}`;
+            return res.redirect(redirectUrl);
+        }
+    }
+
+    @Post('check-email')
+    @HttpCode(HttpStatus.OK)
+    @ApiEndpoint({
+        summary: '이메일 중복 체크',
+        description: '입력한 이메일이 이미 가입되어 있는지 확인합니다.',
+        responseType: Boolean,
+        isPublic: true,
+    })
+    async checkEmailDuplicate(@Body('email') email: string): Promise<ApiResponseDto<{ isDuplicate: boolean }>> {
+        const isDuplicate = await this.authService.checkEmailDuplicate(email);
+        return ApiResponseDto.success({ isDuplicate }, isDuplicate ? '이미 가입된 이메일입니다.' : '사용 가능한 이메일입니다.');
+    }
+
+    @Post('social/complete')
+    @HttpCode(HttpStatus.OK)
+    @ApiEndpoint({
+        summary: '소셜 회원가입 완료',
+        description: '소셜 로그인 후 추가 정보를 입력하여 회원가입을 완료합니다.',
+        responseType: AuthResponseDto,
+        isPublic: true,
+    })
+    async completeSocialRegistration(
+        @Body()
+        dto: CompleteSocialRegistrationDto & {
+            provider: string;
+            providerId: string;
+            email: string;
+            name: string;
+            profileImage?: string;
+        },
+    ): Promise<ApiResponseDto<AuthResponseDto>> {
+        const result = await this.authService.completeSocialRegistration(
+            {
+                provider: dto.provider,
+                providerId: dto.providerId,
+                email: dto.email,
+                name: dto.name,
+                profileImage: dto.profileImage,
+            },
+            {
+                role: dto.role,
+                phone: dto.phone,
+                petType: dto.petType,
+                plan: dto.plan,
+                breederName: dto.breederName,
+                introduction: dto.introduction,
+                city: dto.city,
+                district: dto.district,
+                breeds: dto.breeds,
+                level: dto.level,
+                marketingAgreed: dto.marketingAgreed,
+            },
+        );
+        return ApiResponseDto.success(result, '소셜 회원가입이 완료되었습니다.');
     }
 }
