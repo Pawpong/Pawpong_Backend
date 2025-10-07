@@ -153,16 +153,16 @@ export class UploadController {
     @ApiConsumes('multipart/form-data')
     @ApiEndpoint({
         summary: '분양 개체 사진 업로드',
-        description: '분양 개체의 사진을 업로드하고 자동으로 DB에 저장합니다.',
+        description: '분양 개체의 사진 1장을 업로드하고 자동으로 DB에 저장합니다.',
         isPublic: false,
     })
-    @UseInterceptors(FilesInterceptor('files', 10))
+    @UseInterceptors(FileInterceptor('file'))
     async uploadAvailablePetPhotos(
         @Param('petId') petId: string,
-        @UploadedFiles() files: Express.Multer.File[],
+        @UploadedFile() file: Express.Multer.File,
         @CurrentUser() user: any,
-    ): Promise<ApiResponseDto<UploadResponseDto[]>> {
-        if (!files || files.length === 0) {
+    ): Promise<ApiResponseDto<UploadResponseDto>> {
+        if (!file) {
             throw new BadRequestException('파일이 업로드되지 않았습니다.');
         }
 
@@ -176,17 +176,14 @@ export class UploadController {
             throw new NotFoundException('해당 분양 개체를 찾을 수 없습니다.');
         }
 
-        const results = await this.storageService.uploadMultipleFiles(files, 'pets/available');
-        const fileNames = results.map(r => r.fileName);
+        const result = await this.storageService.uploadFile(file, 'pets/available');
 
-        // DB 업데이트: photos 배열 설정
-        await this.availablePetModel.findByIdAndUpdate(petId, { $set: { photos: fileNames } });
+        // DB 업데이트: photos 배열에 1개만 저장
+        await this.availablePetModel.findByIdAndUpdate(petId, { $set: { photos: [result.fileName] } });
 
-        const responses = results.map((result, index) =>
-            new UploadResponseDto(result.cdnUrl, result.fileName, files[index].size)
-        );
+        const response = new UploadResponseDto(result.cdnUrl, result.fileName, file.size);
 
-        return ApiResponseDto.success(responses, '분양 개체 사진이 업로드되고 저장되었습니다.');
+        return ApiResponseDto.success(response, '분양 개체 사진이 업로드되고 저장되었습니다.');
     }
 
     @Post('parent-pet-photos/:petId')
@@ -194,16 +191,16 @@ export class UploadController {
     @ApiConsumes('multipart/form-data')
     @ApiEndpoint({
         summary: '부모견/묘 사진 업로드',
-        description: '부모견/묘의 사진을 업로드하고 자동으로 DB에 저장합니다.',
+        description: '부모견/묘의 사진 1장을 업로드하고 자동으로 DB에 저장합니다.',
         isPublic: false,
     })
-    @UseInterceptors(FilesInterceptor('files', 10))
+    @UseInterceptors(FileInterceptor('file'))
     async uploadParentPetPhotos(
         @Param('petId') petId: string,
-        @UploadedFiles() files: Express.Multer.File[],
+        @UploadedFile() file: Express.Multer.File,
         @CurrentUser() user: any,
-    ): Promise<ApiResponseDto<UploadResponseDto[]>> {
-        if (!files || files.length === 0) {
+    ): Promise<ApiResponseDto<UploadResponseDto>> {
+        if (!file) {
             throw new BadRequestException('파일이 업로드되지 않았습니다.');
         }
 
@@ -217,17 +214,14 @@ export class UploadController {
             throw new NotFoundException('해당 부모견/묘를 찾을 수 없습니다.');
         }
 
-        const results = await this.storageService.uploadMultipleFiles(files, 'pets/parent');
-        const fileNames = results.map(r => r.fileName);
+        const result = await this.storageService.uploadFile(file, 'pets/parent');
 
-        // DB 업데이트: photos 배열 설정
-        await this.parentPetModel.findByIdAndUpdate(petId, { $set: { photos: fileNames } });
+        // DB 업데이트: photos 배열에 1개만 저장
+        await this.parentPetModel.findByIdAndUpdate(petId, { $set: { photos: [result.fileName] } });
 
-        const responses = results.map((result, index) =>
-            new UploadResponseDto(result.cdnUrl, result.fileName, files[index].size)
-        );
+        const response = new UploadResponseDto(result.cdnUrl, result.fileName, file.size);
 
-        return ApiResponseDto.success(responses, '부모견/묘 사진이 업로드되고 저장되었습니다.');
+        return ApiResponseDto.success(response, '부모견/묘 사진이 업로드되고 저장되었습니다.');
     }
 
     @Post('single')
