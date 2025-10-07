@@ -155,15 +155,13 @@ export class AuthController {
         const frontendUrl = this.configService.get<string>('FRONTEND_URL');
 
         if (result.needsAdditionalInfo) {
-            // 추가 정보 입력 필요 - 프론트엔드로 데이터 전달
-            const redirectUrl = `${frontendUrl}/login/register/additional-info?tempId=${result.tempUserId}&provider=google&email=${req.user.email}&name=${req.user.name}&profileImage=${req.user.profileImage || ''}`;
+            // 신규 사용자 - /signup으로 리다이렉트
+            const redirectUrl = `${frontendUrl}/signup?tempId=${result.tempUserId}&provider=google&email=${req.user.email}&name=${req.user.name}&profileImage=${req.user.profileImage || ''}`;
             return res.redirect(redirectUrl);
         } else {
-            // 기존 사용자 - 토큰 발급 후 성공 페이지로
-            const tokens = await this.authService.completeSocialRegistration(req.user, {
-                role: result.user.role,
-            });
-            const redirectUrl = `${frontendUrl}/login/register/success?accessToken=${tokens.accessToken}&refreshToken=${tokens.refreshToken}`;
+            // 기존 사용자 - 로그인 처리 (토큰 발급)
+            const tokens = await this.authService.generateSocialLoginTokens(result.user);
+            const redirectUrl = `${frontendUrl}/login/success?accessToken=${tokens.accessToken}&refreshToken=${tokens.refreshToken}`;
             return res.redirect(redirectUrl);
         }
     }
@@ -186,13 +184,13 @@ export class AuthController {
         const frontendUrl = this.configService.get<string>('FRONTEND_URL');
 
         if (result.needsAdditionalInfo) {
-            const redirectUrl = `${frontendUrl}/login/register/additional-info?tempId=${result.tempUserId}&provider=naver&email=${req.user.email}&name=${req.user.name}&profileImage=${req.user.profileImage || ''}`;
+            // 신규 사용자 - /signup으로 리다이렉트
+            const redirectUrl = `${frontendUrl}/signup?tempId=${result.tempUserId}&provider=naver&email=${req.user.email}&name=${req.user.name}&profileImage=${req.user.profileImage || ''}`;
             return res.redirect(redirectUrl);
         } else {
-            const tokens = await this.authService.completeSocialRegistration(req.user, {
-                role: result.user.role,
-            });
-            const redirectUrl = `${frontendUrl}/login/register/success?accessToken=${tokens.accessToken}&refreshToken=${tokens.refreshToken}`;
+            // 기존 사용자 - 로그인 처리 (토큰 발급)
+            const tokens = await this.authService.generateSocialLoginTokens(result.user);
+            const redirectUrl = `${frontendUrl}/login/success?accessToken=${tokens.accessToken}&refreshToken=${tokens.refreshToken}`;
             return res.redirect(redirectUrl);
         }
     }
@@ -215,14 +213,14 @@ export class AuthController {
         const frontendUrl = this.configService.get<string>('FRONTEND_URL');
 
         if (result.needsAdditionalInfo) {
+            // 신규 사용자 - /signup으로 리다이렉트
             const needsEmail = req.user.needsEmail ? '&needsEmail=true' : '';
-            const redirectUrl = `${frontendUrl}/login/register/additional-info?tempId=${result.tempUserId}&provider=kakao&email=${req.user.email}&name=${req.user.name}&profileImage=${req.user.profileImage || ''}${needsEmail}`;
+            const redirectUrl = `${frontendUrl}/signup?tempId=${result.tempUserId}&provider=kakao&email=${req.user.email}&name=${req.user.name}&profileImage=${req.user.profileImage || ''}${needsEmail}`;
             return res.redirect(redirectUrl);
         } else {
-            const tokens = await this.authService.completeSocialRegistration(req.user, {
-                role: result.user.role,
-            });
-            const redirectUrl = `${frontendUrl}/login/register/success?accessToken=${tokens.accessToken}&refreshToken=${tokens.refreshToken}`;
+            // 기존 사용자 - 로그인 처리 (토큰 발급)
+            const tokens = await this.authService.generateSocialLoginTokens(result.user);
+            const redirectUrl = `${frontendUrl}/login/success?accessToken=${tokens.accessToken}&refreshToken=${tokens.refreshToken}`;
             return res.redirect(redirectUrl);
         }
     }
@@ -270,38 +268,9 @@ export class AuthController {
         isPublic: true,
     })
     async completeSocialRegistration(
-        @Body()
-        dto: CompleteSocialRegistrationDto & {
-            provider: string;
-            providerId: string;
-            email: string;
-            name: string;
-            profileImage?: string;
-        },
+        @Body() dto: CompleteSocialRegistrationDto,
     ): Promise<ApiResponseDto<AuthResponseDto>> {
-        const result = await this.authService.completeSocialRegistration(
-            {
-                provider: dto.provider,
-                providerId: dto.providerId,
-                email: dto.email,
-                name: dto.name,
-                profileImage: dto.profileImage,
-            },
-            {
-                role: dto.role,
-                nickname: dto.nickname,
-                phone: dto.phone,
-                petType: dto.petType,
-                plan: dto.plan,
-                breederName: dto.breederName,
-                introduction: dto.introduction,
-                city: dto.city,
-                district: dto.district,
-                breeds: dto.breeds,
-                level: dto.level,
-                marketingAgreed: dto.marketingAgreed,
-            },
-        );
+        const result = await this.authService.completeSocialRegistrationWithTempId(dto);
         return ApiResponseDto.success(result, '소셜 회원가입이 완료되었습니다.');
     }
 }

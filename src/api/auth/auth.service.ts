@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException, BadRequestException, Inject } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { JwtService } from '@nestjs/jwt';
@@ -13,7 +13,8 @@ import { AuthResponseDto } from './dto/response/auth-response.dto';
 import { RefreshTokenRequestDto } from './dto/request/refresh-token-request.dto';
 import { TokenResponseDto } from './dto/response/token-response.dto';
 import { SocialProvider, UserStatus, VerificationStatus, BreederPlan } from '../../common/enum/user.enum';
-import { StorageService } from '../../common/storage/storage.service';
+import { CustomLoggerService } from '../../common/logger/custom-logger.service';
+import { StorageService } from 'src/common/storage/storage.service';
 
 @Injectable()
 export class AuthService {
@@ -21,7 +22,8 @@ export class AuthService {
         @InjectModel(Adopter.name) private adopterModel: Model<AdopterDocument>,
         @InjectModel(Breeder.name) private breederModel: Model<BreederDocument>,
         private jwtService: JwtService,
-        private storageService: StorageService,
+        private readonly logger: CustomLoggerService,
+        private readonly storageService: StorageService,
     ) {}
 
     /**
@@ -518,6 +520,89 @@ export class AuthService {
     }
 
     /**
+     * tempId로 소셜 회원가입 완료 처리
+     */
+    async completeSocialRegistrationWithTempId(dto: any): Promise<AuthResponseDto> {
+        this.logger.logStart(
+            'completeSocialRegistrationWithTempId',
+            'tempId 기반 소셜 회원가입 처리',
+            dto,
+            'AuthService',
+        );
+
+        // tempId 파싱: "temp_kakao_4479198661_1759826027884" 형식
+        const tempIdParts = dto.tempId.split('_');
+        if (tempIdParts.length !== 4 || tempIdParts[0] !== 'temp') {
+            throw new BadRequestException('유효하지 않은 임시 ID 형식입니다.');
+        }
+
+        const provider = tempIdParts[1]; // kakao, google, naver
+        const providerId = tempIdParts[2]; // 소셜 제공자의 사용자 ID
+
+        this.logger.logSuccess(
+            'completeSocialRegistrationWithTempId',
+            'tempId 파싱 완료',
+            { provider, providerId, nickname: dto.nickname, role: dto.role },
+            'AuthService',
+        );
+
+        // 소셜 제공자로부터 기존 사용자 정보 조회 (이미 가입했는지 확인)
+        let adopter = await this.adopterModel.findOne({
+            'socialAuthInfo.authProvider': provider,
+            'socialAuthInfo.providerUserId': providerId,
+        });
+
+        let breeder = await this.breederModel.findOne({
+            'socialAuth.provider': provider,
+            'socialAuth.providerId': providerId,
+        });
+
+        if (adopter) {
+            throw new ConflictException('이미 입양자로 가입된 소셜 계정입니다.');
+        }
+
+        if (breeder) {
+            throw new ConflictException('이미 브리더로 가입된 소셜 계정입니다.');
+        }
+
+        // 소셜 제공자의 이메일은 tempId에서 복원할 수 없으므로 DTO에서 받아야 함
+        // 하지만 보안을 위해 프론트에서 URL 파라미터로 받은 email을 다시 보내도록 함
+        // 여기서는 DTO에 email이 없으므로 에러 처리
+        if (!dto.email) {
+            throw new BadRequestException('이메일 정보가 필요합니다.');
+        }
+
+        if (!dto.name) {
+            throw new BadRequestException('이름 정보가 필요합니다.');
+        }
+
+        // 기존 메서드 호출
+        return this.completeSocialRegistration(
+            {
+                provider,
+                providerId,
+                email: dto.email,
+                name: dto.name,
+                profileImage: dto.profileImage || '',
+            },
+            {
+                role: dto.role,
+                nickname: dto.nickname,
+                phone: dto.phone,
+                petType: dto.petType,
+                plan: dto.plan,
+                breederName: dto.breederName,
+                introduction: dto.introduction,
+                city: dto.city,
+                district: dto.district,
+                breeds: dto.breeds,
+                level: dto.level,
+                marketingAgreed: dto.marketingAgreed,
+            },
+        );
+    }
+
+    /**
      * 소셜 회원가입 완료 처리
      */
     async completeSocialRegistration(
@@ -545,9 +630,6 @@ export class AuthService {
     ): Promise<AuthResponseDto> {
         if (additionalInfo.role === 'adopter') {
             // 닉네임 필수 체크
-            if (!additionalInfo.nickname) {
-                throw new BadRequestException('입양자는 닉네임이 필요합니다.');
-            }
 
             // 닉네임 중복 체크
             const existingNickname = await this.adopterModel.findOne({
@@ -685,5 +767,46 @@ export class AuthService {
                 message: '소셜 회원가입이 완료되었습니다.',
             };
         }
+    }
+
+    /**
+     * 소셜 로그인 기존 사용자 토큰 발급
+     */
+    async generateSocialLoginTokens(user: any) {
+        const tokens = this.generateTokens(user.userId, user.email, user.role);
+
+        // Refresh 토큰 저장
+        const hashedRefreshToken = await this.hashRefreshToken(tokens.refreshToken);
+
+        if (user.role === 'adopter') {
+            await this.adopterModel.updateOne(
+                { _id: user.userId },
+                {
+                    refreshToken: hashedRefreshToken,
+                    lastActivityAt: new Date()
+                }
+            );
+        } else if (user.role === 'breeder') {
+            await this.breederModel.updateOne(
+                { _id: user.userId },
+                {
+                    refreshToken: hashedRefreshToken,
+                    lastLoginAt: new Date()
+                }
+            );
+        }
+
+        return {
+            accessToken: tokens.accessToken,
+            refreshToken: tokens.refreshToken,
+            accessTokenExpiresIn: tokens.accessTokenExpiresIn,
+            refreshTokenExpiresIn: tokens.refreshTokenExpiresIn,
+            userInfo: {
+                userId: user.userId,
+                email: user.email,
+                name: user.name,
+                role: user.role,
+            },
+        };
     }
 }
