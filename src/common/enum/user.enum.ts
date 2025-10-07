@@ -8,6 +8,7 @@ export enum SocialProvider {
     LOCAL = 'local',
     GOOGLE = 'google',
     KAKAO = 'kakao',
+    NAVER = 'naver',
     APPLE = 'apple',
 }
 
@@ -48,6 +49,7 @@ export enum VerificationStatus {
 
 export enum BreederPlan {
     BASIC = 'basic',
+    STANDARD = 'standard',
     PREMIUM = 'premium',
 }
 

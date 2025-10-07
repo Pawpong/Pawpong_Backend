@@ -710,14 +710,52 @@ export class Breeder {
     /**
      * 반려동물 타입 (강아지/고양이)
      */
-    @Prop({ required: true, enum: ['dog', 'cat'] })
-    petType: string;
+    @Prop({ enum: ['dog', 'cat'] })
+    petType?: string;
 
     /**
-     * 세부 품종명
+     * 세부 품종명 (최대 5개)
      */
-    @Prop({ required: true })
-    detailBreed: string;
+    @Prop({ type: [String] })
+    detailBreed?: string[];
+
+    /**
+     * 브리더명(상호명)
+     */
+    @Prop()
+    breederName?: string;
+
+    /**
+     * 브리더 소개
+     */
+    @Prop()
+    introduction?: string;
+
+    /**
+     * 브리더 레벨
+     */
+    @Prop({ enum: ['level1', 'level2', 'level3'] })
+    breederLevel?: string;
+
+    /**
+     * 브리더 프로필 사진 URL
+     */
+    @Prop()
+    breederProfilePhoto?: string;
+
+    /**
+     * 브리더 위치 정보
+     */
+    @Prop({
+        type: {
+            city: String,
+            district: String,
+        },
+    })
+    location?: {
+        city?: string;
+        district?: string;
+    };
 
     /**
      * 입양비 노출 설정 (range: 범위 노출, consultation: 상담 후 공개)

@@ -135,9 +135,9 @@ export class BreederExploreService {
                 breederId: breeder._id.toString(),
                 breederName: breeder.name,
                 breederLevel: breeder.verification?.level || 'new',
-                location: breeder.profile?.location ? 
+                location: breeder.profile?.location ?
                     `${breeder.profile.location.city} ${breeder.profile.location.district}` : '',
-                mainBreed: breeder.detailBreed,
+                mainBreed: breeder.detailBreed?.[0] || '',
                 isAdoptionAvailable: hasAvailablePets,
                 priceRange: breeder.priceDisplay === 'range' ? {
                     min: breeder.priceRange?.min || 0,
@@ -189,9 +189,9 @@ export class BreederExploreService {
             breederId: breeder._id.toString(),
             breederName: breeder.name,
             breederLevel: breeder.verification?.level || 'new',
-            location: breeder.profile?.location ? 
+            location: breeder.profile?.location ?
                 `${breeder.profile.location.city} ${breeder.profile.location.district}` : '',
-            mainBreed: breeder.detailBreed,
+            mainBreed: breeder.detailBreed?.[0] || '',
             isAdoptionAvailable: breeder.availablePets?.some(pet => pet.status === 'available') || false,
             priceRange: undefined, // 로그인 필요
             favoriteCount: breeder.stats?.totalFavorites || 0,

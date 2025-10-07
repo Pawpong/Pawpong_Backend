@@ -1,83 +1,136 @@
-import { IsEmail, IsString, MinLength, IsOptional } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import {
+    IsEmail,
+    IsString,
+    MinLength,
+    IsOptional,
+    IsArray,
+    IsEnum,
+    IsBoolean,
+} from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 /**
  * 브리더 회원가입 요청 DTO
- * 브리더가 플랫폼에 가입할 때 사용됩니다.
  */
 export class RegisterBreederRequestDto {
-    /**
-     * 브리더 이메일 주소 (로그인 ID로 사용)
-     * @example "breeder@example.com"
-     */
     @ApiProperty({
-        description: '브리더 이메일 주소 (로그인 ID로 사용)',
-        example: 'breeder@example.com',
-        format: 'email',
+        description: 'OAuth 임시 ID (소셜 로그인 시)',
+        example: 'temp_kakao_4479198661_1759597226564',
+    })
+    @IsString()
+    tempId: string;
+
+    @ApiProperty({
+        description: 'OAuth 제공자',
+        example: 'kakao',
+        enum: ['kakao', 'naver', 'google'],
+    })
+    @IsEnum(['kakao', 'naver', 'google'])
+    provider: string;
+
+    @ApiProperty({
+        description: '이메일',
+        example: 'kakao_4479198661@temp.pawpong.com',
     })
     @IsEmail()
     email: string;
 
-    /**
-     * 계정 비밀번호 (최소 6자 이상)
-     * @example "securepassword123"
-     */
     @ApiProperty({
-        description: '계정 비밀번호 (최소 6자 이상)',
-        example: 'securepassword123',
-        minLength: 6,
-    })
-    @IsString()
-    @MinLength(6)
-    password: string;
-
-    /**
-     * 브리더 실명 또는 대표자명
-     * @example "김브리더"
-     */
-    @ApiProperty({
-        description: '브리더 실명 또는 대표자명',
-        example: '김브리더',
+        description: '이름',
+        example: '비만쯔+거북이',
     })
     @IsString()
     name: string;
 
-    /**
-     * 연락처 전화번호 (선택사항)
-     * @example "010-9876-5432"
-     */
-    @ApiProperty({
-        description: '연락처 전화번호 (선택사항)',
-        example: '010-9876-5432',
-        required: false,
+    @ApiPropertyOptional({
+        description: '프로필 이미지 URL',
+        example: 'https://storage.googleapis.com/pawpong-bucket/profiles/...',
     })
     @IsOptional()
     @IsString()
-    phone?: string;
+    profileImage?: string;
 
-    /**
-     * 사업자 등록번호 (선택사항)
-     * @example "123-45-67890"
-     */
     @ApiProperty({
-        description: '사업자 등록번호 (선택사항)',
-        example: '123-45-67890',
-        required: false,
+        description: '전화번호',
+        example: '010-6545-6502',
     })
-    @IsOptional()
     @IsString()
-    businessNumber?: string;
+    phone: string;
 
-    /**
-     * 사업체명 (선택사항)
-     * @example "행복한 반려동물 농장"
-     */
     @ApiProperty({
-        description: '사업체명 (선택사항)',
-        example: '행복한 반려동물 농장',
-        required: false,
+        description: '동물 종류',
+        example: 'dog',
+        enum: ['dog', 'cat'],
+    })
+    @IsEnum(['dog', 'cat'])
+    petType: string;
+
+    @ApiProperty({
+        description: '요금제',
+        example: 'basic',
+        enum: ['basic', 'standard', 'premium'],
+    })
+    @IsEnum(['basic', 'standard', 'premium'])
+    plan: string;
+
+    @ApiProperty({
+        description: '마케팅 수신 동의',
+        example: true,
+    })
+    @IsBoolean()
+    marketingAgreed: boolean;
+
+    @ApiProperty({
+        description: '브리더명(상호명)',
+        example: '테스트 브리더',
+    })
+    @IsString()
+    breederName: string;
+
+    @ApiPropertyOptional({
+        description: '소개',
+        example: '안녕하세요',
     })
     @IsOptional()
     @IsString()
-    businessName?: string;
+    introduction?: string;
+
+    @ApiProperty({
+        description: '시/도',
+        example: '서울특별시',
+    })
+    @IsString()
+    city: string;
+
+    @ApiProperty({
+        description: '시/군/구',
+        example: '강남구',
+    })
+    @IsString()
+    district: string;
+
+    @ApiProperty({
+        description: '품종 목록 (최대 5개)',
+        example: ['비숑프리제', '말티즈'],
+        type: [String],
+    })
+    @IsArray()
+    @IsString({ each: true })
+    breeds: string[];
+
+    @ApiPropertyOptional({
+        description: '브리더 프로필 사진 URL',
+        example: 'https://storage.googleapis.com/pawpong-bucket/profiles/...',
+    })
+    @IsOptional()
+    @IsString()
+    breederProfilePhoto?: string;
+
+    @ApiProperty({
+        description: '브리더 레벨',
+        example: 'level1',
+        enum: ['level1', 'level2', 'level3'],
+    })
+    @IsEnum(['level1', 'level2', 'level3'])
+    breederLevel: string;
 }

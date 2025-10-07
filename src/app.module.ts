@@ -13,6 +13,8 @@ import { BreederManagementModule } from './api/breeder-management/breeder-manage
 import { AdminModule } from './api/admin/admin.module';
 import { HealthModule } from './api/health/health.module';
 import { UploadModule } from './api/upload/upload.module';
+import { DistrictModule } from './api/district/district.module';
+import { BreedModule } from './api/breed/breed.module';
 
 @Module({
     imports: [
@@ -29,6 +31,8 @@ import { UploadModule } from './api/upload/upload.module';
         AdminModule,
         HealthModule,
         UploadModule,
+        DistrictModule,
+        BreedModule,
     ],
     controllers: [],
     providers: [CustomLoggerService],

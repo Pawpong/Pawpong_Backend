@@ -67,6 +67,7 @@ async function bootstrap(): Promise<void> {
             'http://localhost:3001',
             'http://localhost:3002',
             // Pawpong 프론트엔드 (추후 도메인 설정)
+            'https://pawpongdev.vercel.app',
             'https://pawpong.co.kr',
             'https://www.pawpong.co.kr',
             'https://admin.pawpong.co.kr',
@@ -117,7 +118,7 @@ async function bootstrap(): Promise<void> {
     const document: OpenAPIObject = SwaggerModule.createDocument(app, config, {
         operationIdFactory: (_controllerKey: string, methodKey: string) => methodKey,
     });
-    
+
     SwaggerModule.setup('api/docs', app, document, {
         swaggerOptions: {
             persistAuthorization: true, // 인증 정보 유지
@@ -128,13 +129,13 @@ async function bootstrap(): Promise<void> {
         customCss: '.swagger-ui .topbar { display: none }', // 탑바 숨김
         customSiteTitle: 'Pawpong API Documentation',
     });
-    
+
     // ConfigService 주입
     const configService: ConfigService = app.get(ConfigService);
 
     // 프로덕션 환경 체크
     const isProduction = process.env.NODE_ENV === 'production';
-    
+
     // 개발 환경에서 Swagger JSON 파일 저장
     if (!isProduction) {
         const fs = require('fs');

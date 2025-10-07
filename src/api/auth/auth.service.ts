@@ -119,34 +119,66 @@ export class AuthService {
     }
 
     async registerBreeder(registerBreederDto: RegisterBreederRequestDto): Promise<AuthResponseDto> {
-        // Breeder schema uses camelCase, not snake_case
+        // 이메일 중복 확인
         const existingBreeder = await this.breederModel.findOne({
             email: registerBreederDto.email,
         });
 
         if (existingBreeder) {
-            throw new ConflictException('Email already exists');
+            throw new ConflictException('이미 가입된 이메일입니다.');
         }
 
-        const hashedPassword = await bcrypt.hash(registerBreederDto.password, 10);
+        // 전화번호 중복 확인
+        const existingPhone = await this.breederModel.findOne({
+            phone: registerBreederDto.phone,
+        });
+
+        if (existingPhone) {
+            throw new ConflictException('이미 등록된 전화번호입니다.');
+        }
+
+        // Provider 매핑
+        let provider = SocialProvider.LOCAL;
+        if (registerBreederDto.provider === 'kakao') provider = SocialProvider.KAKAO;
+        else if (registerBreederDto.provider === 'naver') provider = SocialProvider.NAVER;
+        else if (registerBreederDto.provider === 'google') provider = SocialProvider.GOOGLE;
+
+        // Plan 매핑
+        let plan = BreederPlan.BASIC;
+        if (registerBreederDto.plan === 'standard') plan = BreederPlan.STANDARD;
+        else if (registerBreederDto.plan === 'premium') plan = BreederPlan.PREMIUM;
 
         const breeder = new this.breederModel({
             email: registerBreederDto.email,
-            password: hashedPassword,
+            password: null, // 소셜 로그인이므로 비밀번호 없음
             name: registerBreederDto.name,
             phone: registerBreederDto.phone,
+            profileImage: registerBreederDto.profileImage,
+            petType: registerBreederDto.petType,
+            detailBreed: registerBreederDto.breeds,
+            breederName: registerBreederDto.breederName,
+            introduction: registerBreederDto.introduction,
+            location: {
+                city: registerBreederDto.city,
+                district: registerBreederDto.district,
+            },
+            breederLevel: registerBreederDto.breederLevel,
+            breederProfilePhoto: registerBreederDto.breederProfilePhoto,
             socialAuth: {
-                provider: SocialProvider.LOCAL,
+                provider: provider,
+                providerId: registerBreederDto.tempId,
             },
             status: UserStatus.ACTIVE,
             verification: {
                 status: VerificationStatus.PENDING,
-                plan: BreederPlan.BASIC,
+                plan: plan,
+                level: 'new',
                 documents: [],
             },
+            marketingAgreed: registerBreederDto.marketingAgreed,
+            priceDisplay: 'consultation',
             parentPets: [],
             availablePets: [],
-            applicationForm: [],
             receivedApplications: [],
             reviews: [],
             reports: [],
