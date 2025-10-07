@@ -10,9 +10,32 @@ import { SystemStats, SystemStatsSchema } from '../../schema/system-stats.schema
 @Module({
     imports: [
         MongooseModule.forRootAsync({
-            useFactory: (configService: ConfigService) => ({
-                uri: configService.get<string>('MONGODB_URI'),
-            }),
+            useFactory: (configService: ConfigService) => {
+                const uri = configService.get<string>('MONGODB_URI');
+                console.log('[DatabaseModule] MongoDB URI:', uri ? uri.replace(/:[^:]*@/, ':****@') : 'NOT SET');
+
+                return {
+                    uri: uri,
+                    connectionFactory: (connection) => {
+                        connection.on('connected', () => {
+                            console.log('[DatabaseModule] ✅ MongoDB connected successfully');
+                        });
+                        connection.on('disconnected', () => {
+                            console.log('[DatabaseModule] ⚠️  MongoDB disconnected');
+                        });
+                        connection.on('error', (error) => {
+                            console.error('[DatabaseModule] ❌ MongoDB connection error:', error.message);
+                        });
+                        return connection;
+                    },
+                    // 연결 옵션 추가
+                    retryAttempts: 3,
+                    retryDelay: 1000,
+                    serverSelectionTimeoutMS: 5000,
+                    connectTimeoutMS: 10000,
+                    socketTimeoutMS: 45000,
+                };
+            },
             inject: [ConfigService],
         }),
         MongooseModule.forFeature([
