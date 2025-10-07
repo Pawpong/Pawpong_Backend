@@ -7,6 +7,7 @@ import { SearchBreederRequestDto, BreederSortBy } from './dto/request/search-bre
 import { BreederCardResponseDto } from './dto/response/breeder-card-response.dto';
 import { PaginationResponseDto } from '../../common/dto/pagination/pagination-response.dto';
 import { PaginationBuilder } from '../../common/dto/pagination/pagination-builder.dto';
+import { StorageService } from '../../common/storage/storage.service';
 
 /**
  * 브리더 탐색 서비스
@@ -17,6 +18,7 @@ export class BreederExploreService {
     constructor(
         @InjectModel(Breeder.name) private breederModel: Model<BreederDocument>,
         @InjectModel(Adopter.name) private adopterModel: Model<AdopterDocument>,
+        private readonly storageService: StorageService,
     ) {}
 
     /**
@@ -131,6 +133,16 @@ export class BreederExploreService {
             // 입양 가능 여부 확인
             const hasAvailablePets = breeder.availablePets?.some(pet => pet.status === 'available') || false;
 
+            // 이미지 URL을 Signed URL로 변환
+            const representativePhotos = this.storageService.generateSignedUrls(
+                breeder.profile?.representativePhotos || [],
+                60 // 1시간 유효
+            );
+            const profileImage = this.storageService.generateSignedUrlSafe(
+                breeder.profileImage,
+                60
+            );
+
             return {
                 breederId: breeder._id.toString(),
                 breederName: breeder.name,
@@ -154,8 +166,8 @@ export class BreederExploreService {
                 },
                 favoriteCount: breeder.stats?.totalFavorites || 0,
                 isFavorited: favoritedBreederIds.includes(breeder._id.toString()),
-                representativePhotos: breeder.profile?.representativePhotos || [],
-                profileImage: breeder.profileImage,
+                representativePhotos: representativePhotos,
+                profileImage: profileImage,
                 totalReviews: breeder.stats?.totalReviews || 0,
                 averageRating: breeder.stats?.averageRating || 0,
                 createdAt: (breeder as any).createdAt || new Date(),
@@ -185,22 +197,34 @@ export class BreederExploreService {
             .lean()
             .exec();
 
-        return breeders.map(breeder => ({
-            breederId: breeder._id.toString(),
-            breederName: breeder.name,
-            breederLevel: breeder.verification?.level || 'new',
-            location: breeder.profile?.location ?
-                `${breeder.profile.location.city} ${breeder.profile.location.district}` : '',
-            mainBreed: breeder.detailBreed?.[0] || '',
-            isAdoptionAvailable: breeder.availablePets?.some(pet => pet.status === 'available') || false,
-            priceRange: undefined, // 로그인 필요
-            favoriteCount: breeder.stats?.totalFavorites || 0,
-            isFavorited: false,
-            representativePhotos: breeder.profile?.representativePhotos || [],
-            profileImage: breeder.profileImage,
-            totalReviews: breeder.stats?.totalReviews || 0,
-            averageRating: breeder.stats?.averageRating || 0,
-            createdAt: (breeder as any).createdAt || new Date(),
-        }));
+        return breeders.map(breeder => {
+            // 이미지 URL을 Signed URL로 변환
+            const representativePhotos = this.storageService.generateSignedUrls(
+                breeder.profile?.representativePhotos || [],
+                60 // 1시간 유효
+            );
+            const profileImage = this.storageService.generateSignedUrlSafe(
+                breeder.profileImage,
+                60
+            );
+
+            return {
+                breederId: breeder._id.toString(),
+                breederName: breeder.name,
+                breederLevel: breeder.verification?.level || 'new',
+                location: breeder.profile?.location ?
+                    `${breeder.profile.location.city} ${breeder.profile.location.district}` : '',
+                mainBreed: breeder.detailBreed?.[0] || '',
+                isAdoptionAvailable: breeder.availablePets?.some(pet => pet.status === 'available') || false,
+                priceRange: undefined, // 로그인 필요
+                favoriteCount: breeder.stats?.totalFavorites || 0,
+                isFavorited: false,
+                representativePhotos: representativePhotos,
+                profileImage: profileImage,
+                totalReviews: breeder.stats?.totalReviews || 0,
+                averageRating: breeder.stats?.averageRating || 0,
+                createdAt: (breeder as any).createdAt || new Date(),
+            };
+        });
     }
 }

@@ -150,4 +150,26 @@ export class StorageService {
     urlToSign += '&Signature=' + encodedSignature;
     return urlToSign;
   }
+
+  /**
+   * 파일명 배열을 Signed URL 배열로 변환
+   */
+  generateSignedUrls(fileNames: string[], expirationMinutes: number = 60): string[] {
+    if (!fileNames || fileNames.length === 0) {
+      return [];
+    }
+    return fileNames
+      .filter(fileName => fileName && fileName.trim() !== '')
+      .map(fileName => this.generateSignedUrl(fileName, expirationMinutes));
+  }
+
+  /**
+   * 단일 파일명을 Signed URL로 변환 (null-safe)
+   */
+  generateSignedUrlSafe(fileName: string | null | undefined, expirationMinutes: number = 60): string | undefined {
+    if (!fileName || fileName.trim() === '') {
+      return undefined;
+    }
+    return this.generateSignedUrl(fileName, expirationMinutes);
+  }
 }

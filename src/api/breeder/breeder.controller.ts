@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Query, Body, Param, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../../common/guard/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorator/user.decorator';
 import { ApiResponseDto } from '../../common/dto/response/api-response.dto';
@@ -34,7 +34,7 @@ export class BreederController {
         return ApiResponseDto.success(result, '브리더 검색이 완료되었습니다.');
     }
 
-    @Get('explore')
+    @Post('explore')
     @ApiPaginatedEndpoint({
         summary: '브리더 탐색',
         description: '강아지/고양이 브리더를 검색하고 다양한 조건으로 필터링할 수 있습니다.',
@@ -42,7 +42,7 @@ export class BreederController {
         isPublic: true,
     })
     async exploreBreeders(
-        @Query() searchDto: SearchBreederRequestDto,
+        @Body() searchDto: SearchBreederRequestDto,
         @CurrentUser() user?: any,
     ): Promise<ApiResponseDto<PaginationResponseDto<BreederCardResponseDto>>> {
         const result = await this.breederExploreService.searchBreeders(searchDto, user?.userId);
