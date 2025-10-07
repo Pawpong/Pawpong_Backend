@@ -30,7 +30,7 @@ export class AdopterRepository {
      */
     async findById(adopterId: string): Promise<AdopterDocument | null> {
         try {
-            return await this.adopterModel.findById(adopterId).select('-password_hash').lean().exec();
+            return await this.adopterModel.findById(adopterId).select('-password_hash').exec();
         } catch (error) {
             throw new Error(`입양자 조회 실패: ${error.message}`);
         }

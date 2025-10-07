@@ -35,7 +35,6 @@ export class BreederRepository {
             return await this.breederModel
                 .findById(breederId)
                 .select('-password -receivedApplications.applicationData -reports')
-                .lean()
                 .exec();
         } catch (error) {
             throw new Error(`브리더 조회 실패: ${error.message}`);
@@ -624,7 +623,7 @@ export class BreederRepository {
      */
     async findPopularBreeders(limit: number = 10): Promise<BreederDocument[]> {
         try {
-            return (await this.breederModel
+            return await this.breederModel
                 .find({
                     status: 'active',
                     'verification.status': VerificationStatus.APPROVED,
@@ -637,8 +636,7 @@ export class BreederRepository {
                     'stats.completedAdoptions': -1,
                 })
                 .limit(limit)
-                .lean()
-                .exec()) as BreederDocument[];
+                .exec();
         } catch (error) {
             throw new Error(`인기 브리더 조회 실패: ${error.message}`);
         }

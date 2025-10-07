@@ -1,6 +1,11 @@
 /**
- * PM2 Production Configuration - Single Instance Mode
- * 단일 인스턴스로 실행하는 간단한 설정
+ * PM2 Production Configuration - Fork Mode with Auto Build
+ *
+ * 사용법:
+ *   npm run build && pm2 start  - 빌드 후 시작
+ *   pm2 restart pawpong-api     - 재시작
+ *   pm2 logs pawpong-api        - 로그 확인
+ *   pm2 stop pawpong-api        - 중지
  */
 
 module.exports = {
@@ -10,7 +15,7 @@ module.exports = {
             name: 'pawpong-api',
             script: './dist/main.js',
 
-            // 단일 인스턴스 설정
+            // Fork 모드 (단일 프로세스)
             instances: 1,
             exec_mode: 'fork',
 
@@ -52,6 +57,9 @@ module.exports = {
             kill_timeout: 5000,
             wait_ready: true,
             listen_timeout: 3000,
+
+            // 환경변수 파일 로드
+            env_file: '.env',
         }
-    ]
+    ],
 };
