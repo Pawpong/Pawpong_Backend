@@ -9,6 +9,9 @@ import {
 import { randomUUID } from 'crypto';
 
 import { ApplicationStatus, ReviewType, ReportStatus } from '../../common/enum/user.enum';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { BreederReview, BreederReviewDocument } from '../../schema/breeder-review.schema';
 
 import { AdopterRepository } from './adopter.repository';
 import { BreederRepository } from '../breeder-management/breeder.repository';
@@ -39,6 +42,7 @@ export class AdopterService {
     constructor(
         private adopterRepository: AdopterRepository,
         private breederRepository: BreederRepository,
+        @InjectModel(BreederReview.name) private breederReviewModel: Model<BreederReviewDocument>,
     ) {}
 
     /**
@@ -206,11 +210,15 @@ export class AdopterService {
 
             await this.breederRepository.addReview(application.targetBreederId, breederReview);
 
-            // 브리더 평점 통계 실시간 재계산 및 업데이트
-            const updatedBreeder = await this.breederRepository.findById(application.targetBreederId);
-            if (updatedBreeder) {
-                const totalReviews = updatedBreeder.reviews.length;
-                const totalRating = updatedBreeder.reviews.reduce((sum: any, r: any) => sum + r.rating, 0);
+            // 브리더 평점 통계 실시간 재계산 및 업데이트 (BreederReview 컬렉션에서 조회)
+            const reviews = await this.breederReviewModel.find({
+                breederId: application.targetBreederId,
+                isVisible: true
+            });
+
+            if (reviews.length > 0) {
+                const totalReviews = reviews.length;
+                const totalRating = reviews.reduce((sum, r) => sum + (r.rating || 0), 0);
                 const averageRating = totalRating / totalReviews;
 
                 await this.breederRepository.updateReviewStats(

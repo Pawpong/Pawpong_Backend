@@ -6,6 +6,11 @@ import { Adopter, AdopterSchema } from '../../schema/adopter.schema';
 import { Breeder, BreederSchema } from '../../schema/breeder.schema';
 import { Admin, AdminSchema } from '../../schema/admin.schema';
 import { SystemStats, SystemStatsSchema } from '../../schema/system-stats.schema';
+import { ParentPet, ParentPetSchema } from '../../schema/parent-pet.schema';
+import { AvailablePet, AvailablePetSchema } from '../../schema/available-pet.schema';
+import { BreederReview, BreederReviewSchema } from '../../schema/breeder-review.schema';
+import { BreederReport, BreederReportSchema } from '../../schema/breeder-report.schema';
+import { AdoptionApplication, AdoptionApplicationSchema } from '../../schema/adoption-application.schema';
 
 @Module({
     imports: [
@@ -43,6 +48,11 @@ import { SystemStats, SystemStatsSchema } from '../../schema/system-stats.schema
             { name: Breeder.name, schema: BreederSchema },
             { name: Admin.name, schema: AdminSchema },
             { name: SystemStats.name, schema: SystemStatsSchema },
+            { name: ParentPet.name, schema: ParentPetSchema },
+            { name: AvailablePet.name, schema: AvailablePetSchema },
+            { name: BreederReview.name, schema: BreederReviewSchema },
+            { name: BreederReport.name, schema: BreederReportSchema },
+            { name: AdoptionApplication.name, schema: AdoptionApplicationSchema },
         ]),
     ],
     exports: [MongooseModule],
@@ -61,13 +71,27 @@ export class DatabaseModule {}
 export class AuthDatabaseModule {}
 
 @Module({
-    imports: [MongooseModule.forFeature([{ name: Adopter.name, schema: AdopterSchema }])],
+    imports: [
+        MongooseModule.forFeature([
+            { name: Adopter.name, schema: AdopterSchema },
+            { name: Breeder.name, schema: BreederSchema },
+            { name: BreederReview.name, schema: BreederReviewSchema },
+        ])
+    ],
     exports: [MongooseModule],
 })
 export class AdopterDatabaseModule {}
 
 @Module({
-    imports: [MongooseModule.forFeature([{ name: Breeder.name, schema: BreederSchema }])],
+    imports: [
+        MongooseModule.forFeature([
+            { name: Breeder.name, schema: BreederSchema },
+            { name: AvailablePet.name, schema: AvailablePetSchema },
+            { name: ParentPet.name, schema: ParentPetSchema },
+            { name: BreederReview.name, schema: BreederReviewSchema },
+            { name: AdoptionApplication.name, schema: AdoptionApplicationSchema },
+        ])
+    ],
     exports: [MongooseModule],
 })
 export class BreederDatabaseModule {}
@@ -79,6 +103,8 @@ export class BreederDatabaseModule {}
             { name: Breeder.name, schema: BreederSchema },
             { name: Adopter.name, schema: AdopterSchema },
             { name: SystemStats.name, schema: SystemStatsSchema },
+            { name: BreederReport.name, schema: BreederReportSchema },
+            { name: BreederReview.name, schema: BreederReviewSchema },
         ]),
     ],
     exports: [MongooseModule],

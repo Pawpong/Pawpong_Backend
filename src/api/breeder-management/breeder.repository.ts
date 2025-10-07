@@ -3,6 +3,9 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Breeder, BreederDocument } from '../../schema/breeder.schema';
 import { VerificationStatus, ApplicationStatus, PetStatus } from '../../common/enum/user.enum';
+import { AvailablePet, AvailablePetDocument } from '../../schema/available-pet.schema';
+import { ParentPet, ParentPetDocument } from '../../schema/parent-pet.schema';
+import { AdoptionApplication, AdoptionApplicationDocument } from '../../schema/adoption-application.schema';
 
 /**
  * 브리더 데이터 접근 계층 Repository
@@ -21,7 +24,12 @@ import { VerificationStatus, ApplicationStatus, PetStatus } from '../../common/e
  */
 @Injectable()
 export class BreederRepository {
-    constructor(@InjectModel(Breeder.name) private readonly breederModel: Model<BreederDocument>) {}
+    constructor(
+        @InjectModel(Breeder.name) private readonly breederModel: Model<BreederDocument>,
+        @InjectModel(AvailablePet.name) private readonly availablePetModel: Model<AvailablePetDocument>,
+        @InjectModel(ParentPet.name) private readonly parentPetModel: Model<ParentPetDocument>,
+        @InjectModel(AdoptionApplication.name) private readonly adoptionApplicationModel: Model<AdoptionApplicationDocument>,
+    ) {}
 
     /**
      * 브리더 ID로 기본 정보 조회
@@ -486,10 +494,7 @@ export class BreederRepository {
      */
     async findAvailablePetById(breederId: string, petId: string): Promise<any | null> {
         try {
-            const breeder = await this.breederModel.findById(breederId).lean().exec();
-            if (!breeder) return null;
-
-            return breeder.availablePets?.find((pet: any) => pet.petId === petId) || null;
+            return await this.availablePetModel.findOne({ _id: petId, breederId }).lean().exec();
         } catch (error) {
             throw new Error(`분양 가능 반려동물 조회 실패: ${error.message}`);
         }
@@ -504,10 +509,7 @@ export class BreederRepository {
      */
     async findParentPetById(breederId: string, petId: string): Promise<any | null> {
         try {
-            const breeder = await this.breederModel.findById(breederId).lean().exec();
-            if (!breeder) return null;
-
-            return breeder.parentPets?.find((pet: any) => pet.petId === petId) || null;
+            return await this.parentPetModel.findOne({ _id: petId, breederId }).lean().exec();
         } catch (error) {
             throw new Error(`부모 반려동물 조회 실패: ${error.message}`);
         }
@@ -524,19 +526,21 @@ export class BreederRepository {
      */
     async findReceivedApplications(breederId: string, page: number = 1, limit: number = 10): Promise<any> {
         try {
-            const breeder = await this.breederModel.findById(breederId).lean().exec();
-            if (!breeder) return null;
-
-            const applications = breeder.receivedApplications || [];
-            const total = applications.length;
             const skip = (page - 1) * limit;
 
-            const paginatedApplications = applications
-                .sort((a: any, b: any) => new Date(b.appliedAt).getTime() - new Date(a.appliedAt).getTime())
-                .slice(skip, skip + limit);
+            const [applications, total] = await Promise.all([
+                this.adoptionApplicationModel
+                    .find({ breederId })
+                    .sort({ appliedAt: -1 })
+                    .skip(skip)
+                    .limit(limit)
+                    .lean()
+                    .exec(),
+                this.adoptionApplicationModel.countDocuments({ breederId }).exec(),
+            ]);
 
             return {
-                applications: paginatedApplications,
+                applications,
                 pagination: {
                     currentPage: page,
                     totalPages: Math.ceil(total / limit),

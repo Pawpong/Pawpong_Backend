@@ -25,6 +25,8 @@ import { OptionalJwtAuthGuard } from '../../common/guard/optional-jwt-auth.guard
 import { CurrentUser } from '../../common/decorator/user.decorator';
 import { Breeder, BreederDocument } from '../../schema/breeder.schema';
 import { Adopter, AdopterDocument } from '../../schema/adopter.schema';
+import { AvailablePet, AvailablePetDocument } from '../../schema/available-pet.schema';
+import { ParentPet, ParentPetDocument } from '../../schema/parent-pet.schema';
 
 @ApiController('upload')
 @Controller('upload')
@@ -33,6 +35,8 @@ export class UploadController {
         private readonly storageService: StorageService,
         @InjectModel(Breeder.name) private breederModel: Model<BreederDocument>,
         @InjectModel(Adopter.name) private adopterModel: Model<AdopterDocument>,
+        @InjectModel(AvailablePet.name) private availablePetModel: Model<AvailablePetDocument>,
+        @InjectModel(ParentPet.name) private parentPetModel: Model<ParentPetDocument>,
     ) {}
 
     @Post('profile')
@@ -167,12 +171,7 @@ export class UploadController {
         }
 
         // 해당 petId가 본인 소유인지 확인
-        const breeder = await this.breederModel.findById(user.userId);
-        if (!breeder) {
-            throw new NotFoundException('브리더를 찾을 수 없습니다.');
-        }
-
-        const pet = breeder.availablePets?.find(p => p.petId === petId);
+        const pet = await this.availablePetModel.findOne({ _id: petId, breederId: user.userId });
         if (!pet) {
             throw new NotFoundException('해당 분양 개체를 찾을 수 없습니다.');
         }
@@ -180,11 +179,8 @@ export class UploadController {
         const results = await this.storageService.uploadMultipleFiles(files, 'pets/available');
         const fileNames = results.map(r => r.fileName);
 
-        // DB 업데이트: availablePets[petId].photos 배열 설정
-        await this.breederModel.updateOne(
-            { _id: user.userId, 'availablePets.petId': petId },
-            { $set: { 'availablePets.$.photos': fileNames } }
-        );
+        // DB 업데이트: photos 배열 설정
+        await this.availablePetModel.findByIdAndUpdate(petId, { $set: { photos: fileNames } });
 
         const responses = results.map((result, index) =>
             new UploadResponseDto(result.cdnUrl, result.fileName, files[index].size)
@@ -216,12 +212,7 @@ export class UploadController {
         }
 
         // 해당 petId가 본인 소유인지 확인
-        const breeder = await this.breederModel.findById(user.userId);
-        if (!breeder) {
-            throw new NotFoundException('브리더를 찾을 수 없습니다.');
-        }
-
-        const pet = breeder.parentPets?.find(p => p.petId === petId);
+        const pet = await this.parentPetModel.findOne({ _id: petId, breederId: user.userId });
         if (!pet) {
             throw new NotFoundException('해당 부모견/묘를 찾을 수 없습니다.');
         }
@@ -229,11 +220,8 @@ export class UploadController {
         const results = await this.storageService.uploadMultipleFiles(files, 'pets/parent');
         const fileNames = results.map(r => r.fileName);
 
-        // DB 업데이트: parentPets[petId].photos 배열 설정
-        await this.breederModel.updateOne(
-            { _id: user.userId, 'parentPets.petId': petId },
-            { $set: { 'parentPets.$.photos': fileNames } }
-        );
+        // DB 업데이트: photos 배열 설정
+        await this.parentPetModel.findByIdAndUpdate(petId, { $set: { photos: fileNames } });
 
         const responses = results.map((result, index) =>
             new UploadResponseDto(result.cdnUrl, result.fileName, files[index].size)

@@ -28,6 +28,8 @@ import { Admin, AdminDocument } from '../../schema/admin.schema';
 import { Breeder, BreederDocument } from '../../schema/breeder.schema';
 import { Adopter, AdopterDocument } from '../../schema/adopter.schema';
 import { SystemStats, SystemStatsDocument } from '../../schema/system-stats.schema';
+import { BreederReport, BreederReportDocument } from '../../schema/breeder-report.schema';
+import { BreederReview, BreederReviewDocument } from '../../schema/breeder-review.schema';
 
 @Injectable()
 export class AdminService {
@@ -36,6 +38,8 @@ export class AdminService {
         @InjectModel(Breeder.name) private breederModel: Model<BreederDocument>,
         @InjectModel(Adopter.name) private adopterModel: Model<AdopterDocument>,
         @InjectModel(SystemStats.name) private systemStatsModel: Model<SystemStatsDocument>,
+        @InjectModel(BreederReport.name) private breederReportModel: Model<BreederReportDocument>,
+        @InjectModel(BreederReview.name) private breederReviewModel: Model<BreederReviewDocument>,
     ) {}
 
     private async logAdminActivity(
@@ -109,7 +113,7 @@ export class AdminService {
                         verificationStatus: breeder.verification?.status || 'pending',
                         subscriptionPlan: breeder.verification?.plan || 'basic',
                         submittedAt: breeder.verification?.submittedAt,
-                        documentUrls: breeder.verification?.documents || [],
+                        documentUrls: breeder.verification?.documents?.map(doc => doc.url) || [],
                         isSubmittedByEmail: breeder.verification?.submittedByEmail || false,
                     },
                     profileInfo: breeder.profile,
@@ -419,22 +423,24 @@ export class AdminService {
             throw new ForbiddenException('Access denied');
         }
 
-        const breeder = await this.breederModel.findById(breederId);
-        if (!breeder) {
-            throw new NotFoundException('Breeder not found');
-        }
+        const report = await this.breederReportModel.findOne({
+            _id: reportId,
+            breederId: breederId
+        });
 
-        const reportIndex = breeder.reports.findIndex((report) => report.reportId === reportId);
-        if (reportIndex === -1) {
+        if (!report) {
             throw new NotFoundException('Report not found');
         }
 
-        breeder.reports[reportIndex].status = reportAction.reportStatus;
+        report.status = reportAction.reportStatus;
         if (reportAction.adminNotes) {
-            breeder.reports[reportIndex].adminNotes = reportAction.adminNotes;
+            report.adminNotes = reportAction.adminNotes;
         }
 
-        await breeder.save();
+        await report.save();
+
+        // 브리더 정보 조회
+        const breeder = await this.breederModel.findById(breederId);
 
         await this.logAdminActivity(
             adminId,
@@ -443,7 +449,7 @@ export class AdminService {
                 : AdminAction.DISMISS_REPORT,
             AdminTargetType.REPORT,
             reportId,
-            `Report against ${breeder.name}`,
+            `Report against ${breeder?.name || 'Unknown'}`,
             reportAction.adminNotes,
         );
 
@@ -456,35 +462,37 @@ export class AdminService {
             throw new ForbiddenException('Access denied');
         }
 
-        const breeder = await this.breederModel.findById(breederId);
-        if (!breeder) {
-            throw new NotFoundException('Breeder not found');
-        }
+        const review = await this.breederReviewModel.findOne({
+            _id: reviewId,
+            breederId: breederId
+        });
 
-        const reviewIndex = breeder.reviews.findIndex((review) => review.reviewId === reviewId);
-        if (reviewIndex === -1) {
+        if (!review) {
             throw new NotFoundException('Review not found');
         }
 
-        breeder.reviews[reviewIndex].isVisible = false;
-        await breeder.save();
+        review.isVisible = false;
+        await review.save();
 
         // Also update in adopter's reviews
-        const adopter = await this.adopterModel.findById(breeder.reviews[reviewIndex].adopterId);
+        const adopter = await this.adopterModel.findById(review.adopterId);
         if (adopter) {
-            const adopterReviewIndex = adopter.writtenReviewList.findIndex((review) => review.reviewId === reviewId);
+            const adopterReviewIndex = adopter.writtenReviewList.findIndex((r) => r.reviewId === reviewId);
             if (adopterReviewIndex !== -1) {
                 adopter.writtenReviewList[adopterReviewIndex].isVisible = false;
                 await adopter.save();
             }
         }
 
+        // 브리더 정보 조회
+        const breeder = await this.breederModel.findById(breederId);
+
         await this.logAdminActivity(
             adminId,
             AdminAction.DELETE_REVIEW,
             AdminTargetType.REVIEW,
             reviewId,
-            `Review for ${breeder.name}`,
+            `Review for ${breeder?.name || 'Unknown'}`,
             'Review deleted due to violation',
         );
 

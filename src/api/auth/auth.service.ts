@@ -723,15 +723,10 @@ export class AuthService {
                 marketingAgreed: additionalInfo.marketingAgreed || false,
                 verification: {
                     status: VerificationStatus.PENDING,
-                    plan: additionalInfo.plan === 'premium' ? BreederPlan.PREMIUM : BreederPlan.BASIC,
+                    plan: additionalInfo.plan === 'pro' ? BreederPlan.PRO : BreederPlan.BASIC,
                     level: additionalInfo.level || 'new',
                     documents: [],
                 },
-                parentPets: [],
-                availablePets: [],
-                receivedApplications: [],
-                reviews: [],
-                reports: [],
             });
 
             const savedBreeder = await breeder.save();

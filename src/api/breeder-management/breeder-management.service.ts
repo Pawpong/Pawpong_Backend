@@ -1,4 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 import { randomUUID } from 'crypto';
 
 import { BreederRepository } from './breeder.repository';
@@ -10,6 +12,9 @@ import { ParentPetAddDto } from './dto/request/parent-pet-add-request.dto';
 import { AvailablePetAddDto } from './dto/request/available-pet-add-request.dto';
 import { BreederDashboardResponseDto } from '../breeder/dto/response/breeder-dashboard-response.dto';
 import { VerificationStatus, ApplicationStatus, PetStatus } from '../../common/enum/user.enum';
+import { AdoptionApplication, AdoptionApplicationDocument } from '../../schema/adoption-application.schema';
+import { AvailablePet, AvailablePetDocument } from '../../schema/available-pet.schema';
+import { ParentPet, ParentPetDocument } from '../../schema/parent-pet.schema';
 
 /**
  * 브리더 관리 비즈니스 로직 처리 Service
@@ -32,6 +37,9 @@ export class BreederManagementService {
     constructor(
         private breederRepository: BreederRepository,
         private adopterRepository: AdopterRepository,
+        @InjectModel(AdoptionApplication.name) private adoptionApplicationModel: Model<AdoptionApplicationDocument>,
+        @InjectModel(AvailablePet.name) private availablePetModel: Model<AvailablePetDocument>,
+        @InjectModel(ParentPet.name) private parentPetModel: Model<ParentPetDocument>,
     ) {}
 
     /**
@@ -48,16 +56,25 @@ export class BreederManagementService {
             throw new BadRequestException('브리더 정보를 찾을 수 없습니다.');
         }
 
-        // 대기 중인 입양 신청 수 계산
-        const pendingApplications =
-            breeder.receivedApplications?.filter((app: any) => app.status === ApplicationStatus.CONSULTATION_PENDING)
-                .length || 0;
+        // 대기 중인 입양 신청 수 계산 (별도 컬렉션 조회)
+        const pendingApplications = await this.adoptionApplicationModel.countDocuments({
+            breederId: userId,
+            status: ApplicationStatus.CONSULTATION_PENDING,
+        });
 
         // 최근 신청 내역 (최대 5개)
-        const recentApplications = breeder.receivedApplications?.slice(-5) || [];
-        // 분양 가능한 반려동물 수 계산
-        const availablePetsCount =
-            breeder.availablePets?.filter((pet: any) => pet.status === PetStatus.AVAILABLE).length || 0;
+        const recentApplicationsList = await this.adoptionApplicationModel
+            .find({ breederId: userId })
+            .sort({ appliedAt: -1 })
+            .limit(5)
+            .lean();
+
+        // 분양 가능한 반려동물 수 계산 (별도 컬렉션 조회)
+        const availablePetsCount = await this.availablePetModel.countDocuments({
+            breederId: userId,
+            status: PetStatus.AVAILABLE,
+            isActive: true,
+        });
 
         return {
             profileInfo: {
@@ -77,10 +94,10 @@ export class BreederManagementService {
                 totalReviewCount: breeder.stats?.totalReviews || 0,
                 profileViewCount: breeder.stats?.profileViews || 0,
             },
-            recentApplicationList: recentApplications.map((app: any) => ({
-                applicationId: app.applicationId,
-                adopterName: app.adopterName,
-                petName: app.petName,
+            recentApplicationList: recentApplicationsList.map((app: any) => ({
+                applicationId: (app._id as any).toString(),
+                adopterName: app.adopterName || 'Unknown',
+                petName: app.petName || 'Unknown',
                 applicationStatus: app.status,
                 appliedAt: app.appliedAt,
             })),
@@ -169,28 +186,18 @@ export class BreederManagementService {
             throw new BadRequestException('부모견/부모묘는 사진을 1장까지만 등록할 수 있습니다.');
         }
 
-        const petId = randomUUID();
-        const parentPet = {
-            petId,
+        const parentPet = new this.parentPetModel({
+            breederId: userId,
             name: parentPetDto.petName,
             breed: parentPetDto.breedName,
-            type: parentPetDto.petType,
-            age: Math.floor(parentPetDto.ageInMonths / 12) || 1, // 월 단위를 년 단위로 변환
-            gender: parentPetDto.gender,
             photos: parentPetDto.photoUrls || [],
-            healthInfo: {
-                vaccinated: parentPetDto.healthInfo?.isVaccinated ?? false,
-                neutered: parentPetDto.healthInfo?.isNeutered ?? false,
-                healthChecked: parentPetDto.healthInfo?.isHealthChecked ?? false,
-                healthIssues: parentPetDto.healthInfo?.healthIssues ?? '',
-            },
-            healthRecords: [], // 추후 건강 기록 추가를 위한 빈 배열
+            description: '',
             isActive: true,
-        };
+        });
 
-        await this.breederRepository.addParentPet(userId, parentPet);
+        const savedParentPet = await parentPet.save();
 
-        return { petId, message: '부모견/부모묘가 성공적으로 등록되었습니다.' };
+        return { petId: (savedParentPet._id as any).toString(), message: '부모견/부모묘가 성공적으로 등록되었습니다.' };
     }
 
     /**
@@ -203,12 +210,7 @@ export class BreederManagementService {
      * @throws BadRequestException 존재하지 않는 브리더 또는 부모견
      */
     async updateParentPet(userId: string, petId: string, updateData: Partial<ParentPetAddDto>): Promise<any> {
-        const breeder = await this.breederRepository.findById(userId);
-        if (!breeder) {
-            throw new BadRequestException('브리더 정보를 찾을 수 없습니다.');
-        }
-
-        const pet = await this.breederRepository.findParentPetById(userId, petId);
+        const pet = await this.parentPetModel.findOne({ _id: petId, breederId: userId });
         if (!pet) {
             throw new BadRequestException('해당 부모견/부모묘를 찾을 수 없습니다.');
         }
@@ -217,7 +219,12 @@ export class BreederManagementService {
             throw new BadRequestException('부모견/부모묘는 사진을 1장까지만 등록할 수 있습니다.');
         }
 
-        await this.breederRepository.updateParentPet(userId, petId, updateData);
+        const updateFields: any = {};
+        if (updateData.petName) updateFields.name = updateData.petName;
+        if (updateData.breedName) updateFields.breed = updateData.breedName;
+        if (updateData.photoUrls) updateFields.photos = updateData.photoUrls;
+
+        await this.parentPetModel.findByIdAndUpdate(petId, { $set: updateFields });
 
         return { message: '부모견/부모묘 정보가 성공적으로 수정되었습니다.' };
     }
@@ -231,17 +238,12 @@ export class BreederManagementService {
      * @throws BadRequestException 존재하지 않는 브리더 또는 부모견
      */
     async removeParentPet(userId: string, petId: string): Promise<any> {
-        const breeder = await this.breederRepository.findById(userId);
-        if (!breeder) {
-            throw new BadRequestException('브리더 정보를 찾을 수 없습니다.');
-        }
-
-        const pet = await this.breederRepository.findParentPetById(userId, petId);
+        const pet = await this.parentPetModel.findOne({ _id: petId, breederId: userId });
         if (!pet) {
             throw new BadRequestException('해당 부모견/부모묘를 찾을 수 없습니다.');
         }
 
-        await this.breederRepository.removeParentPet(userId, petId);
+        await this.parentPetModel.findByIdAndDelete(petId);
 
         return { message: '부모견/부모묘가 성공적으로 삭제되었습니다.' };
     }
@@ -271,31 +273,20 @@ export class BreederManagementService {
             throw new BadRequestException('분양 개체는 사진을 1장까지만 등록할 수 있습니다.');
         }
 
-        const petId = randomUUID();
-        const availablePet = {
-            petId,
+        const availablePet = new this.availablePetModel({
+            breederId: userId,
             name: availablePetDto.petName,
             breed: availablePetDto.breedName,
-            type: availablePetDto.petType,
             birthDate: new Date(availablePetDto.birthDate),
-            gender: availablePetDto.gender,
             price: availablePetDto.adoptionPrice,
+            status: 'available',
             photos: availablePetDto.photoUrls || [],
-            description: '', // 추후 상세 설명 추가 가능
-            healthInfo: {
-                vaccinated: availablePetDto.healthInfo?.isVaccinated ?? false,
-                neutered: availablePetDto.healthInfo?.isNeutered ?? false,
-                healthChecked: availablePetDto.healthInfo?.isHealthChecked ?? false,
-                healthIssues: availablePetDto.healthInfo?.healthIssues ?? '',
-            },
-            availableFrom: new Date(), // 등록 즉시 분양 가능
-            status: PetStatus.AVAILABLE,
-            isActive: true,
-        };
+            description: '',
+        });
 
-        await this.breederRepository.addAvailablePet(userId, availablePet);
+        const savedPet = await availablePet.save();
 
-        return { petId, message: '분양 가능한 반려동물이 성공적으로 등록되었습니다.' };
+        return { petId: (savedPet._id as any).toString(), message: '분양 가능한 반려동물이 성공적으로 등록되었습니다.' };
     }
 
     /**
@@ -308,12 +299,7 @@ export class BreederManagementService {
      * @throws BadRequestException 존재하지 않는 브리더 또는 반려동물
      */
     async updateAvailablePet(userId: string, petId: string, updateData: Partial<AvailablePetAddDto>): Promise<any> {
-        const breeder = await this.breederRepository.findById(userId);
-        if (!breeder) {
-            throw new BadRequestException('브리더 정보를 찾을 수 없습니다.');
-        }
-
-        const pet = await this.breederRepository.findAvailablePetById(userId, petId);
+        const pet = await this.availablePetModel.findOne({ _id: petId, breederId: userId });
         if (!pet) {
             throw new BadRequestException('해당 분양 개체를 찾을 수 없습니다.');
         }
@@ -322,7 +308,14 @@ export class BreederManagementService {
             throw new BadRequestException('분양 개체는 사진을 1장까지만 등록할 수 있습니다.');
         }
 
-        await this.breederRepository.updateAvailablePet(userId, petId, updateData);
+        const updateFields: any = {};
+        if (updateData.petName) updateFields.name = updateData.petName;
+        if (updateData.breedName) updateFields.breed = updateData.breedName;
+        if (updateData.birthDate) updateFields.birthDate = new Date(updateData.birthDate);
+        if (updateData.adoptionPrice) updateFields.price = updateData.adoptionPrice;
+        if (updateData.photoUrls) updateFields.photos = updateData.photoUrls;
+
+        await this.availablePetModel.findByIdAndUpdate(petId, { $set: updateFields });
 
         return { message: '분양 개체 정보가 성공적으로 수정되었습니다.' };
     }
@@ -343,26 +336,12 @@ export class BreederManagementService {
      * @throws BadRequestException 존재하지 않는 브리더 또는 반려동물
      */
     async updatePetStatus(userId: string, petId: string, status: PetStatus): Promise<any> {
-        const breeder = await this.breederRepository.findById(userId);
-        if (!breeder) {
-            throw new BadRequestException('브리더 정보를 찾을 수 없습니다.');
-        }
-
-        const pet = await this.breederRepository.findAvailablePetById(userId, petId);
+        const pet = await this.availablePetModel.findOne({ _id: petId, breederId: userId });
         if (!pet) {
             throw new BadRequestException('해당 분양 개체를 찾을 수 없습니다.');
         }
 
-        const additionalData: any = {};
-
-        // 상태별 추가 데이터 설정
-        if (status === PetStatus.ADOPTED) {
-            additionalData['availablePets.$.adoptedAt'] = new Date();
-        } else if (status === PetStatus.RESERVED) {
-            additionalData['availablePets.$.reservedAt'] = new Date();
-        }
-
-        await this.breederRepository.updatePetStatus(userId, petId, status, additionalData);
+        await this.availablePetModel.findByIdAndUpdate(petId, { $set: { status } });
 
         return { message: '반려동물 상태가 성공적으로 업데이트되었습니다.' };
     }
@@ -376,17 +355,12 @@ export class BreederManagementService {
      * @throws BadRequestException 존재하지 않는 브리더 또는 반려동물
      */
     async removeAvailablePet(userId: string, petId: string): Promise<any> {
-        const breeder = await this.breederRepository.findById(userId);
-        if (!breeder) {
-            throw new BadRequestException('브리더 정보를 찾을 수 없습니다.');
-        }
-
-        const pet = await this.breederRepository.findAvailablePetById(userId, petId);
+        const pet = await this.availablePetModel.findOne({ _id: petId, breederId: userId });
         if (!pet) {
             throw new BadRequestException('해당 분양 개체를 찾을 수 없습니다.');
         }
 
-        await this.breederRepository.removeAvailablePet(userId, petId);
+        await this.availablePetModel.findByIdAndDelete(petId);
 
         return { message: '분양 개체가 성공적으로 삭제되었습니다.' };
     }
@@ -401,12 +375,29 @@ export class BreederManagementService {
      * @throws BadRequestException 존재하지 않는 브리더
      */
     async getReceivedApplications(userId: string, page: number = 1, limit: number = 10): Promise<any> {
-        const breeder = await this.breederRepository.findById(userId);
-        if (!breeder) {
-            throw new BadRequestException('브리더 정보를 찾을 수 없습니다.');
-        }
+        const skip = (page - 1) * limit;
 
-        return this.breederRepository.findReceivedApplications(userId, page, limit);
+        const [applications, total] = await Promise.all([
+            this.adoptionApplicationModel
+                .find({ breederId: userId })
+                .sort({ appliedAt: -1 })
+                .skip(skip)
+                .limit(limit)
+                .lean(),
+            this.adoptionApplicationModel.countDocuments({ breederId: userId }),
+        ]);
+
+        return {
+            applications,
+            pagination: {
+                currentPage: page,
+                totalPages: Math.ceil(total / limit),
+                totalItems: total,
+                itemsPerPage: limit,
+                hasNextPage: skip + limit < total,
+                hasPrevPage: page > 1,
+            },
+        };
     }
 
     /**
@@ -430,28 +421,17 @@ export class BreederManagementService {
         applicationId: string,
         updateData: ApplicationStatusUpdateRequestDto,
     ): Promise<any> {
-        const breeder = await this.breederRepository.findByIdWithAllData(userId);
-        if (!breeder) {
-            throw new BadRequestException('브리더 정보를 찾을 수 없습니다.');
-        }
+        const application = await this.adoptionApplicationModel.findOne({
+            _id: applicationId,
+            breederId: userId,
+        });
 
-        const application = breeder.receivedApplications.find((app: any) => app.applicationId === applicationId);
         if (!application) {
             throw new BadRequestException('해당 입양 신청을 찾을 수 없습니다.');
         }
 
-        // 추가 업데이트 데이터 구성
-        const additionalUpdateData: any = {};
-        if (updateData.notes) {
-            additionalUpdateData['receivedApplications.$.notes'] = updateData.notes;
-        }
-
-        await this.breederRepository.updateApplicationStatus(
-            userId,
-            applicationId,
-            updateData.status as any,
-            additionalUpdateData,
-        );
+        application.status = updateData.status as any;
+        await application.save();
 
         // 입양 승인 완료 시 통계 업데이트
         if (updateData.status === ApplicationStatus.ADOPTION_APPROVED) {
@@ -460,7 +440,7 @@ export class BreederManagementService {
 
         // 입양자 쪽 신청 상태도 동시 업데이트 (데이터 일관성 보장)
         await this.adopterRepository.updateApplicationStatus(
-            application.adopterId,
+            application.adopterId.toString(),
             applicationId,
             updateData.status as any,
         );
@@ -527,6 +507,12 @@ export class BreederManagementService {
             throw new BadRequestException('브리더 정보를 찾을 수 없습니다.');
         }
 
+        // 별도 컬렉션에서 데이터 조회
+        const [parentPets, availablePets] = await Promise.all([
+            this.parentPetModel.find({ breederId: userId, isActive: true }).lean(),
+            this.availablePetModel.find({ breederId: userId, isActive: true }).lean(),
+        ]);
+
         return {
             id: (breeder._id as any).toString(),
             name: breeder.name,
@@ -536,12 +522,10 @@ export class BreederManagementService {
             status: breeder.status,
             verification: breeder.verification,
             profile: breeder.profile,
-            parentPets: breeder.parentPets?.filter((pet: any) => pet.isActive) || [], // 활성화된 부모견만 조회
-            availablePets: breeder.availablePets?.filter((pet: any) => pet.isActive) || [], // 활성화된 분양 개체만 조회
+            parentPets,
+            availablePets,
             applicationForm: breeder.applicationForm,
-            reviews: breeder.reviews?.filter((review: any) => review.isVisible) || [], // 공개 가능한 후기만 조회
             stats: breeder.stats,
-            reports: breeder.reports, // 관리 목적의 신고 내역
         };
     }
 }

@@ -43,6 +43,18 @@ export class BreederReview {
     content: string;
 
     /**
+     * 평점 (1-5점)
+     */
+    @Prop({ required: true, min: 1, max: 5 })
+    rating: number;
+
+    /**
+     * 후기 사진 파일명 배열
+     */
+    @Prop({ type: [String], default: [] })
+    photos: string[];
+
+    /**
      * 후기 작성 일시
      */
     @Prop({ default: Date.now })
