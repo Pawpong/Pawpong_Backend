@@ -12,7 +12,7 @@ export class District extends Document {
     /**
      * 시/도 이름
      */
-    @Prop({ required: true, index: true })
+    @Prop({ required: true })
     city: string;
 
     /**
