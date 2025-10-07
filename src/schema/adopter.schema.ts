@@ -313,10 +313,10 @@ export class Adopter {
     emailAddress: string;
 
     /**
-     * 해시된 비밀번호
+     * 해시된 비밀번호 (소셜 로그인 사용자는 선택)
      */
-    @Prop({ required: true })
-    passwordHash: string;
+    @Prop()
+    passwordHash?: string;
 
     /**
      * 리프레시 토큰 (JWT 재발급용)

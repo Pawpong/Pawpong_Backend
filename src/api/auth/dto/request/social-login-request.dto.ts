@@ -14,6 +14,27 @@ export enum SocialProvider {
 
 export class CompleteSocialRegistrationDto {
     @ApiProperty({
+        description: '임시 사용자 ID (소셜 로그인 콜백에서 받은 tempId)',
+        example: 'temp_kakao_4479198661_1759826027884',
+    })
+    @IsString()
+    tempId: string;
+
+    @ApiProperty({
+        description: '이메일 (프론트엔드 URL 파라미터에서 전달받은 값)',
+        example: 'sc4cafe@naver.com',
+    })
+    @IsString()
+    email: string;
+
+    @ApiProperty({
+        description: '이름 (프론트엔드 URL 파라미터에서 전달받은 값)',
+        example: '김승찬',
+    })
+    @IsString()
+    name: string;
+
+    @ApiProperty({
         description: '사용자 역할 (입양자/브리더)',
         enum: UserRole,
         example: UserRole.ADOPTER,
@@ -21,19 +42,20 @@ export class CompleteSocialRegistrationDto {
     @IsEnum(UserRole)
     role: UserRole;
 
-    @ApiProperty({
+    @ApiPropertyOptional({
         description: '닉네임 (2-10자, 한글/영문/숫자) - 입양자만 필수',
         example: '행복한입양자',
         minLength: 2,
         maxLength: 10,
     })
+    @IsOptional()
     @IsString()
     @MinLength(2, { message: '닉네임은 최소 2자 이상이어야 합니다.' })
     @MaxLength(10, { message: '닉네임은 최대 10자까지 가능합니다.' })
     @Matches(/^[a-zA-Z0-9가-힣]+$/, {
         message: '닉네임은 한글, 영문, 숫자만 사용 가능합니다.',
     })
-    nickname: string;
+    nickname?: string;
 
     @ApiPropertyOptional({
         description: '전화번호 (선택)',
