@@ -176,8 +176,7 @@ export class AuthService {
 
         // Plan 매핑
         let plan = BreederPlan.BASIC;
-        if (registerBreederDto.plan === 'standard') plan = BreederPlan.STANDARD;
-        else if (registerBreederDto.plan === 'premium') plan = BreederPlan.PREMIUM;
+        if (registerBreederDto.plan === 'pro') plan = BreederPlan.PRO;
 
         // 비밀번호 해시
         const hashedPassword = await bcrypt.hash(registerBreederDto.password, 10);
@@ -196,15 +195,7 @@ export class AuthService {
             phone: registerBreederDto.phone,
             profileImage: profileImageFileName,
             petType: registerBreederDto.petType,
-            detailBreed: registerBreederDto.breeds,
-            breederName: registerBreederDto.breederName,
-            introduction: registerBreederDto.introduction,
-            location: {
-                city: registerBreederDto.city,
-                district: registerBreederDto.district,
-            },
-            breederLevel: registerBreederDto.breederLevel,
-            breederProfilePhoto: undefined,
+            breeds: registerBreederDto.breeds,
             socialAuth: {
                 provider: SocialProvider.LOCAL,
                 providerId: null,
@@ -213,22 +204,22 @@ export class AuthService {
             verification: {
                 status: VerificationStatus.PENDING,
                 plan: plan,
-                level: 'new',
+                level: registerBreederDto.breederLevel,
                 documents: [],
             },
             marketingAgreed: registerBreederDto.agreeMarketing,
             termsAgreed: registerBreederDto.agreeTerms,
             privacyAgreed: registerBreederDto.agreePrivacy,
-            priceDisplay: 'consultation',
-            priceRange: {
-                min: 0,
-                max: 0,
+            profile: {
+                description: registerBreederDto.introduction || '안녕하세요',
+                location: {
+                    city: registerBreederDto.city,
+                    district: registerBreederDto.district,
+                },
+                representativePhotos: [],
+                specialization: [registerBreederDto.petType],
+                experienceYears: 0,
             },
-            parentPets: [],
-            availablePets: [],
-            receivedApplications: [],
-            reviews: [],
-            reports: [],
         });
 
         const savedBreeder = await breeder.save();
@@ -807,6 +798,49 @@ export class AuthService {
                 name: user.name,
                 role: user.role,
             },
+        };
+    }
+
+    /**
+     * 브리더 서류 제출 (2단계 회원가입)
+     */
+    async submitBreederDocuments(userId: string, dto: any): Promise<any> {
+        const breeder = await this.breederModel.findById(userId);
+
+        if (!breeder) {
+            throw new BadRequestException('브리더를 찾을 수 없습니다.');
+        }
+
+        // 브리더 레벨에 따른 필수 서류 검증
+        const requiredDocTypes = dto.breederLevel === 'elite'
+            ? ['id_card', 'business_license', 'contract_sample', 'pedigree', 'breeder_certification']
+            : ['id_card', 'business_license'];
+
+        const submittedTypes = dto.documents.map((doc: any) => doc.type);
+        const missingDocs = requiredDocTypes.filter(type => !submittedTypes.includes(type));
+
+        if (missingDocs.length > 0) {
+            throw new BadRequestException(
+                `필수 서류가 누락되었습니다: ${missingDocs.join(', ')}`
+            );
+        }
+
+        // 서류 정보를 verification.documents에 저장
+        breeder.verification.documents = dto.documents.map((doc: any) => ({
+            type: doc.type,
+            url: doc.filename,
+            uploadedAt: new Date(),
+        }));
+
+        breeder.verification.level = dto.breederLevel;
+        breeder.verification.status = VerificationStatus.REVIEWING;
+        breeder.verification.submittedAt = new Date();
+
+        await breeder.save();
+
+        return {
+            message: '서류가 성공적으로 제출되었습니다. 관리자 검토 후 승인됩니다.',
+            verificationStatus: breeder.verification.status,
         };
     }
 }

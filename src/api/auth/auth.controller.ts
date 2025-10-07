@@ -18,6 +18,7 @@ import { RegisterBreederRequestDto } from './dto/request/register-breeder-reques
 import { SendVerificationCodeRequestDto, VerifyCodeRequestDto } from './dto/request/phone-verification-request.dto';
 import { CompleteSocialRegistrationDto } from './dto/request/social-login-request.dto';
 import { CheckNicknameRequestDto } from './dto/request/check-nickname-request.dto';
+import { SubmitDocumentsRequestDto } from './dto/request/submit-documents-request.dto';
 import { ApiResponseDto } from '../../common/dto/response/api-response.dto';
 import { AuthResponseDto } from './dto/response/auth-response.dto';
 import { TokenResponseDto } from './dto/response/token-response.dto';
@@ -272,5 +273,21 @@ export class AuthController {
     ): Promise<ApiResponseDto<AuthResponseDto>> {
         const result = await this.authService.completeSocialRegistrationWithTempId(dto);
         return ApiResponseDto.success(result, '소셜 회원가입이 완료되었습니다.');
+    }
+
+    @Post('breeder/submit-documents')
+    @UseGuards(JwtAuthGuard)
+    @HttpCode(HttpStatus.OK)
+    @ApiEndpoint({
+        summary: '브리더 서류 제출 (2단계 회원가입)',
+        description: '브리더 레벨에 따라 필수 서류를 제출합니다. 엘리트: 5개 서류, 뉴: 2개 서류',
+        isPublic: false,
+    })
+    async submitDocuments(
+        @CurrentUser() user: any,
+        @Body() dto: SubmitDocumentsRequestDto,
+    ): Promise<ApiResponseDto<any>> {
+        const result = await this.authService.submitBreederDocuments(user.userId, dto);
+        return ApiResponseDto.success(result, '서류가 성공적으로 제출되었습니다.');
     }
 }

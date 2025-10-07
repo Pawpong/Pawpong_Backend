@@ -47,9 +47,9 @@ export class RegisterBreederRequestDto {
     @ApiProperty({
         description: '요금제',
         example: 'basic',
-        enum: ['basic', 'standard', 'premium'],
+        enum: ['basic', 'pro'],
     })
-    @IsEnum(['basic', 'standard', 'premium'])
+    @IsEnum(['basic', 'pro'])
     plan: string;
 
     @ApiProperty({
@@ -113,9 +113,9 @@ export class RegisterBreederRequestDto {
 
     @ApiProperty({
         description: '브리더 레벨',
-        example: 'level1',
-        enum: ['level1', 'level2', 'level3'],
+        example: 'new',
+        enum: ['new', 'elite'],
     })
-    @IsEnum(['level1', 'level2', 'level3'])
+    @IsEnum(['new', 'elite'])
     breederLevel: string;
 }

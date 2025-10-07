@@ -95,10 +95,10 @@ export class BreederExploreService {
                 sort = { 'stats.totalReviews': -1 };
                 break;
             case BreederSortBy.PRICE_ASC:
-                sort = { 'priceRange.min': 1 };
+                sort = { 'profile.priceRange.min': 1 };
                 break;
             case BreederSortBy.PRICE_DESC:
-                sort = { 'priceRange.max': -1 };
+                sort = { 'profile.priceRange.max': -1 };
                 break;
             default:
                 sort = { createdAt: -1 };

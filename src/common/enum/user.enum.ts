@@ -49,8 +49,7 @@ export enum VerificationStatus {
 
 export enum BreederPlan {
     BASIC = 'basic',
-    STANDARD = 'standard',
-    PREMIUM = 'premium',
+    PRO = 'pro',
 }
 
 /**
