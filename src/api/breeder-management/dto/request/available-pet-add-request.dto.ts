@@ -1,6 +1,6 @@
-import { IsString, IsNotEmpty, IsOptional, IsNumber, IsArray, IsEnum, IsBoolean, Min } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
-import { Transform, Type } from 'class-transformer';
+import { IsString, IsNotEmpty, IsOptional, IsNumber, IsEnum, Min } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 
 /**
  * 분양 가능한 반려동물 등록 요청 DTO
@@ -17,7 +17,7 @@ export class AvailablePetAddDto {
     })
     @IsString()
     @IsNotEmpty()
-    petName: string;
+    name: string;
 
     /**
      * 반려동물 품종
@@ -29,19 +29,7 @@ export class AvailablePetAddDto {
     })
     @IsString()
     @IsNotEmpty()
-    breedName: string;
-
-    /**
-     * 반려동물 종류
-     * @example "dog"
-     */
-    @ApiProperty({
-        description: '반려동물 종류',
-        example: 'dog',
-        enum: ['dog', 'cat'],
-    })
-    @IsEnum(['dog', 'cat'])
-    petType: string;
+    breed: string;
 
     /**
      * 성별
@@ -79,36 +67,31 @@ export class AvailablePetAddDto {
     @Type(() => Number)
     @IsNumber()
     @Min(0)
-    adoptionPrice: number;
+    price: number;
 
     /**
-     * 반려동물 사진 URL 배열
-     * @example ["https://example.com/pet1.jpg", "https://example.com/pet2.jpg"]
+     * 소개 (선택)
+     * @example "건강하고 활발한 아이입니다"
      */
-    @ApiProperty({
-        description: '반려동물 사진 URL 배열',
-        type: 'array',
-        items: { type: 'string' },
-        example: ['https://example.com/pet1.jpg', 'https://example.com/pet2.jpg'],
-    })
-    @IsArray()
-    photoUrls: string[];
-
-    /**
-     * 건강 정보
-     * @example { "isVaccinated": true, "isNeutered": false, "isHealthChecked": true, "healthIssues": "" }
-     */
-    @ApiProperty({
-        description: '건강 정보',
-        type: 'object',
-        additionalProperties: true,
-        example: { isVaccinated: true, isNeutered: false, isHealthChecked: true, healthIssues: '' },
+    @ApiPropertyOptional({
+        description: '소개 (최대 500자)',
+        example: '건강하고 활발한 아이입니다',
+        maxLength: 500,
     })
     @IsOptional()
-    healthInfo?: {
-        isVaccinated: boolean;
-        isNeutered: boolean;
-        isHealthChecked: boolean;
-        healthIssues?: string;
+    @IsString()
+    description?: string;
+
+    /**
+     * 부모 정보 (선택)
+     */
+    @ApiPropertyOptional({
+        description: '부모 정보',
+        example: { mother: '507f1f77bcf86cd799439011', father: '507f1f77bcf86cd799439012' },
+    })
+    @IsOptional()
+    parentInfo?: {
+        mother?: string;
+        father?: string;
     };
 }
