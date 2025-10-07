@@ -131,7 +131,7 @@ export const AUTH_RESPONSE_EXAMPLE = {
     userInfo: {
         userId: '507f1f77bcf86cd799439011',
         emailAddress: 'user@example.com',
-        fullName: '김입양',
+        nickname: '김입양',
         userRole: 'adopter',
         accountStatus: 'active',
         profileImageUrl: null,

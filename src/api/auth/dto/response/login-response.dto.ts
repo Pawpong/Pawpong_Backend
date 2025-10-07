@@ -32,7 +32,7 @@ export class UserInfoDto {
         description: '사용자 이름',
         example: '김철수',
     })
-    fullName: string;
+    nickname: string;
 
     /**
      * 사용자 역할 (adopter, breeder, admin)

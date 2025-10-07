@@ -319,7 +319,7 @@ export class AdopterProfileResponseDto {
         description: '입양자 실명',
         example: '박입양자',
     })
-    fullName: string;
+    nickname: string;
 
     /**
      * 연락처 (선택사항)

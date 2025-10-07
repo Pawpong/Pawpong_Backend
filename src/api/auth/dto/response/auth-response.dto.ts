@@ -25,14 +25,14 @@ export class AuthenticatedUserDto {
     emailAddress: string;
 
     /**
-     * 사용자 이름
-     * @example "김사용자"
+     * 사용자 닉네임
+     * @example "행복한입양자"
      */
     @ApiProperty({
-        description: '사용자 이름',
-        example: '김사용자'
+        description: '사용자 닉네임',
+        example: '행복한입양자'
     })
-    fullName: string;
+    nickname: string;
 
     /**
      * 사용자 역할

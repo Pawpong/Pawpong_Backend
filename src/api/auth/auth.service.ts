@@ -62,43 +62,53 @@ export class AuthService {
 
     async registerAdopter(registerAdopterDto: RegisterAdopterRequestDto): Promise<AuthResponseDto> {
         const existingAdopter = await this.adopterModel.findOne({
-            email_address: registerAdopterDto.email,
+            emailAddress: registerAdopterDto.email,
         });
 
         if (existingAdopter) {
             throw new ConflictException('Email already exists');
         }
 
+        // 닉네임 중복 체크
+        const existingNickname = await this.adopterModel.findOne({
+            nickname: registerAdopterDto.nickname,
+        });
+
+        if (existingNickname) {
+            throw new ConflictException('Nickname already exists');
+        }
+
         const hashedPassword = await bcrypt.hash(registerAdopterDto.password, 10);
 
         const adopter = new this.adopterModel({
-            email_address: registerAdopterDto.email,
-            password_hash: hashedPassword,
-            full_name: registerAdopterDto.name,
-            phone_number: registerAdopterDto.phone,
-            social_auth_info: {
-                auth_provider: SocialProvider.LOCAL,
+            emailAddress: registerAdopterDto.email,
+            passwordHash: hashedPassword,
+            nickname: registerAdopterDto.nickname,
+            phoneNumber: registerAdopterDto.phone,
+            socialAuthInfo: {
+                authProvider: SocialProvider.LOCAL,
             },
-            account_status: UserStatus.ACTIVE,
-            user_role: 'adopter',
-            favorite_breeder_list: [],
-            adoption_application_list: [],
-            written_review_list: [],
-            submitted_report_list: [],
+            accountStatus: UserStatus.ACTIVE,
+            userRole: 'adopter',
+            notificationSettings: {
+                emailNotifications: true,
+                smsNotifications: false,
+                marketingNotifications: registerAdopterDto.agreeMarketing || false,
+            },
+            favoriteBreederList: [],
+            adoptionApplicationList: [],
+            writtenReviewList: [],
+            submittedReportList: [],
         });
 
         const savedAdopter = await adopter.save();
 
         // 토큰 생성
-        const tokens = this.generateTokens(
-            (savedAdopter._id as any).toString(),
-            savedAdopter.email_address,
-            'adopter',
-        );
+        const tokens = this.generateTokens((savedAdopter._id as any).toString(), savedAdopter.emailAddress, 'adopter');
 
         // Refresh 토큰 해시 후 저장
         const hashedRefreshToken = await this.hashRefreshToken(tokens.refreshToken);
-        savedAdopter.refresh_token = hashedRefreshToken;
+        savedAdopter.refreshToken = hashedRefreshToken;
         await savedAdopter.save();
 
         return {
@@ -108,11 +118,11 @@ export class AuthService {
             refreshTokenExpiresIn: tokens.refreshTokenExpiresIn,
             userInfo: {
                 userId: (savedAdopter._id as any).toString(),
-                emailAddress: savedAdopter.email_address,
-                fullName: savedAdopter.full_name,
+                emailAddress: savedAdopter.emailAddress,
+                nickname: savedAdopter.nickname,
                 userRole: 'adopter',
-                accountStatus: savedAdopter.account_status,
-                profileImageUrl: savedAdopter.profile_image_url,
+                accountStatus: savedAdopter.accountStatus,
+                profileImageUrl: savedAdopter.profileImageUrl,
             },
             message: '입양자 회원가입이 완료되었습니다.',
         };
@@ -187,11 +197,7 @@ export class AuthService {
         const savedBreeder = await breeder.save();
 
         // 토큰 생성
-        const tokens = this.generateTokens(
-            (savedBreeder._id as any).toString(),
-            savedBreeder.email,
-            'breeder',
-        );
+        const tokens = this.generateTokens((savedBreeder._id as any).toString(), savedBreeder.email, 'breeder');
 
         // Refresh 토큰 해시 후 저장
         const hashedRefreshToken = await this.hashRefreshToken(tokens.refreshToken);
@@ -206,7 +212,7 @@ export class AuthService {
             userInfo: {
                 userId: (savedBreeder._id as any).toString(),
                 emailAddress: savedBreeder.email,
-                fullName: savedBreeder.name,
+                nickname: savedBreeder.name,
                 userRole: 'breeder',
                 accountStatus: savedBreeder.status,
                 profileImageUrl: savedBreeder.profileImage,
@@ -216,18 +222,12 @@ export class AuthService {
     }
 
     async login(loginDto: LoginRequestDto): Promise<AuthResponseDto> {
-        // Check adopter first (adopter uses snake_case)
-        let user = await this.adopterModel.findOne({ email_address: loginDto.email });
+        // Check adopter first
+        let user = await this.adopterModel.findOne({ emailAddress: loginDto.email });
         let role = 'adopter';
 
         if (!user) {
             // Check breeder
-            user = await this.breederModel.findOne({ email: loginDto.email });
-            role = 'breeder';
-        }
-
-        if (!user) {
-            // Check breeder (breeder uses camelCase)
             user = await this.breederModel.findOne({ email: loginDto.email });
             role = 'breeder';
         }
@@ -240,16 +240,16 @@ export class AuthService {
         let passwordHash: string;
         let userStatus: string;
         let email: string;
-        let fullName: string;
+        let nickname: string;
         let profileImage: string | undefined;
 
         if (role === 'adopter') {
             const adopter = user as any;
-            passwordHash = adopter.password_hash;
-            userStatus = adopter.account_status;
-            email = adopter.email_address;
-            fullName = adopter.full_name;
-            profileImage = adopter.profile_image_url;
+            passwordHash = adopter.passwordHash;
+            userStatus = adopter.accountStatus;
+            email = adopter.emailAddress;
+            nickname = adopter.nickname;
+            profileImage = adopter.profileImageUrl;
 
             if (!passwordHash) {
                 throw new UnauthorizedException('Invalid credentials');
@@ -264,14 +264,14 @@ export class AuthService {
                 throw new UnauthorizedException('Account is suspended');
             }
 
-            adopter.last_activity_at = new Date();
+            adopter.lastActivityAt = new Date();
             await adopter.save();
         } else {
             const breeder = user as any;
             passwordHash = breeder.password;
             userStatus = breeder.status;
             email = breeder.email;
-            fullName = breeder.name;
+            nickname = breeder.name;
             profileImage = breeder.profileImage;
 
             if (!passwordHash) {
@@ -297,7 +297,7 @@ export class AuthService {
         // Refresh 토큰 해시 후 저장
         const hashedRefreshToken = await this.hashRefreshToken(tokens.refreshToken);
         if (role === 'adopter') {
-            (user as any).refresh_token = hashedRefreshToken;
+            (user as any).refreshToken = hashedRefreshToken;
         } else {
             (user as any).refreshToken = hashedRefreshToken;
         }
@@ -311,7 +311,7 @@ export class AuthService {
             userInfo: {
                 userId: (user._id as any).toString(),
                 emailAddress: email,
-                fullName,
+                nickname: nickname,
                 userRole: role,
                 accountStatus: userStatus,
                 profileImageUrl: profileImage,
@@ -348,7 +348,7 @@ export class AuthService {
 
             if (payload.role === 'adopter') {
                 user = await this.adopterModel.findById(payload.sub);
-                hashedToken = user?.refresh_token;
+                hashedToken = user?.refreshToken;
             } else if (payload.role === 'breeder') {
                 user = await this.breederModel.findById(payload.sub);
                 hashedToken = user?.refreshToken;
@@ -371,19 +371,11 @@ export class AuthService {
             }
 
             // 새로운 토큰 생성
-            const tokens = this.generateTokens(
-                payload.sub,
-                payload.email,
-                payload.role,
-            );
+            const tokens = this.generateTokens(payload.sub, payload.email, payload.role);
 
             // 새 Refresh 토큰 해시 후 저장
             const newHashedRefreshToken = await this.hashRefreshToken(tokens.refreshToken);
-            if (payload.role === 'adopter') {
-                user.refresh_token = newHashedRefreshToken;
-            } else {
-                user.refreshToken = newHashedRefreshToken;
-            }
+            user.refreshToken = newHashedRefreshToken;
             await user.save();
 
             return tokens;
@@ -404,11 +396,11 @@ export class AuthService {
     async logout(userId: string, role: string): Promise<void> {
         if (role === 'adopter') {
             await this.adopterModel.findByIdAndUpdate(userId, {
-                refresh_token: null
+                refreshToken: null,
             });
         } else if (role === 'breeder') {
             await this.breederModel.findByIdAndUpdate(userId, {
-                refreshToken: null
+                refreshToken: null,
             });
         }
     }
@@ -417,9 +409,17 @@ export class AuthService {
      * 이메일 중복 체크 - 입양자와 브리더 모두 확인
      */
     async checkEmailDuplicate(email: string): Promise<boolean> {
-        const adopter = await this.adopterModel.findOne({ email_address: email });
+        const adopter = await this.adopterModel.findOne({ emailAddress: email });
         const breeder = await this.breederModel.findOne({ email: email });
         return !!(adopter || breeder);
+    }
+
+    /**
+     * 닉네임 중복 체크 - 입양자만 확인
+     */
+    async checkNicknameDuplicate(nickname: string): Promise<boolean> {
+        const adopter = await this.adopterModel.findOne({ nickname: nickname });
+        return !!adopter;
     }
 
     /**
@@ -434,8 +434,8 @@ export class AuthService {
     }): Promise<{ needsAdditionalInfo: boolean; tempUserId?: string; user?: any }> {
         // 기존 사용자 조회 (Adopter)
         let adopter = await this.adopterModel.findOne({
-            'social_auth_info.auth_provider': profile.provider,
-            'social_auth_info.provider_user_id': profile.providerId,
+            'socialAuthInfo.authProvider': profile.provider,
+            'socialAuthInfo.providerUserId': profile.providerId,
         });
 
         if (adopter) {
@@ -444,10 +444,10 @@ export class AuthService {
                 needsAdditionalInfo: false,
                 user: {
                     userId: (adopter._id as any).toString(),
-                    email: adopter.email_address,
-                    name: adopter.full_name,
+                    email: adopter.emailAddress,
+                    name: adopter.nickname,
                     role: 'adopter',
-                    profileImage: adopter.profile_image_url,
+                    profileImage: adopter.profileImageUrl,
                 },
             };
         }
@@ -495,6 +495,7 @@ export class AuthService {
         },
         additionalInfo: {
             role: 'adopter' | 'breeder';
+            nickname?: string;
             phone?: string;
             petType?: string;
             plan?: string;
@@ -508,23 +509,42 @@ export class AuthService {
         },
     ): Promise<AuthResponseDto> {
         if (additionalInfo.role === 'adopter') {
+            // 닉네임 필수 체크
+            if (!additionalInfo.nickname) {
+                throw new BadRequestException('입양자는 닉네임이 필요합니다.');
+            }
+
+            // 닉네임 중복 체크
+            const existingNickname = await this.adopterModel.findOne({
+                nickname: additionalInfo.nickname,
+            });
+
+            if (existingNickname) {
+                throw new ConflictException('Nickname already exists');
+            }
+
             // 입양자 생성
             const adopter = new this.adopterModel({
-                email_address: profile.email,
-                full_name: profile.name,
-                phone_number: additionalInfo.phone,
-                profile_image_url: profile.profileImage,
-                social_auth_info: {
-                    auth_provider: profile.provider,
-                    provider_user_id: profile.providerId,
-                    provider_email: profile.email,
+                emailAddress: profile.email,
+                nickname: additionalInfo.nickname,
+                phoneNumber: additionalInfo.phone,
+                profileImageUrl: profile.profileImage,
+                socialAuthInfo: {
+                    authProvider: profile.provider,
+                    providerUserId: profile.providerId,
+                    providerEmail: profile.email,
                 },
-                account_status: UserStatus.ACTIVE,
-                user_role: 'adopter',
-                favorite_breeder_list: [],
-                adoption_application_list: [],
-                written_review_list: [],
-                submitted_report_list: [],
+                accountStatus: UserStatus.ACTIVE,
+                userRole: 'adopter',
+                notificationSettings: {
+                    emailNotifications: true,
+                    smsNotifications: false,
+                    marketingNotifications: additionalInfo.marketingAgreed || false,
+                },
+                favoriteBreederList: [],
+                adoptionApplicationList: [],
+                writtenReviewList: [],
+                submittedReportList: [],
             });
 
             const savedAdopter = await adopter.save();
@@ -532,14 +552,14 @@ export class AuthService {
             // 토큰 생성
             const tokens = this.generateTokens(
                 (savedAdopter._id as any).toString(),
-                savedAdopter.email_address,
+                savedAdopter.emailAddress,
                 'adopter',
             );
 
             // Refresh 토큰 저장
             const hashedRefreshToken = await this.hashRefreshToken(tokens.refreshToken);
-            savedAdopter.refresh_token = hashedRefreshToken;
-            savedAdopter.last_activity_at = new Date();
+            savedAdopter.refreshToken = hashedRefreshToken;
+            savedAdopter.lastActivityAt = new Date();
             await savedAdopter.save();
 
             return {
@@ -549,11 +569,11 @@ export class AuthService {
                 refreshTokenExpiresIn: tokens.refreshTokenExpiresIn,
                 userInfo: {
                     userId: (savedAdopter._id as any).toString(),
-                    emailAddress: savedAdopter.email_address,
-                    fullName: savedAdopter.full_name,
+                    emailAddress: savedAdopter.emailAddress,
+                    nickname: savedAdopter.nickname,
                     userRole: 'adopter',
-                    accountStatus: savedAdopter.account_status,
-                    profileImageUrl: savedAdopter.profile_image_url,
+                    accountStatus: savedAdopter.accountStatus,
+                    profileImageUrl: savedAdopter.profileImageUrl,
                 },
                 message: '소셜 회원가입이 완료되었습니다.',
             };
@@ -606,11 +626,7 @@ export class AuthService {
             const savedBreeder = await breeder.save();
 
             // 토큰 생성
-            const tokens = this.generateTokens(
-                (savedBreeder._id as any).toString(),
-                savedBreeder.email,
-                'breeder',
-            );
+            const tokens = this.generateTokens((savedBreeder._id as any).toString(), savedBreeder.email, 'breeder');
 
             // Refresh 토큰 저장
             const hashedRefreshToken = await this.hashRefreshToken(tokens.refreshToken);
@@ -626,7 +642,7 @@ export class AuthService {
                 userInfo: {
                     userId: (savedBreeder._id as any).toString(),
                     emailAddress: savedBreeder.email,
-                    fullName: savedBreeder.name,
+                    nickname: savedBreeder.name,
                     userRole: 'breeder',
                     accountStatus: savedBreeder.status,
                     profileImageUrl: savedBreeder.profileImage,

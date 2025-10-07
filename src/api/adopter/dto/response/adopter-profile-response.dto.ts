@@ -26,14 +26,14 @@ export class AdopterProfileResponseDto {
     emailAddress: string;
 
     /**
-     * 입양자 실명
-     * @example "박입양"
+     * 입양자 닉네임
+     * @example "행복한입양자"
      */
     @ApiProperty({
-        description: '입양자 실명',
-        example: '박입양',
+        description: '입양자 닉네임',
+        example: '행복한입양자',
     })
-    fullName: string;
+    nickname: string;
 
     /**
      * 전화번호

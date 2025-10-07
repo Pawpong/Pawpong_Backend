@@ -472,9 +472,9 @@ export class AdminService {
         // Also update in adopter's reviews
         const adopter = await this.adopterModel.findById(breeder.reviews[reviewIndex].adopterId);
         if (adopter) {
-            const adopterReviewIndex = adopter.written_review_list.findIndex((review) => review.review_id === reviewId);
+            const adopterReviewIndex = adopter.writtenReviewList.findIndex((review) => review.reviewId === reviewId);
             if (adopterReviewIndex !== -1) {
-                adopter.written_review_list[adopterReviewIndex].is_visible = false;
+                adopter.writtenReviewList[adopterReviewIndex].isVisible = false;
                 await adopter.save();
             }
         }

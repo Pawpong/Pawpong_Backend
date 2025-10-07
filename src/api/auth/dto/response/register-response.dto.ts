@@ -10,7 +10,7 @@ export class NewUserInfoDto {
      */
     @ApiProperty({
         description: '사용자 고유 ID',
-        example: '507f1f77bcf86cd799439011'
+        example: '507f1f77bcf86cd799439011',
     })
     userId: string;
 
@@ -20,7 +20,7 @@ export class NewUserInfoDto {
      */
     @ApiProperty({
         description: '사용자 이메일 주소',
-        example: 'newuser@example.com'
+        example: 'newuser@example.com',
     })
     emailAddress: string;
 
@@ -30,9 +30,9 @@ export class NewUserInfoDto {
      */
     @ApiProperty({
         description: '사용자 이름',
-        example: '신규사용자'
+        example: '신규사용자',
     })
-    fullName: string;
+    nickname: string;
 
     /**
      * 사용자 역할 (adopter, breeder)
@@ -41,7 +41,7 @@ export class NewUserInfoDto {
     @ApiProperty({
         description: '사용자 역할',
         example: 'adopter',
-        enum: ['adopter', 'breeder']
+        enum: ['adopter', 'breeder'],
     })
     userRole: string;
 
@@ -53,7 +53,7 @@ export class NewUserInfoDto {
     @ApiProperty({
         description: '계정 상태',
         example: 'pending',
-        enum: ['active', 'pending']
+        enum: ['active', 'pending'],
     })
     accountStatus: string;
 
@@ -64,7 +64,7 @@ export class NewUserInfoDto {
     @ApiProperty({
         description: '계정 생성 일시',
         example: '2024-01-15T10:30:00.000Z',
-        format: 'date-time'
+        format: 'date-time',
     })
     createdAt: string;
 }
@@ -81,7 +81,7 @@ export class RegisterResponseDto {
      */
     @ApiProperty({
         description: 'JWT 액세스 토큰',
-        example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+        example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
     })
     accessToken: string;
 
@@ -90,7 +90,7 @@ export class RegisterResponseDto {
      */
     @ApiProperty({
         description: '생성된 사용자 정보',
-        type: NewUserInfoDto
+        type: NewUserInfoDto,
     })
     userInfo: NewUserInfoDto;
 
@@ -100,7 +100,7 @@ export class RegisterResponseDto {
      */
     @ApiProperty({
         description: '회원가입 완료 메시지',
-        example: '회원가입이 완료되었습니다. 브리더 인증을 진행해주세요.'
+        example: '회원가입이 완료되었습니다. 브리더 인증을 진행해주세요.',
     })
     welcomeMessage: string;
 }

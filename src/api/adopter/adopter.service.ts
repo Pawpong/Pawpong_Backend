@@ -59,7 +59,8 @@ export class AdopterService {
      * @throws ConflictException 중복 신청 시도
      */
     async createApplication(userId: string, createApplicationDto: ApplicationCreateRequestDto): Promise<any> {
-        const { breederId, petId, applicationForm, message, experienceLevel, livingEnvironment, hasOtherPets } = createApplicationDto;
+        const { breederId, petId, applicationForm, message, experienceLevel, livingEnvironment, hasOtherPets } =
+            createApplicationDto;
 
         // 입양자 계정 존재 및 상태 검증
         const adopter = await this.adopterRepository.findById(userId);
@@ -92,18 +93,18 @@ export class AdopterService {
 
         // 입양자 신청 내역에 저장할 데이터 구성
         const newApplication = {
-            application_id: applicationId,
-            target_breeder_id: breederId,
-            target_breeder_name: breeder.name,
-            target_pet_id: petId,
-            target_pet_name: pet.name,
-            pet_type: pet.type,
-            pet_breed_name: pet.breed,
-            application_form_data: applicationForm || {},
-            application_status: ApplicationStatus.CONSULTATION_PENDING,
-            applied_at: new Date(),
-            updated_at: new Date(),
-            is_review_written: false,
+            applicationId: applicationId,
+            targetBreederId: breederId,
+            targetBreederName: breeder.name,
+            targetPetId: petId,
+            targetPetName: pet.name,
+            petType: pet.type,
+            petBreedName: pet.breed,
+            applicationFormData: applicationForm || {},
+            applicationStatus: ApplicationStatus.CONSULTATION_PENDING,
+            appliedAt: new Date(),
+            updatedAt: new Date(),
+            isReviewWritten: false,
         };
 
         await this.adopterRepository.addApplication(userId, newApplication);
@@ -112,8 +113,8 @@ export class AdopterService {
         const receivedApplication = {
             applicationId,
             adopterId: userId,
-            adopterName: adopter.full_name,
-            adopterEmail: adopter.email_address,
+            adopterName: adopter.nickname,
+            adopterEmail: adopter.emailAddress,
             petId,
             petName: pet.name,
             status: ApplicationStatus.CONSULTATION_PENDING,
@@ -158,11 +159,11 @@ export class AdopterService {
             throw new BadRequestException('해당 입양 신청 내역을 찾을 수 없습니다.');
         }
 
-        if (application.is_review_written) {
+        if (application.isReviewWritten) {
             throw new BadRequestException('이미 해당 입양 신청에 대한 후기를 작성하셨습니다.');
         }
 
-        if (application.application_status === ApplicationStatus.CONSULTATION_PENDING) {
+        if (application.applicationStatus === ApplicationStatus.CONSULTATION_PENDING) {
             throw new BadRequestException('상담이 완료된 후에 후기를 작성하실 수 있습니다.');
         }
 
@@ -170,30 +171,30 @@ export class AdopterService {
 
         // 입양자 후기 목록에 저장할 데이터 구성
         const newReview = {
-            review_id: reviewId,
-            target_breeder_id: application.target_breeder_id,
-            target_breeder_name: application.target_breeder_name,
-            related_application_id: applicationId,
-            review_type: reviewType,
-            overall_rating: rating,
-            pet_health_rating: rating, // 전체 평점을 기본값으로 설정
-            communication_rating: rating, // 전체 평점을 기본값으로 설정
-            review_content: content,
-            review_photo_urls: photos,
-            created_at: new Date(),
-            is_visible: true,
+            reviewId: reviewId,
+            targetBreederId: application.targetBreederId,
+            targetBreederName: application.targetBreederName,
+            relatedApplicationId: applicationId,
+            reviewType: reviewType,
+            overallRating: rating,
+            petHealthRating: rating, // 전체 평점을 기본값으로 설정
+            communicationRating: rating, // 전체 평점을 기본값으로 설정
+            reviewContent: content,
+            reviewPhotoUrls: photos,
+            createdAt: new Date(),
+            isVisible: true,
         };
 
         await this.adopterRepository.addReview(userId, newReview);
         await this.adopterRepository.markReviewWritten(userId, applicationId);
 
         // 브리더 후기 캐시에 저장 및 통계 업데이트
-        const breeder = await this.breederRepository.findById(application.target_breeder_id);
+        const breeder = await this.breederRepository.findById(application.targetBreederId);
         if (breeder) {
             const breederReview = {
                 reviewId,
                 adopterId: userId,
-                adopterName: adopter.full_name,
+                adopterName: adopter.nickname,
                 applicationId,
                 type: reviewType,
                 rating,
@@ -203,17 +204,17 @@ export class AdopterService {
                 isVisible: true,
             };
 
-            await this.breederRepository.addReview(application.target_breeder_id, breederReview);
+            await this.breederRepository.addReview(application.targetBreederId, breederReview);
 
             // 브리더 평점 통계 실시간 재계산 및 업데이트
-            const updatedBreeder = await this.breederRepository.findById(application.target_breeder_id);
+            const updatedBreeder = await this.breederRepository.findById(application.targetBreederId);
             if (updatedBreeder) {
                 const totalReviews = updatedBreeder.reviews.length;
                 const totalRating = updatedBreeder.reviews.reduce((sum: any, r: any) => sum + r.rating, 0);
                 const averageRating = totalRating / totalReviews;
 
                 await this.breederRepository.updateReviewStats(
-                    application.target_breeder_id,
+                    application.targetBreederId,
                     averageRating,
                     totalReviews,
                 );
@@ -260,11 +261,11 @@ export class AdopterService {
         }
 
         const favorite = {
-            favorite_breeder_id: breederId,
-            breeder_name: breeder.name,
-            breeder_profile_image_url: breeder.profileImage || '',
-            breeder_location: `${breeder.profile?.location?.city || ''} ${breeder.profile?.location?.district || ''}`,
-            added_at: new Date(),
+            favoriteBreederId: breederId,
+            breederName: breeder.name,
+            breederProfileImageUrl: breeder.profileImage || '',
+            breederLocation: `${breeder.profile?.location?.city || ''} ${breeder.profile?.location?.district || ''}`,
+            addedAt: new Date(),
         };
 
         await this.adopterRepository.addFavoriteBreeder(userId, favorite);
@@ -327,7 +328,7 @@ export class AdopterService {
         const report = {
             reportId,
             reporterId: userId,
-            reporterName: adopter.full_name,
+            reporterName: adopter.nickname,
             type,
             description,
             reportedAt: new Date(),
@@ -358,31 +359,31 @@ export class AdopterService {
 
         return {
             adopterId: (adopter._id as any).toString(),
-            emailAddress: adopter.email_address,
-            fullName: adopter.full_name,
-            phoneNumber: adopter.phone_number || '',
-            profileImageUrl: adopter.profile_image_url,
-            accountStatus: adopter.account_status,
-            favoriteBreederList: (adopter.favorite_breeder_list || []).map((fav: any) => ({
-                breederId: fav.favorite_breeder_id,
-                breederName: fav.breeder_name,
-                addedAt: fav.added_at,
-                breederProfileImageUrl: fav.breeder_profile_image_url,
-                breederLocation: fav.breeder_location,
+            emailAddress: adopter.emailAddress,
+            nickname: adopter.nickname,
+            phoneNumber: adopter.phoneNumber || '',
+            profileImageUrl: adopter.profileImageUrl,
+            accountStatus: adopter.accountStatus,
+            favoriteBreederList: (adopter.favoriteBreederList || []).map((fav: any) => ({
+                breederId: fav.favoriteBreederId,
+                breederName: fav.breederName,
+                addedAt: fav.addedAt,
+                breederProfileImageUrl: fav.breederProfileImageUrl,
+                breederLocation: fav.breederLocation,
             })),
-            adoptionApplicationList: (adopter.adoption_application_list || []).map((app: any) => ({
-                applicationId: app.application_id,
-                breederId: app.target_breeder_id,
-                petId: app.target_pet_id,
-                applicationStatus: app.application_status,
-                appliedAt: app.applied_at,
+            adoptionApplicationList: (adopter.adoptionApplicationList || []).map((app: any) => ({
+                applicationId: app.applicationId,
+                breederId: app.targetBreederId,
+                petId: app.targetPetId,
+                applicationStatus: app.applicationStatus,
+                appliedAt: app.appliedAt,
             })),
-            writtenReviewList: (adopter.written_review_list || []).map((review: any) => ({
-                reviewId: review.review_id,
-                breederId: review.target_breeder_id,
-                rating: review.overall_rating,
-                content: review.review_content,
-                createdAt: review.created_at,
+            writtenReviewList: (adopter.writtenReviewList || []).map((review: any) => ({
+                reviewId: review.reviewId,
+                breederId: review.targetBreederId,
+                rating: review.overallRating,
+                content: review.reviewContent,
+                createdAt: review.createdAt,
             })),
             createdAt: (adopter as any).createdAt,
             updatedAt: (adopter as any).updatedAt,
@@ -404,9 +405,9 @@ export class AdopterService {
     ): Promise<any> {
         // 요청 데이터를 데이터베이스 스키마에 맞게 변환
         const mappedUpdateData: any = {};
-        if (updateData.name) mappedUpdateData.full_name = updateData.name;
-        if (updateData.phone) mappedUpdateData.phone_number = updateData.phone;
-        if (updateData.profileImage) mappedUpdateData.profile_image_url = updateData.profileImage;
+        if (updateData.name) mappedUpdateData.fullName = updateData.name;
+        if (updateData.phone) mappedUpdateData.phoneNumber = updateData.phone;
+        if (updateData.profileImage) mappedUpdateData.profileImageUrl = updateData.profileImage;
 
         const adopter = await this.adopterRepository.updateProfile(userId, mappedUpdateData);
 

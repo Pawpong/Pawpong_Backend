@@ -282,7 +282,7 @@ export class AdopterRepository {
             const adopter = await this.adopterModel.findById(adopterId).lean().exec();
             if (!adopter) return null;
 
-            return adopter.adoption_application_list?.find((app: any) => app.application_id === applicationId) || null;
+            return adopter.adoptionApplicationList?.find((app: any) => app.applicationId === applicationId) || null;
         } catch (error) {
             throw new Error(`입양 신청 조회 실패: ${error.message}`);
         }
@@ -303,8 +303,8 @@ export class AdopterRepository {
             if (!adopter) return null;
 
             return (
-                adopter.adoption_application_list?.find(
-                    (app: any) => app.target_breeder_id === breederId && app.target_pet_id === petId,
+                adopter.adoptionApplicationList?.find(
+                    (app: any) => app.targetBreederId === breederId && app.targetPetId === petId,
                 ) || null
             );
         } catch (error) {
@@ -325,7 +325,7 @@ export class AdopterRepository {
             const adopter = await this.adopterModel.findById(adopterId).lean().exec();
             if (!adopter) return null;
 
-            return adopter.favorite_breeder_list?.find((fav: any) => fav.favorite_breeder_id === breederId) || null;
+            return adopter.favoriteBreederList?.find((fav: any) => fav.favoriteBreederId === breederId) || null;
         } catch (error) {
             throw new Error(`기존 즐겨찾기 확인 실패: ${error.message}`);
         }

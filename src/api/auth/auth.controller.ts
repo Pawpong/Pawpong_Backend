@@ -16,6 +16,7 @@ import { RegisterAdopterRequestDto } from './dto/request/register-adopter-reques
 import { RegisterBreederRequestDto } from './dto/request/register-breeder-request.dto';
 import { SendVerificationCodeRequestDto, VerifyCodeRequestDto } from './dto/request/phone-verification-request.dto';
 import { CompleteSocialRegistrationDto } from './dto/request/social-login-request.dto';
+import { CheckNicknameRequestDto } from './dto/request/check-nickname-request.dto';
 import { ApiResponseDto } from '../../common/dto/response/api-response.dto';
 import { AuthResponseDto } from './dto/response/auth-response.dto';
 import { TokenResponseDto } from './dto/response/token-response.dto';
@@ -47,7 +48,7 @@ export class AuthController {
     @Post('register/breeder')
     @ApiEndpoint({
         summary: '브리더 회원가입',
-        description: '새로운 브리더 ��정을 생성합니다.',
+        description: '새로운 브리더 정보를 생성합니다.',
         responseType: AuthResponseDto,
         isPublic: true,
     })
@@ -229,7 +230,28 @@ export class AuthController {
     })
     async checkEmailDuplicate(@Body('email') email: string): Promise<ApiResponseDto<{ isDuplicate: boolean }>> {
         const isDuplicate = await this.authService.checkEmailDuplicate(email);
-        return ApiResponseDto.success({ isDuplicate }, isDuplicate ? '이미 가입된 이메일입니다.' : '사용 가능한 이메일입니다.');
+        return ApiResponseDto.success(
+            { isDuplicate },
+            isDuplicate ? '이미 가입된 이메일입니다.' : '사용 가능한 이메일입니다.',
+        );
+    }
+
+    @Post('check-nickname')
+    @HttpCode(HttpStatus.OK)
+    @ApiEndpoint({
+        summary: '닉네임 중복 체크',
+        description: '입력한 닉네임이 이미 사용 중인지 확인합니다.',
+        responseType: Boolean,
+        isPublic: true,
+    })
+    async checkNicknameDuplicate(
+        @Body() checkNicknameDto: CheckNicknameRequestDto,
+    ): Promise<ApiResponseDto<{ isDuplicate: boolean }>> {
+        const isDuplicate = await this.authService.checkNicknameDuplicate(checkNicknameDto.nickname);
+        return ApiResponseDto.success(
+            { isDuplicate },
+            isDuplicate ? '이미 사용 중인 닉네임입니다.' : '사용 가능한 닉네임입니다.',
+        );
     }
 
     @Post('social/complete')
@@ -260,6 +282,7 @@ export class AuthController {
             },
             {
                 role: dto.role,
+                nickname: dto.nickname,
                 phone: dto.phone,
                 petType: dto.petType,
                 plan: dto.plan,

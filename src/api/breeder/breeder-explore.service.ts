@@ -122,7 +122,7 @@ export class BreederExploreService {
         if (userId) {
             const adopter = await this.adopterModel.findById(userId).lean();
             if (adopter) {
-                favoritedBreederIds = adopter.favorite_breeder_list?.map(f => f.favorite_breeder_id) || [];
+                favoritedBreederIds = adopter.favoriteBreederList?.map(f => f.favoriteBreederId) || [];
             }
         }
 
