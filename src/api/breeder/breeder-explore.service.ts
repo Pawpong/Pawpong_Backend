@@ -181,7 +181,7 @@ export class BreederExploreService {
 
         // 페이지네이션 응답 생성
         return new PaginationBuilder<BreederCardResponseDto>()
-            .setData(cards)
+            .setItems(cards)
             .setTotalCount(totalItems)
             .setPage(page)
             .setTake(take)

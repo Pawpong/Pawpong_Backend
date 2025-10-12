@@ -1,32 +1,8 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
+import { User } from './user.schema';
 
 export type AdopterDocument = Adopter & Document;
-
-/**
- * 소셜 인증 정보 스키마 (camelCase)
- * 사용자의 소셜 로그인 연동 정보를 저장합니다.
- */
-@Schema({ _id: false })
-export class SocialAuthInfo {
-    /**
-     * 인증 제공자 (local, google, kakao, naver)
-     */
-    @Prop({ required: true, enum: ['local', 'google', 'kakao', 'naver'] })
-    authProvider: string;
-
-    /**
-     * 제공자 고유 ID
-     */
-    @Prop()
-    providerUserId?: string;
-
-    /**
-     * 제공자에서 받은 이메일
-     */
-    @Prop()
-    providerEmail?: string;
-}
 
 /**
  * 입양 신청 정보 스키마 (camelCase)
@@ -298,50 +274,45 @@ export class SubmittedReportInfo {
 }
 
 /**
+ * 알림 설정 스키마 (camelCase)
+ */
+@Schema({ _id: false })
+export class NotificationSettings {
+    /**
+     * 이메일 알림 수신 여부
+     */
+    @Prop({ default: true })
+    emailNotifications: boolean;
+
+    /**
+     * 푸시 알림 수신 여부
+     */
+    @Prop({ default: true })
+    pushNotifications: boolean;
+
+    /**
+     * 입양 신청 상태 변경 알림
+     */
+    @Prop({ default: true })
+    applicationStatusNotifications: boolean;
+
+    /**
+     * 즐겨찾기 브리더 업데이트 알림
+     */
+    @Prop({ default: true })
+    favoriteBreederNotifications: boolean;
+}
+
+/**
  * 입양자 메인 스키마 (camelCase)
- * 반려동물을 입양하려는 사용자의 정보와 활동 내역을 저장합니다.
+ * User 스키마를 extends하여 공통 필드를 상속받고,
+ * 입양자 전용 필드만 추가합니다.
  */
 @Schema({
     timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' },
     collection: 'adopters',
 })
-export class Adopter {
-    /**
-     * 이메일 주소 (로그인 ID)
-     */
-    @Prop({ required: true, lowercase: true })
-    emailAddress: string;
-
-    /**
-     * 해시된 비밀번호 (소셜 로그인 사용자는 선택)
-     */
-    @Prop()
-    passwordHash?: string;
-
-    /**
-     * 리프레시 토큰 (JWT 재발급용)
-     */
-    @Prop()
-    refreshToken?: string;
-
-    /**
-     * 닉네임 (화면 표시용 이름)
-     */
-    @Prop({ required: true })
-    nickname: string;
-
-    /**
-     * 연락처 전화번호
-     */
-    @Prop()
-    phoneNumber?: string;
-
-    /**
-     * 프로필 이미지 URL
-     */
-    @Prop()
-    profileImageUrl?: string;
-
+export class Adopter extends User {
     /**
      * 관심 반려동물 타입 (강아지/고양이)
      */
@@ -349,69 +320,46 @@ export class Adopter {
     interestedPetType?: string;
 
     /**
-     * 사용자 역할 (고정값: adopter)
+     * 관심 품종 목록
      */
-    @Prop({ required: true, enum: ['adopter'], default: 'adopter' })
-    userRole: string;
+    @Prop({ type: [String], default: [] })
+    interestedBreeds: string[];
 
     /**
-     * 계정 상태 (active, suspended, deactivated)
+     * 희망 입양 지역
      */
-    @Prop({ required: true, enum: ['active', 'suspended', 'deactivated'], default: 'active' })
-    accountStatus: string;
+    @Prop()
+    preferredLocation?: string;
 
     /**
-     * 소셜 인증 정보
-     */
-    @Prop({ type: SocialAuthInfo })
-    socialAuthInfo?: SocialAuthInfo;
-
-    /**
-     * 입양 신청 내역 배열 (임베딩)
+     * 입양 신청 목록
      */
     @Prop({ type: [AdoptionApplicationInfo], default: [] })
     adoptionApplicationList: AdoptionApplicationInfo[];
 
     /**
-     * 작성한 후기 배열 (임베딩)
+     * 작성한 후기 목록
      */
     @Prop({ type: [WrittenReviewInfo], default: [] })
     writtenReviewList: WrittenReviewInfo[];
 
     /**
-     * 즐겨찾기 브리더 배열 (임베딩)
+     * 즐겨찾기 브리더 목록
      */
     @Prop({ type: [FavoriteBreederInfo], default: [] })
     favoriteBreederList: FavoriteBreederInfo[];
 
     /**
-     * 제출한 신고 배열 (임베딩)
+     * 제출한 신고 목록
      */
     @Prop({ type: [SubmittedReportInfo], default: [] })
     submittedReportList: SubmittedReportInfo[];
 
     /**
-     * 최근 활동 일시
+     * 알림 설정
      */
-    @Prop({ default: Date.now })
-    lastActivityAt: Date;
-
-    /**
-     * 알림 설정 정보
-     */
-    @Prop({
-        type: Object,
-        default: {
-            emailNotifications: true,
-            smsNotifications: false,
-            marketingNotifications: false,
-        },
-    })
-    notificationSettings: {
-        emailNotifications: boolean;
-        smsNotifications: boolean;
-        marketingNotifications: boolean;
-    };
+    @Prop({ type: NotificationSettings, default: () => ({}) })
+    notificationSettings: NotificationSettings;
 }
 
 export const AdopterSchema = SchemaFactory.createForClass(Adopter);
@@ -423,28 +371,11 @@ AdopterSchema.index({ emailAddress: 1 }, { unique: true });
 // 2. 닉네임 - 유니크 인덱스 (중복 방지)
 AdopterSchema.index({ nickname: 1 }, { unique: true });
 
-// 3. 전화번호 - 유니크 인덱스 (중복 가입 방지, sparse: true로 null 허용)
-AdopterSchema.index({ phoneNumber: 1 }, { unique: true, sparse: true });
+// 3. 계정 상태 - 일반 인덱스 (활성/정지 계정 필터링용)
+AdopterSchema.index({ accountStatus: 1 });
 
-// 4. 계정 상태별 조회 - 관리자 대시보드용
-AdopterSchema.index({ accountStatus: 1, createdAt: -1 });
+// 4. 소셜 인증 정보 - 복합 인덱스 (소셜 로그인 사용자 조회용)
+AdopterSchema.index({ 'socialAuthInfo.authProvider': 1, 'socialAuthInfo.providerUserId': 1 });
 
-// 5. 활성 사용자 최근 활동 조회 - 사용자 분석용
-AdopterSchema.index({ accountStatus: 1, lastActivityAt: -1 });
-
-// 6. 입양 신청 관련 복합 인덱스 - 신청 내역 조회 최적화
-AdopterSchema.index({
-    'adoptionApplicationList.targetBreederId': 1,
-    'adoptionApplicationList.applicationStatus': 1,
-    'adoptionApplicationList.appliedAt': -1,
-});
-
-// 7. 즐겨찾기 브리더 조회 최적화
-AdopterSchema.index({ 'favoriteBreederList.favoriteBreederId': 1 });
-
-// 8. 후기 작성자별 조회 - 브리더가 받은 후기 조회용
-AdopterSchema.index({
-    'writtenReviewList.targetBreederId': 1,
-    'writtenReviewList.isVisible': 1,
-    'writtenReviewList.createdAt': -1,
-});
+// 5. 생성일 - 일반 인덱스 (최신 가입자 조회용)
+AdopterSchema.index({ createdAt: -1 });

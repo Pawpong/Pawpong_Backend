@@ -536,9 +536,13 @@ export class AuthService {
      * 이메일 중복 체크 - 입양자와 브리더 모두 확인
      */
     async checkEmailDuplicate(email: string): Promise<boolean> {
-        const adopter = await this.adopterModel.findOne({ emailAddress: email });
-        const breeder = await this.breederModel.findOne({ email: email });
-        return !!(adopter || breeder);
+        const adopter = await this.adopterModel.findOne({ emailAddress: email }).lean().exec();
+        if (adopter) return true;
+
+        const breeder = await this.breederModel.findOne({ email: email }).lean().exec();
+        if (breeder) return true;
+
+        return false;
     }
 
     /**
@@ -896,45 +900,208 @@ export class AuthService {
     }
 
     /**
-     * 브리더 서류 제출 (2단계 회원가입)
+     * 브리더 서류 제출
+     * Elite 레벨과 New 레벨에 따라 필수 서류가 다름
      */
-    async submitBreederDocuments(userId: string, dto: any): Promise<any> {
+    async submitBreederDocuments(
+        userId: string,
+        breederLevel: 'elite' | 'new',
+        documents: {
+            idCardUrl: string;
+            animalProductionLicenseUrl: string;
+            adoptionContractSampleUrl?: string;
+            recentAssociationDocumentUrl?: string;
+            breederCertificationUrl?: string;
+            ticaCfaDocumentUrl?: string;
+        },
+    ): Promise<{
+        breederId: string;
+        verificationStatus: string;
+        uploadedDocuments: any;
+        isDocumentsComplete: boolean;
+        submittedAt: Date;
+        estimatedProcessingTime: string;
+    }> {
+        this.logger.logStart('submitBreederDocuments', '브리더 서류 제출 시작', {
+            userId,
+            breederLevel,
+        });
+
         const breeder = await this.breederModel.findById(userId);
 
         if (!breeder) {
+            this.logger.logError('submitBreederDocuments', '브리더를 찾을 수 없음', new Error('Breeder not found'));
             throw new BadRequestException('브리더를 찾을 수 없습니다.');
         }
 
         // 브리더 레벨에 따른 필수 서류 검증
-        const requiredDocTypes = dto.breederLevel === 'elite'
-            ? ['id_card', 'business_license', 'contract_sample', 'pedigree', 'breeder_certification']
-            : ['id_card', 'business_license'];
+        const documentArray: { type: string; url: string; uploadedAt: Date }[] = [];
 
-        const submittedTypes = dto.documents.map((doc: any) => doc.type);
-        const missingDocs = requiredDocTypes.filter(type => !submittedTypes.includes(type));
+        // 공통 필수 서류 (모든 레벨)
+        documentArray.push({
+            type: 'id_card',
+            url: documents.idCardUrl,
+            uploadedAt: new Date(),
+        });
+        documentArray.push({
+            type: 'animal_production_license',
+            url: documents.animalProductionLicenseUrl,
+            uploadedAt: new Date(),
+        });
 
-        if (missingDocs.length > 0) {
-            throw new BadRequestException(
-                `필수 서류가 누락되었습니다: ${missingDocs.join(', ')}`
-            );
+        // Elite 레벨 필수 서류 검증
+        if (breederLevel === 'elite') {
+            if (!documents.adoptionContractSampleUrl) {
+                throw new BadRequestException('표준 입양계약서 샘플이 필요합니다.');
+            }
+            if (!documents.recentAssociationDocumentUrl) {
+                throw new BadRequestException('최근 발급한 협회 서류가 필요합니다.');
+            }
+            if (!documents.breederCertificationUrl) {
+                throw new BadRequestException('고양이 브리더 인증 서류가 필요합니다.');
+            }
+
+            documentArray.push({
+                type: 'adoption_contract_sample',
+                url: documents.adoptionContractSampleUrl,
+                uploadedAt: new Date(),
+            });
+            documentArray.push({
+                type: 'association_document',
+                url: documents.recentAssociationDocumentUrl,
+                uploadedAt: new Date(),
+            });
+            documentArray.push({
+                type: 'breeder_certification',
+                url: documents.breederCertificationUrl,
+                uploadedAt: new Date(),
+            });
+
+            // Elite 레벨 선택 서류
+            if (documents.ticaCfaDocumentUrl) {
+                documentArray.push({
+                    type: 'tica_cfa_document',
+                    url: documents.ticaCfaDocumentUrl,
+                    uploadedAt: new Date(),
+                });
+            }
         }
 
         // 서류 정보를 verification.documents에 저장
-        breeder.verification.documents = dto.documents.map((doc: any) => ({
-            type: doc.type,
-            url: doc.filename,
-            uploadedAt: new Date(),
-        }));
-
-        breeder.verification.level = dto.breederLevel;
+        breeder.verification.documents = documentArray;
+        breeder.verification.level = breederLevel;
         breeder.verification.status = VerificationStatus.REVIEWING;
         breeder.verification.submittedAt = new Date();
 
         await breeder.save();
 
+        this.logger.logSuccess('submitBreederDocuments', '브리더 서류 제출 완료', {
+            breederId: breeder._id,
+            level: breederLevel,
+            documentsCount: documentArray.length,
+        });
+
+        const uploadedDocuments: any = {
+            idCard: documents.idCardUrl,
+            animalProductionLicense: documents.animalProductionLicenseUrl,
+        };
+
+        if (breederLevel === 'elite') {
+            uploadedDocuments.adoptionContractSample = documents.adoptionContractSampleUrl;
+            uploadedDocuments.recentAssociationDocument = documents.recentAssociationDocumentUrl;
+            uploadedDocuments.breederCertification = documents.breederCertificationUrl;
+            if (documents.ticaCfaDocumentUrl) {
+                uploadedDocuments.ticaCfaDocument = documents.ticaCfaDocumentUrl;
+            }
+        }
+
         return {
-            message: '서류가 성공적으로 제출되었습니다. 관리자 검토 후 승인됩니다.',
+            breederId: (breeder._id as any).toString(),
             verificationStatus: breeder.verification.status,
+            uploadedDocuments,
+            isDocumentsComplete: true,
+            submittedAt: breeder.verification.submittedAt,
+            estimatedProcessingTime: '3-5일',
+        };
+    }
+
+    /**
+     * 소셜 로그인 사용자 존재 여부 확인
+     * 프론트엔드에서 로그인/회원가입 플로우를 결정하기 위해 사용
+     */
+    async checkSocialUser(
+        provider: string,
+        providerId: string,
+        email?: string,
+    ): Promise<{
+        exists: boolean;
+        userRole?: string;
+        userId?: string;
+        email?: string;
+        nickname?: string;
+        profileImageUrl?: string;
+    }> {
+        this.logger.logStart('checkSocialUser', '소셜 사용자 존재 여부 확인', {
+            provider,
+            providerId,
+            email,
+        });
+
+        // 입양자 검색
+        const adopter = await this.adopterModel
+            .findOne({
+                'socialAuthInfo.authProvider': provider,
+                'socialAuthInfo.providerUserId': providerId,
+            })
+            .lean()
+            .exec();
+
+        if (adopter) {
+            this.logger.logSuccess('checkSocialUser', '입양자 계정 발견', {
+                userId: adopter._id,
+            });
+
+            return {
+                exists: true,
+                userRole: 'adopter',
+                userId: (adopter._id as any).toString(),
+                email: adopter.emailAddress,
+                nickname: adopter.nickname,
+                profileImageUrl: adopter.profileImageUrl,
+            };
+        }
+
+        // 브리더 검색
+        const breeder = await this.breederModel
+            .findOne({
+                'socialAuth.provider': provider,
+                'socialAuth.providerId': providerId,
+            })
+            .lean()
+            .exec();
+
+        if (breeder) {
+            this.logger.logSuccess('checkSocialUser', '브리더 계정 발견', {
+                userId: breeder._id,
+            });
+
+            return {
+                exists: true,
+                userRole: 'breeder',
+                userId: (breeder._id as any).toString(),
+                email: breeder.email,
+                nickname: breeder.name,
+                profileImageUrl: breeder.profileImage,
+            };
+        }
+
+        this.logger.logSuccess('checkSocialUser', '미가입 사용자', {
+            provider,
+            providerId,
+        });
+
+        return {
+            exists: false,
         };
     }
 }

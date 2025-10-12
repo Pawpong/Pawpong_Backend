@@ -25,15 +25,23 @@ export class SocialAuth {
 export class VerificationDocument {
     /**
      * 서류 타입
-     * - id_card: 신분증 사본
-     * - business_license: 동물생산업 등록증
-     * - contract_sample: 표준 입양계약서 샘플 (엘리트만)
-     * - pedigree: 혈통서 사본 (엘리트만)
-     * - breeder_certification: 브리더 인증 서류 (엘리트만)
+     * - id_card: 신분증 사본 (필수 - 모든 레벨)
+     * - animal_production_license: 동물생산업 등록증 (필수 - 모든 레벨)
+     * - adoption_contract_sample: 표준 입양계약서 샘플 (엘리트 필수)
+     * - association_document: 최근 발급한 협회 서류 (엘리트 필수)
+     * - breeder_certification: 고양이 브리더 인증 서류 (엘리트 필수)
+     * - tica_cfa_document: TICA 또는 CFA 서류 (엘리트 선택)
      */
     @Prop({
         required: true,
-        enum: ['id_card', 'business_license', 'contract_sample', 'pedigree', 'breeder_certification']
+        enum: [
+            'id_card',
+            'animal_production_license',
+            'adoption_contract_sample',
+            'association_document',
+            'breeder_certification',
+            'tica_cfa_document',
+        ],
     })
     type: string;
 
@@ -55,7 +63,7 @@ export class BreederVerification {
     @Prop({
         required: true,
         enum: ['pending', 'reviewing', 'approved', 'rejected'],
-        default: 'pending'
+        default: 'pending',
     })
     status: string;
 
@@ -65,7 +73,7 @@ export class BreederVerification {
     @Prop({
         required: true,
         enum: ['basic', 'pro'],
-        default: 'basic'
+        default: 'basic',
     })
     plan: string;
 
@@ -75,7 +83,7 @@ export class BreederVerification {
     @Prop({
         required: true,
         enum: ['new', 'elite'],
-        default: 'new'
+        default: 'new',
     })
     level: string;
 
@@ -201,7 +209,7 @@ export class BreederStats {
             min: { type: Number, default: 0 },
             max: { type: Number, default: 0 },
         },
-        default: { min: 0, max: 0 }
+        default: { min: 0, max: 0 },
     })
     priceRange: {
         min: number;
@@ -254,7 +262,7 @@ export class Breeder {
     /**
      * 이메일 주소 (로그인 ID)
      */
-    @Prop({ required: true, unique: true })
+    @Prop({ required: true })
     email: string;
 
     /**

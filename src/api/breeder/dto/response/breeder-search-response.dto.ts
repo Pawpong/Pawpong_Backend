@@ -8,11 +8,11 @@ import { BreederProfileResponseDto } from './breeder-profileresponse.dto';
  */
 export class BreederSearchResponseDto extends PaginationResponseDto<BreederProfileResponseDto> {
     /**
-     * 검색된 브리더 목록 (item 필드를 override하여 명확한 타입 지정)
+     * 검색된 브리더 목록 (items 필드를 override하여 명확한 타입 지정)
      */
     @ApiProperty({
         description: '검색된 브리더 목록',
         type: [BreederProfileResponseDto],
     })
-    declare item: BreederProfileResponseDto[];
+    declare items: BreederProfileResponseDto[];
 }

@@ -54,6 +54,27 @@
 5. POST /api/auth/social/complete (추가 정보 입력)
 ```
 
+### 5. 브리더 서류 제출
+
+#### 브리더 레벨별 필수 서류
+
+**New 레벨** (`POST /api/auth/breeder/submit-documents`):
+- 신분증 사본 (idCardUrl) - 필수
+- 동물생산업 등록증 (animalProductionLicenseUrl) - 필수
+
+**Elite 레벨** (`POST /api/auth/breeder/submit-documents`):
+- 신분증 사본 (idCardUrl) - 필수
+- 동물생산업 등록증 (animalProductionLicenseUrl) - 필수
+- 표준 입양계약서 샘플 (adoptionContractSampleUrl) - 필수
+- 최근 발급한 협회 서류 (recentAssociationDocumentUrl) - 필수
+- 고양이 브리더 인증 서류 (breederCertificationUrl) - 필수
+- TICA 또는 CFA 서류 (ticaCfaDocumentUrl) - 선택사항
+
+서류 제출 후:
+- 검증 상태: `pending` → `reviewing` → `approved` / `rejected`
+- 예상 처리 시간: 3-5 영업일
+- 관리자 승인 후 브리더 활동 가능
+
 ## 파일 구조
 
 ```
@@ -68,13 +89,15 @@ auth/
 │   │   ├── register-breeder-request.dto.ts
 │   │   ├── login-request.dto.ts
 │   │   ├── social-login-request.dto.ts
-│   │   ├── send-sms-request.dto.ts
-│   │   └── verify-sms-request.dto.ts
+│   │   ├── phone-verification-request.dto.ts
+│   │   ├── check-nickname-request.dto.ts
+│   │   └── breeder-document-upload-request.dto.ts
 │   └── response/
 │       ├── auth-response.dto.ts
-│       └── sms-response.dto.ts
-└── swagger/
-    └── index.ts               # Swagger 문서
+│       ├── token-response.dto.ts
+│       ├── phone-verification-response.dto.ts
+│       └── breeder-document-upload-response.dto.ts
+└── README.md                  # 도메인 문서
 ```
 
 ## 주요 메서드
@@ -122,6 +145,8 @@ async completeSocialRegistration(profile: SocialProfile, additionalInfo: Additio
 async completeSocialRegistrationWithTempId(dto: TempIdDto)
 async checkEmailDuplicate(email: string)
 async checkNicknameDuplicate(nickname: string)
+async submitBreederDocuments(userId: string, breederLevel: 'elite' | 'new', documents: DocumentUrls)
+async generateSocialLoginTokens(user: any)
 ```
 
 ### SmsService

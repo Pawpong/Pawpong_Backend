@@ -76,13 +76,13 @@ export class ApplicationDataDto {
  */
 export class ApplicationListResponseDto extends PaginationResponseDto<ApplicationDataDto> {
     /**
-     * 입양 신청 목록 (item 필드를 override하여 명확한 타입 지정)
+     * 입양 신청 목록 (items 필드를 override하여 명확한 타입 지정)
      */
     @ApiProperty({
         description: '입양 신청 목록',
         type: [ApplicationDataDto],
     })
-    declare item: ApplicationDataDto[];
+    declare items: ApplicationDataDto[];
 
     /**
      * 상태별 신청 수

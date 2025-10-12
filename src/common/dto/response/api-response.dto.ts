@@ -24,7 +24,7 @@ export class ApiResponseDto<T = any> {
      * 응답 데이터 (성공 시)
      */
     @ApiProperty({ description: '응답 데이터', required: false })
-    item?: T;
+    data?: T;
 
     /**
      * 성공 메시지 (선택사항)
@@ -50,7 +50,7 @@ export class ApiResponseDto<T = any> {
     constructor(success: boolean, code: number, item?: T, message?: string, error?: string) {
         this.success = success;
         this.code = code;
-        this.item = item;
+        this.data = item;
         this.message = message;
         this.error = error;
         this.timestamp = new Date().toISOString();

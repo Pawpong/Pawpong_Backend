@@ -112,7 +112,7 @@ export class BreederService {
 
         // PaginationBuilder를 사용하여 응답 생성
         return new PaginationBuilder<any>()
-            .setData(transformedBreeders as any[])
+            .setItems(transformedBreeders as any[])
             .setPage(page)
             .setTake(limit)
             .setTotalCount(total)

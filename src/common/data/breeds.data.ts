@@ -73,16 +73,7 @@ export const KOREA_BREEDS = [
         petType: 'cat',
         category: '장모',
         categoryDescription: 'Longhair',
-        breeds: [
-            '시베리안',
-            '브리티쉬 롱헤어',
-            '메인쿤',
-            '노르웨이숲',
-            '랙돌',
-            '페르시안',
-            '엑조틱',
-            '소말리',
-        ],
+        breeds: ['시베리안', '브리티쉬 롱헤어', '메인쿤', '노르웨이숲', '랙돌', '페르시안', '엑조틱', '소말리'],
     },
     {
         petType: 'cat',

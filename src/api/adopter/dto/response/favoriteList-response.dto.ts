@@ -67,11 +67,11 @@ export class FavoriteBreederDataDto {
  */
 export class FavoriteListResponseDto extends PaginationResponseDto<FavoriteBreederDataDto> {
     /**
-     * 즐겨찾기 브리더 목록 (item 필드를 override하여 명확한 타입 지정)
+     * 즐겨찾기 브리더 목록 (items 필드를 override하여 명확한 타입 지정)
      */
     @ApiProperty({
         description: '즐겨찾기 브리더 목록',
         type: [FavoriteBreederDataDto],
     })
-    declare item: FavoriteBreederDataDto[];
+    declare items: FavoriteBreederDataDto[];
 }

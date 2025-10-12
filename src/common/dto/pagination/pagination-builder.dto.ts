@@ -5,7 +5,7 @@ import { PaginationResponseDto } from './pagination-response.dto';
  * 페이지네이션 응답을 생성하기 위한 빌더 패턴을 제공합니다.
  */
 export class PaginationBuilder<T> {
-    _data: T[];
+    _items: T[];
     _page: number;
     _take: number;
     _totalCount: number;
@@ -14,8 +14,8 @@ export class PaginationBuilder<T> {
      * 페이징 처리된 데이터를 설정합니다.
      * @param data 페이징 처리된 데이터 배열
      */
-    setData(data: T[]): this {
-        this._data = data;
+    setItems(data: T[]): this {
+        this._items = data;
         return this;
     }
 

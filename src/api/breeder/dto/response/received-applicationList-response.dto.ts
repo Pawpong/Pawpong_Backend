@@ -9,11 +9,11 @@ import { ReceivedApplicationResponseDto } from './received-application-response.
  */
 export class ReceivedApplicationListResponseDto extends PaginationResponseDto<ReceivedApplicationResponseDto> {
     /**
-     * 받은 입양 신청 목록 (item 필드를 override하여 명확한 타입 지정)
+     * 받은 입양 신청 목록 (items 필드를 override하여 명확한 타입 지정)
      */
     @ApiProperty({
         description: '받은 입양 신청 목록',
         type: [ReceivedApplicationResponseDto],
     })
-    declare item: ReceivedApplicationResponseDto[];
+    declare items: ReceivedApplicationResponseDto[];
 }

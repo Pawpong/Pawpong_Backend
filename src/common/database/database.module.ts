@@ -23,13 +23,13 @@ import { AdoptionApplication, AdoptionApplicationSchema } from '../../schema/ado
                     uri: uri,
                     connectionFactory: (connection) => {
                         connection.on('connected', () => {
-                            console.log('[DatabaseModule] ✅ MongoDB connected successfully');
+                            console.log('[DatabaseModule] MongoDB connected successfully');
                         });
                         connection.on('disconnected', () => {
-                            console.log('[DatabaseModule] ⚠️  MongoDB disconnected');
+                            console.log('[DatabaseModule] MongoDB disconnected');
                         });
                         connection.on('error', (error) => {
-                            console.error('[DatabaseModule] ❌ MongoDB connection error:', error.message);
+                            console.error('[DatabaseModule] MongoDB connection error:', error.message);
                         });
                         return connection;
                     },
@@ -43,17 +43,6 @@ import { AdoptionApplication, AdoptionApplicationSchema } from '../../schema/ado
             },
             inject: [ConfigService],
         }),
-        MongooseModule.forFeature([
-            { name: Adopter.name, schema: AdopterSchema },
-            { name: Breeder.name, schema: BreederSchema },
-            { name: Admin.name, schema: AdminSchema },
-            { name: SystemStats.name, schema: SystemStatsSchema },
-            { name: ParentPet.name, schema: ParentPetSchema },
-            { name: AvailablePet.name, schema: AvailablePetSchema },
-            { name: BreederReview.name, schema: BreederReviewSchema },
-            { name: BreederReport.name, schema: BreederReportSchema },
-            { name: AdoptionApplication.name, schema: AdoptionApplicationSchema },
-        ]),
     ],
     exports: [MongooseModule],
 })
@@ -76,7 +65,7 @@ export class AuthDatabaseModule {}
             { name: Adopter.name, schema: AdopterSchema },
             { name: Breeder.name, schema: BreederSchema },
             { name: BreederReview.name, schema: BreederReviewSchema },
-        ])
+        ]),
     ],
     exports: [MongooseModule],
 })
@@ -90,7 +79,7 @@ export class AdopterDatabaseModule {}
             { name: ParentPet.name, schema: ParentPetSchema },
             { name: BreederReview.name, schema: BreederReviewSchema },
             { name: AdoptionApplication.name, schema: AdoptionApplicationSchema },
-        ])
+        ]),
     ],
     exports: [MongooseModule],
 })

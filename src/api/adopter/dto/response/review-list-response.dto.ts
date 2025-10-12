@@ -97,13 +97,13 @@ export class WrittenReviewDataDto {
  */
 export class ReviewListResponseDto extends PaginationResponseDto<WrittenReviewDataDto> {
     /**
-     * 작성한 후기 목록 (item 필드를 override하여 명확한 타입 지정)
+     * 작성한 후기 목록 (items 필드를 override하여 명확한 타입 지정)
      */
     @ApiProperty({
         description: '작성한 후기 목록',
         type: [WrittenReviewDataDto],
     })
-    declare item: WrittenReviewDataDto[];
+    declare items: WrittenReviewDataDto[];
 
     /**
      * 평균 평점 통계
