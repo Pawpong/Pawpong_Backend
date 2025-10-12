@@ -1,20 +1,6 @@
-import {
-    Controller,
-    Post,
-    Body,
-    HttpCode,
-    HttpStatus,
-    UseGuards,
-    Get,
-    Req,
-    Res,
-    UseInterceptors,
-    UploadedFile,
-    UploadedFiles,
-} from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, HttpStatus, UseGuards, Get, Req, Res } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
-import { FileInterceptor, FileFieldsInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 
 import { CurrentUser } from '../../common/decorator/current-user.decorator';
@@ -24,10 +10,7 @@ import { JwtAuthGuard } from '../../common/guard/jwt-auth.guard';
 import { AuthService } from './auth.service';
 import { SmsService } from './sms.service';
 
-import { LoginRequestDto } from './dto/request/login-request.dto';
 import { RefreshTokenRequestDto } from './dto/request/refresh-token-request.dto';
-import { RegisterAdopterRequestDto } from './dto/request/register-adopter-request.dto';
-import { RegisterBreederRequestDto } from './dto/request/register-breeder-request.dto';
 import { SendVerificationCodeRequestDto, VerifyCodeRequestDto } from './dto/request/phone-verification-request.dto';
 import { CompleteSocialRegistrationDto } from './dto/request/social-login-request.dto';
 import { CheckNicknameRequestDto } from './dto/request/check-nickname-request.dto';
