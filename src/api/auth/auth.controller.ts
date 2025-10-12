@@ -1,4 +1,17 @@
-import { Controller, Post, Body, HttpCode, HttpStatus, UseGuards, Get, Req, Res, UseInterceptors, UploadedFile, UploadedFiles } from '@nestjs/common';
+import {
+    Controller,
+    Post,
+    Body,
+    HttpCode,
+    HttpStatus,
+    UseGuards,
+    Get,
+    Req,
+    Res,
+    UseInterceptors,
+    UploadedFile,
+    UploadedFiles,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
 import { FileInterceptor, FileFieldsInterceptor } from '@nestjs/platform-express';
@@ -33,53 +46,6 @@ export class AuthController {
         private readonly smsService: SmsService,
         private readonly configService: ConfigService,
     ) {}
-
-    @Post('register/adopter')
-    @UseInterceptors(FileInterceptor('profileImage'))
-    @ApiEndpoint({
-        summary: '입양자 회원가입',
-        description: '새로운 입양자 계정을 생성합니다. 프로필 이미지는 선택사항입니다. data 필드에 JSON 문자열로 전송하세요.',
-        responseType: AuthResponseDto,
-        isPublic: true,
-    })
-    async registerAdopter(
-        @Body('data') dataString: string,
-        @UploadedFile() profileImage?: Express.Multer.File,
-    ): Promise<ApiResponseDto<AuthResponseDto>> {
-        const registerAdopterDto: RegisterAdopterRequestDto = JSON.parse(dataString);
-        const result = await this.authService.registerAdopter(registerAdopterDto, profileImage);
-        return ApiResponseDto.success(result, '입양자 회원가입이 완료되었습니다.');
-    }
-
-    @Post('register/breeder')
-    @UseInterceptors(FileInterceptor('profileImage'))
-    @ApiEndpoint({
-        summary: '브리더 일반 회원가입 (이메일/비밀번호)',
-        description: '이메일과 비밀번호로 브리더 회원가입을 진행합니다. 프로필 이미지는 선택사항입니다. data 필드에 JSON 문자열로 전송하세요.',
-        responseType: AuthResponseDto,
-        isPublic: true,
-    })
-    async registerBreeder(
-        @Body('data') dataString: string,
-        @UploadedFile() profileImage?: Express.Multer.File,
-    ): Promise<ApiResponseDto<AuthResponseDto>> {
-        const registerBreederDto: RegisterBreederRequestDto = JSON.parse(dataString);
-        const result = await this.authService.registerBreeder(registerBreederDto, profileImage);
-        return ApiResponseDto.success(result, '브리더 회원가입이 완료되었습니다.');
-    }
-
-    @Post('login')
-    @HttpCode(HttpStatus.OK)
-    @ApiEndpoint({
-        summary: '사용자 로그인',
-        description: '이메일과 비밀번호로 로그인합니다.',
-        responseType: AuthResponseDto,
-        isPublic: true,
-    })
-    async login(@Body() loginDto: LoginRequestDto): Promise<ApiResponseDto<AuthResponseDto>> {
-        const result = await this.authService.login(loginDto);
-        return ApiResponseDto.success(result, '로그인이 완료되었습니다.');
-    }
 
     @Post('refresh')
     @HttpCode(HttpStatus.OK)
@@ -161,29 +127,12 @@ export class AuthController {
             const redirectUrl = `${frontendUrl}/signup?tempId=${result.tempUserId}&provider=google&email=${req.user.email}&name=${req.user.name}&profileImage=${req.user.profileImage || ''}`;
             return res.redirect(redirectUrl);
         } else {
-            // 기존 사용자 - 로그인 처리 (토큰 발급 및 쿠키 설정)
+            // 기존 사용자 - 로그인 처리 (토큰 발급)
             const tokens = await this.authService.generateSocialLoginTokens(result.user);
 
-            // 액세스 토큰 쿠키 설정 (1시간)
-            res.cookie('accessToken', tokens.accessToken, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'lax',
-                maxAge: 3600000, // 1시간
-                path: '/',
-            });
-
-            // 리프레시 토큰 쿠키 설정 (7일)
-            res.cookie('refreshToken', tokens.refreshToken, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'lax',
-                maxAge: 604800000, // 7일
-                path: '/',
-            });
-
-            // 탐색 페이지로 리다이렉트
-            return res.redirect(`${frontendUrl}/explore`);
+            // 프론트엔드로 토큰 전달 (URL 파라미터)
+            const redirectUrl = `${frontendUrl}/login/success?accessToken=${tokens.accessToken}&refreshToken=${tokens.refreshToken}`;
+            return res.redirect(redirectUrl);
         }
     }
 
@@ -209,29 +158,12 @@ export class AuthController {
             const redirectUrl = `${frontendUrl}/signup?tempId=${result.tempUserId}&provider=naver&email=${req.user.email}&name=${req.user.name}&profileImage=${req.user.profileImage || ''}`;
             return res.redirect(redirectUrl);
         } else {
-            // 기존 사용자 - 로그인 처리 (토큰 발급 및 쿠키 설정)
+            // 기존 사용자 - 로그인 처리 (토큰 발급)
             const tokens = await this.authService.generateSocialLoginTokens(result.user);
 
-            // 액세스 토큰 쿠키 설정 (1시간)
-            res.cookie('accessToken', tokens.accessToken, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'lax',
-                maxAge: 3600000,
-                path: '/',
-            });
-
-            // 리프레시 토큰 쿠키 설정 (7일)
-            res.cookie('refreshToken', tokens.refreshToken, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'lax',
-                maxAge: 604800000,
-                path: '/',
-            });
-
-            // 탐색 페이지로 리다이렉트
-            return res.redirect(`${frontendUrl}/explore`);
+            // 프론트엔드로 토큰 전달 (URL 파라미터)
+            const redirectUrl = `${frontendUrl}/login/success?accessToken=${tokens.accessToken}&refreshToken=${tokens.refreshToken}`;
+            return res.redirect(redirectUrl);
         }
     }
 
@@ -258,29 +190,12 @@ export class AuthController {
             const redirectUrl = `${frontendUrl}/signup?tempId=${result.tempUserId}&provider=kakao&email=${req.user.email}&name=${req.user.name}&profileImage=${req.user.profileImage || ''}${needsEmail}`;
             return res.redirect(redirectUrl);
         } else {
-            // 기존 사용자 - 로그인 처리 (토큰 발급 및 쿠키 설정)
+            // 기존 사용자 - 로그인 처리 (토큰 발급)
             const tokens = await this.authService.generateSocialLoginTokens(result.user);
 
-            // 액세스 토큰 쿠키 설정 (1시간)
-            res.cookie('accessToken', tokens.accessToken, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'lax',
-                maxAge: 3600000,
-                path: '/',
-            });
-
-            // 리프레시 토큰 쿠키 설정 (7일)
-            res.cookie('refreshToken', tokens.refreshToken, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'lax',
-                maxAge: 604800000,
-                path: '/',
-            });
-
-            // 탐색 페이지로 리다이렉트
-            return res.redirect(`${frontendUrl}/explore`);
+            // 프론트엔드로 토큰 전달 (URL 파라미터)
+            const redirectUrl = `${frontendUrl}/login/success?accessToken=${tokens.accessToken}&refreshToken=${tokens.refreshToken}`;
+            return res.redirect(redirectUrl);
         }
     }
 
@@ -322,7 +237,8 @@ export class AuthController {
     @HttpCode(HttpStatus.OK)
     @ApiEndpoint({
         summary: '소셜 로그인 사용자 존재 여부 확인',
-        description: '소셜 로그인 제공자와 사용자 ID로 기존 가입 여부를 확인합니다. 존재하면 로그인, 없으면 회원가입 플로우로 진행합니다.',
+        description:
+            '소셜 로그인 제공자와 사용자 ID로 기존 가입 여부를 확인합니다. 존재하면 로그인, 없으면 회원가입 플로우로 진행합니다.',
         responseType: Object,
         isPublic: true,
     })
@@ -332,10 +248,7 @@ export class AuthController {
         @Body('email') email?: string,
     ): Promise<ApiResponseDto<any>> {
         const result = await this.authService.checkSocialUser(provider, providerId, email);
-        return ApiResponseDto.success(
-            result,
-            result.exists ? '가입된 사용자입니다.' : '미가입 사용자입니다.',
-        );
+        return ApiResponseDto.success(result, result.exists ? '가입된 사용자입니다.' : '미가입 사용자입니다.');
     }
 
     @Post('social/complete')
@@ -378,18 +291,14 @@ export class AuthController {
         @CurrentUser() user: any,
         @Body() dto: BreederDocumentUploadRequestDto,
     ): Promise<ApiResponseDto<BreederDocumentUploadResponseDto>> {
-        const result = await this.authService.submitBreederDocuments(
-            user.userId,
-            dto.breederLevel as 'elite' | 'new',
-            {
-                idCardUrl: dto.idCardUrl,
-                animalProductionLicenseUrl: dto.animalProductionLicenseUrl,
-                adoptionContractSampleUrl: dto.adoptionContractSampleUrl,
-                recentAssociationDocumentUrl: dto.recentAssociationDocumentUrl,
-                breederCertificationUrl: dto.breederCertificationUrl,
-                ticaCfaDocumentUrl: dto.ticaCfaDocumentUrl,
-            },
-        );
+        const result = await this.authService.submitBreederDocuments(user.userId, dto.breederLevel as 'elite' | 'new', {
+            idCardUrl: dto.idCardUrl,
+            animalProductionLicenseUrl: dto.animalProductionLicenseUrl,
+            adoptionContractSampleUrl: dto.adoptionContractSampleUrl,
+            recentAssociationDocumentUrl: dto.recentAssociationDocumentUrl,
+            breederCertificationUrl: dto.breederCertificationUrl,
+            ticaCfaDocumentUrl: dto.ticaCfaDocumentUrl,
+        });
         return ApiResponseDto.success(result, '서류가 성공적으로 제출되었습니다.');
     }
 }
