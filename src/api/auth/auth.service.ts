@@ -221,10 +221,10 @@ export class AuthService {
                 needsAdditionalInfo: false,
                 user: {
                     userId: (breeder._id as any).toString(),
-                    email: breeder.email,
+                    email: breeder.emailAddress,
                     name: breeder.name,
                     role: 'breeder',
-                    profileImage: breeder.profileImage,
+                    profileImage: breeder.profileImageUrl,
                 },
             };
         }
@@ -313,7 +313,6 @@ export class AuthService {
                 plan: dto.plan,
                 breederName: dto.breederName,
                 introduction: dto.introduction,
-                city: dto.city,
                 district: dto.district,
                 breeds: dto.breeds,
                 level: dto.level,
@@ -341,7 +340,6 @@ export class AuthService {
             plan?: string;
             breederName?: string;
             introduction?: string;
-            city?: string;
             district?: string;
             breeds?: string[];
             level?: string;
@@ -416,7 +414,7 @@ export class AuthService {
             };
         } else {
             // 브리더 생성
-            if (!additionalInfo.breederName || !additionalInfo.city || !additionalInfo.district) {
+            if (!additionalInfo.breederName || !additionalInfo.district) {
                 throw new BadRequestException('브리더는 브리더명, 지역이 필요합니다.');
             }
 
@@ -425,40 +423,66 @@ export class AuthService {
             }
 
             const breeder = new this.breederModel({
-                email: profile.email,
-                name: additionalInfo.breederName,
-                phone: this.normalizePhoneNumber(additionalInfo.phone),
-                profileImage: profile.profileImage,
-                introduction: additionalInfo.introduction || '',
-                specialization: [additionalInfo.petType || 'dog'],
-                location: {
-                    city: additionalInfo.city,
-                    district: additionalInfo.district,
+                // User 스키마 필드 (상속)
+                emailAddress: profile.email,
+                nickname: additionalInfo.breederName, // 브리더명을 nickname으로 사용
+                phoneNumber: this.normalizePhoneNumber(additionalInfo.phone),
+                profileImageUrl: profile.profileImage,
+                socialAuthInfo: {
+                    authProvider: profile.provider,
+                    providerUserId: profile.providerId,
+                    providerEmail: profile.email,
                 },
-                priceRange: {
-                    min: 0,
-                    max: 0,
-                },
-                representativePhotos: [],
-                socialAuth: {
-                    provider: profile.provider,
-                    providerId: profile.providerId,
-                    email: profile.email,
-                },
-                status: UserStatus.ACTIVE,
+                userRole: 'breeder',
+                accountStatus: UserStatus.ACTIVE,
+                termsAgreed: true,
+                privacyAgreed: true,
                 marketingAgreed: additionalInfo.marketingAgreed || false,
+                lastLoginAt: new Date(),
+                lastActivityAt: new Date(),
+
+                // Breeder 전용 필드
+                name: additionalInfo.breederName, // 업체명
+                petType: additionalInfo.petType || 'dog',
+                breeds: additionalInfo.breeds || [],
                 verification: {
                     status: VerificationStatus.PENDING,
                     plan: additionalInfo.plan === 'pro' ? BreederPlan.PRO : BreederPlan.BASIC,
                     level: additionalInfo.level || 'new',
                     documents: [],
                 },
+                profile: {
+                    description: additionalInfo.introduction || '',
+                    specialization: [additionalInfo.petType || 'dog'],
+                    location: {
+                        city: additionalInfo.district, // district를 city 필드에 저장
+                        district: '',
+                    },
+                    priceRange: {
+                        min: 0,
+                        max: 0,
+                    },
+                    representativePhotos: [],
+                },
+                applicationForm: [],
+                stats: {
+                    totalReviews: 0,
+                    averageRating: 0,
+                    totalAdoptions: 0,
+                    responseRate: 0,
+                    averageResponseTime: 0,
+                    lastUpdated: new Date(),
+                },
             });
 
             const savedBreeder = await breeder.save();
 
             // 토큰 생성
-            const tokens = this.generateTokens((savedBreeder._id as any).toString(), savedBreeder.email, 'breeder');
+            const tokens = this.generateTokens(
+                (savedBreeder._id as any).toString(),
+                savedBreeder.emailAddress,
+                'breeder',
+            );
 
             // Refresh 토큰 저장
             const hashedRefreshToken = await this.hashRefreshToken(tokens.refreshToken);
@@ -473,11 +497,11 @@ export class AuthService {
                 refreshTokenExpiresIn: tokens.refreshTokenExpiresIn,
                 userInfo: {
                     userId: (savedBreeder._id as any).toString(),
-                    emailAddress: savedBreeder.email,
-                    nickname: savedBreeder.name,
+                    emailAddress: savedBreeder.emailAddress,
+                    nickname: savedBreeder.nickname,
                     userRole: 'breeder',
-                    accountStatus: savedBreeder.status,
-                    profileImageUrl: savedBreeder.profileImage,
+                    accountStatus: savedBreeder.accountStatus,
+                    profileImageUrl: savedBreeder.profileImageUrl,
                 },
                 message: '소셜 회원가입이 완료되었습니다.',
             };
@@ -526,7 +550,124 @@ export class AuthService {
     }
 
     /**
-     * 브리더 서류 제출
+     * 브리더 서류 업로드 및 제출 (파일 업로드 기반)
+     * 파일을 GCP Storage에 업로드하고 URL을 생성한 후 제출합니다.
+     */
+    async uploadAndSubmitBreederDocuments(
+        userId: string,
+        breederLevel: 'elite' | 'new',
+        files: {
+            idCard?: Express.Multer.File[];
+            animalProductionLicense?: Express.Multer.File[];
+            adoptionContractSample?: Express.Multer.File[];
+            recentAssociationDocument?: Express.Multer.File[];
+            breederCertification?: Express.Multer.File[];
+            ticaCfaDocument?: Express.Multer.File[];
+        },
+    ): Promise<{
+        breederId: string;
+        verificationStatus: string;
+        uploadedDocuments: any;
+        isDocumentsComplete: boolean;
+        submittedAt: Date;
+        estimatedProcessingTime: string;
+    }> {
+        this.logger.logStart('uploadAndSubmitBreederDocuments', '브리더 서류 파일 업로드 시작', {
+            userId,
+            breederLevel,
+        });
+
+        // 필수 파일 검증
+        if (!files.idCard || files.idCard.length === 0) {
+            throw new BadRequestException('신분증 사본 파일이 필요합니다.');
+        }
+        if (!files.animalProductionLicense || files.animalProductionLicense.length === 0) {
+            throw new BadRequestException('동물생산업 등록증 파일이 필요합니다.');
+        }
+
+        // Elite 레벨 필수 파일 검증
+        if (breederLevel === 'elite') {
+            if (!files.adoptionContractSample || files.adoptionContractSample.length === 0) {
+                throw new BadRequestException('표준 입양계약서 샘플 파일이 필요합니다.');
+            }
+            if (!files.recentAssociationDocument || files.recentAssociationDocument.length === 0) {
+                throw new BadRequestException('최근 발급한 협회 서류 파일이 필요합니다.');
+            }
+            if (!files.breederCertification || files.breederCertification.length === 0) {
+                throw new BadRequestException('고양이 브리더 인증 서류 파일이 필요합니다.');
+            }
+        }
+
+        // 파일 업로드 (GCP Storage)
+        const uploadedUrls: {
+            idCardUrl: string;
+            animalProductionLicenseUrl: string;
+            adoptionContractSampleUrl?: string;
+            recentAssociationDocumentUrl?: string;
+            breederCertificationUrl?: string;
+            ticaCfaDocumentUrl?: string;
+        } = {
+            idCardUrl: '',
+            animalProductionLicenseUrl: '',
+        };
+
+        try {
+            // 신분증 업로드
+            const idCardResult = await this.storageService.uploadFile(files.idCard[0], 'breeder-documents');
+            uploadedUrls.idCardUrl = idCardResult.cdnUrl;
+
+            // 동물생산업 등록증 업로드
+            const licenseResult = await this.storageService.uploadFile(
+                files.animalProductionLicense[0],
+                'breeder-documents',
+            );
+            uploadedUrls.animalProductionLicenseUrl = licenseResult.cdnUrl;
+
+            // Elite 레벨 서류 업로드
+            if (breederLevel === 'elite') {
+                const contractResult = await this.storageService.uploadFile(
+                    files.adoptionContractSample![0],
+                    'breeder-documents',
+                );
+                uploadedUrls.adoptionContractSampleUrl = contractResult.cdnUrl;
+
+                const associationResult = await this.storageService.uploadFile(
+                    files.recentAssociationDocument![0],
+                    'breeder-documents',
+                );
+                uploadedUrls.recentAssociationDocumentUrl = associationResult.cdnUrl;
+
+                const certificationResult = await this.storageService.uploadFile(
+                    files.breederCertification![0],
+                    'breeder-documents',
+                );
+                uploadedUrls.breederCertificationUrl = certificationResult.cdnUrl;
+
+                // TICA/CFA 서류 (선택사항)
+                if (files.ticaCfaDocument && files.ticaCfaDocument.length > 0) {
+                    const ticaCfaResult = await this.storageService.uploadFile(
+                        files.ticaCfaDocument[0],
+                        'breeder-documents',
+                    );
+                    uploadedUrls.ticaCfaDocumentUrl = ticaCfaResult.cdnUrl;
+                }
+            }
+
+            this.logger.logSuccess('uploadAndSubmitBreederDocuments', '파일 업로드 완료', {
+                uploadedCount: Object.keys(uploadedUrls).filter((k) => uploadedUrls[k as keyof typeof uploadedUrls])
+                    .length,
+            });
+        } catch (error) {
+            this.logger.logError('uploadAndSubmitBreederDocuments', '파일 업로드 실패', error);
+            throw new BadRequestException('파일 업로드에 실패했습니다. 다시 시도해주세요.');
+        }
+
+        // 기존 submitBreederDocuments 메서드 호출
+        return this.submitBreederDocuments(userId, breederLevel, uploadedUrls);
+    }
+
+    /**
+     * 브리더 서류 제출 (URL 기반)
      * Elite 레벨과 New 레벨에 따라 필수 서류가 다름
      */
     async submitBreederDocuments(
@@ -715,9 +856,9 @@ export class AuthService {
                 exists: true,
                 userRole: 'breeder',
                 userId: (breeder._id as any).toString(),
-                email: breeder.email,
+                email: breeder.emailAddress,
                 nickname: breeder.name,
-                profileImageUrl: breeder.profileImage,
+                profileImageUrl: breeder.profileImageUrl,
             };
         }
 

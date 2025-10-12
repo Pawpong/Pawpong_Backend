@@ -152,7 +152,7 @@ export class BreederExploreService {
                 60 // 1시간 유효
             );
             const profileImage = this.storageService.generateSignedUrlSafe(
-                breeder.profileImage,
+                breeder.profileImageUrl,
                 60
             );
 
@@ -209,7 +209,7 @@ export class BreederExploreService {
                 60 // 1시간 유효
             );
             const profileImage = this.storageService.generateSignedUrlSafe(
-                breeder.profileImage,
+                breeder.profileImageUrl,
                 60
             );
 

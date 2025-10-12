@@ -1,22 +1,10 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
+import { User } from './user.schema';
 
 export type BreederDocument = Breeder & Document;
 
-/**
- * 소셜 로그인 인증 정보 스키마
- */
-@Schema({ _id: false })
-export class SocialAuth {
-    @Prop({ required: true, enum: ['local', 'google', 'kakao', 'apple'] })
-    provider: string;
-
-    @Prop()
-    providerId?: string;
-
-    @Prop()
-    email?: string;
-}
+// SocialAuth는 User 스키마의 SocialAuthInfo로 대체됨
 
 /**
  * 브리더 인증 서류 스키마
@@ -252,48 +240,18 @@ export class ApplicationFormField {
 
 /**
  * 브리더 메인 스키마
- * 핵심 정보만 포함, 관계 데이터는 별도 컬렉션으로 분리
+ * User 스키마를 상속받아 브리더 전용 필드만 추가
  */
 @Schema({
     timestamps: true,
     collection: 'breeders',
 })
-export class Breeder {
+export class Breeder extends User {
     /**
-     * 이메일 주소 (로그인 ID)
-     */
-    @Prop({ required: true })
-    email: string;
-
-    /**
-     * 해시된 비밀번호 (소셜 로그인 사용자는 선택사항)
-     */
-    @Prop()
-    password?: string;
-
-    /**
-     * 리프레시 토큰 (JWT 재발급용)
-     */
-    @Prop()
-    refreshToken?: string;
-
-    /**
-     * 브리더명 (업체명/상호명)
+     * 브리더명 (업체명/상호명) - User의 nickname과 별도
      */
     @Prop({ required: true })
     name: string;
-
-    /**
-     * 연락처 전화번호
-     */
-    @Prop({ required: true })
-    phone: string;
-
-    /**
-     * 프로필 이미지 URL
-     */
-    @Prop()
-    profileImage?: string;
 
     /**
      * 반려동물 타입 (강아지/고양이)
@@ -306,42 +264,6 @@ export class Breeder {
      */
     @Prop({ type: [String], default: [] })
     breeds: string[];
-
-    /**
-     * 소셜 로그인 정보
-     */
-    @Prop({ type: SocialAuth })
-    socialAuth?: SocialAuth;
-
-    /**
-     * 계정 상태
-     */
-    @Prop({ default: 'active', enum: ['active', 'suspended', 'deleted'] })
-    status: string;
-
-    /**
-     * 마지막 로그인 일시
-     */
-    @Prop({ default: Date.now })
-    lastLoginAt: Date;
-
-    /**
-     * 서비스 이용약관 동의 여부 (필수)
-     */
-    @Prop({ required: true, default: false })
-    termsAgreed: boolean;
-
-    /**
-     * 개인정보 처리방침 동의 여부 (필수)
-     */
-    @Prop({ required: true, default: false })
-    privacyAgreed: boolean;
-
-    /**
-     * 마케팅 정보 수신 동의 여부 (선택)
-     */
-    @Prop({ default: false })
-    marketingAgreed: boolean;
 
     /**
      * 브리더 인증 정보

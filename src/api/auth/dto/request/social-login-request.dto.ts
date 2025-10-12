@@ -101,15 +101,7 @@ export class CompleteSocialRegistrationDto {
     introduction?: string;
 
     @ApiPropertyOptional({
-        description: '시/도',
-        example: '서울특별시',
-    })
-    @IsOptional()
-    @IsString()
-    city?: string;
-
-    @ApiPropertyOptional({
-        description: '시/군/구',
+        description: '지역 (시/군/구)',
         example: '강남구',
     })
     @IsOptional()

@@ -1,8 +1,22 @@
-import { Controller, Post, Body, HttpCode, HttpStatus, UseGuards, Get, Req, Res } from '@nestjs/common';
+import {
+    Controller,
+    Post,
+    Body,
+    HttpCode,
+    HttpStatus,
+    UseGuards,
+    Get,
+    Req,
+    Res,
+    UseInterceptors,
+    UploadedFiles,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { ConfigService } from '@nestjs/config';
 import type { Response } from 'express';
 
+import { BreederLevel } from '../../common/enum/user.enum';
 import { CurrentUser } from '../../common/decorator/current-user.decorator';
 import { ApiController, ApiEndpoint } from '../../common/decorator/swagger.decorator';
 import { JwtAuthGuard } from '../../common/guard/jwt-auth.guard';
@@ -251,37 +265,53 @@ export class AuthController {
 
     @Post('breeder/submit-documents')
     @UseGuards(JwtAuthGuard)
+    @UseInterceptors(
+        FileFieldsInterceptor([
+            { name: 'idCard', maxCount: 1 },
+            { name: 'animalProductionLicense', maxCount: 1 },
+            { name: 'adoptionContractSample', maxCount: 1 },
+            { name: 'recentAssociationDocument', maxCount: 1 },
+            { name: 'breederCertification', maxCount: 1 },
+            { name: 'ticaCfaDocument', maxCount: 1 },
+        ]),
+    )
     @HttpCode(HttpStatus.OK)
     @ApiEndpoint({
-        summary: '브리더 서류 제출',
-        description: `브리더 레벨에 따라 필수 서류를 제출합니다.
+        summary: '브리더 서류 제출 (파일 업로드)',
+        description: `브리더 레벨에 따라 필수 서류를 업로드합니다. 파일은 GCP Storage에 저장됩니다.
 
 **New 레벨 (필수 2개)**:
-- 신분증 사본 (idCardUrl)
-- 동물생산업 등록증 (animalProductionLicenseUrl)
+- idCard: 신분증 사본
+- animalProductionLicense: 동물생산업 등록증
 
 **Elite 레벨 (필수 5개 + 선택 1개)**:
-- 신분증 사본 (idCardUrl) - 필수
-- 동물생산업 등록증 (animalProductionLicenseUrl) - 필수
-- 표준 입양계약서 샘플 (adoptionContractSampleUrl) - 필수
-- 최근 발급한 협회 서류 (recentAssociationDocumentUrl) - 필수
-- 고양이 브리더 인증 서류 (breederCertificationUrl) - 필수
-- TICA 또는 CFA 서류 (ticaCfaDocumentUrl) - 선택`,
+- idCard: 신분증 사본 - 필수
+- animalProductionLicense: 동물생산업 등록증 - 필수
+- adoptionContractSample: 표준 입양계약서 샘플 - 필수
+- recentAssociationDocument: 최근 발급한 협회 서류 - 필수
+- breederCertification: 고양이 브리더 인증 서류 - 필수
+- ticaCfaDocument: TICA 또는 CFA 서류 - 선택`,
         responseType: BreederDocumentUploadResponseDto,
         isPublic: false,
     })
     async submitDocuments(
         @CurrentUser() user: any,
-        @Body() dto: BreederDocumentUploadRequestDto,
+        @Body('breederLevel') breederLevel: string,
+        @UploadedFiles()
+        files: {
+            idCard?: Express.Multer.File[];
+            animalProductionLicense?: Express.Multer.File[];
+            adoptionContractSample?: Express.Multer.File[];
+            recentAssociationDocument?: Express.Multer.File[];
+            breederCertification?: Express.Multer.File[];
+            ticaCfaDocument?: Express.Multer.File[];
+        },
     ): Promise<ApiResponseDto<BreederDocumentUploadResponseDto>> {
-        const result = await this.authService.submitBreederDocuments(user.userId, dto.breederLevel as 'elite' | 'new', {
-            idCardUrl: dto.idCardUrl,
-            animalProductionLicenseUrl: dto.animalProductionLicenseUrl,
-            adoptionContractSampleUrl: dto.adoptionContractSampleUrl,
-            recentAssociationDocumentUrl: dto.recentAssociationDocumentUrl,
-            breederCertificationUrl: dto.breederCertificationUrl,
-            ticaCfaDocumentUrl: dto.ticaCfaDocumentUrl,
-        });
-        return ApiResponseDto.success(result, '서류가 성공적으로 제출되었습니다.');
+        const result = await this.authService.uploadAndSubmitBreederDocuments(
+            user.userId,
+            breederLevel as BreederLevel,
+            files,
+        );
+        return ApiResponseDto.success(result, '서류가 성공적으로 업로드되었습니다.');
     }
 }

@@ -271,7 +271,7 @@ export class AdopterService {
         const favorite = {
             favoriteBreederId: breederId,
             breederName: breeder.name,
-            breederProfileImageUrl: breeder.profileImage || '',
+            breederProfileImageUrl: breeder.profileImageUrl || '',
             breederLocation: `${breeder.profile?.location?.city || ''} ${breeder.profile?.location?.district || ''}`,
             addedAt: new Date(),
         };

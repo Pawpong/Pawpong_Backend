@@ -108,7 +108,7 @@ export class AdminService {
                 (breeder): BreederVerificationResponseDto => ({
                     breederId: (breeder._id as any).toString(),
                     breederName: breeder.name,
-                    emailAddress: breeder.email,
+                    emailAddress: breeder.emailAddress,
                     verificationInfo: {
                         verificationStatus: breeder.verification?.status || 'pending',
                         subscriptionPlan: breeder.verification?.plan || 'basic',
