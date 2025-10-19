@@ -20,6 +20,7 @@ import { StorageService } from '../../common/storage/storage.service';
 import { ApiController, ApiEndpoint } from '../../common/decorator/swagger.decorator';
 import { ApiResponseDto } from '../../common/dto/response/api-response.dto';
 import { UploadResponseDto } from './dto/response/upload-response.dto';
+import { VerificationDocumentsResponseDto, UploadedVerificationDocument } from './dto/response/verification-documents-response.dto';
 import { JwtAuthGuard } from '../../common/guard/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../../common/guard/optional-jwt-auth.guard';
 import { CurrentUser } from '../../common/decorator/user.decorator';
@@ -222,6 +223,109 @@ export class UploadController {
         const response = new UploadResponseDto(result.cdnUrl, result.fileName, file.size);
 
         return ApiResponseDto.success(response, '부모견/묘 사진이 업로드되고 저장되었습니다.');
+    }
+
+    @Post('verification-documents')
+    @ApiConsumes('multipart/form-data')
+    @ApiEndpoint({
+        summary: '브리더 인증 서류 업로드',
+        description: '브리더 입점 인증 서류를 업로드합니다. 회원가입 시 사용하며, 로그인 없이도 업로드 가능합니다. (최대 4개, 각 10MB)',
+        responseType: VerificationDocumentsResponseDto,
+        isPublic: true,
+    })
+    @UseInterceptors(FilesInterceptor('files', 4))
+    async uploadVerificationDocuments(
+        @UploadedFiles() files: Express.Multer.File[],
+        @Body('types') typesString: string,
+    ): Promise<ApiResponseDto<VerificationDocumentsResponseDto>> {
+        if (!files || files.length === 0) {
+            throw new BadRequestException('파일이 업로드되지 않았습니다.');
+        }
+
+        // types 문자열을 배열로 파싱
+        let types: string[];
+        try {
+            types = JSON.parse(typesString);
+            if (!Array.isArray(types)) {
+                throw new Error('types는 배열이어야 합니다.');
+            }
+        } catch (error) {
+            throw new BadRequestException('types 형식이 올바르지 않습니다. JSON 배열 형식으로 입력해주세요. 예: ["id_card","animal_production_license"]');
+        }
+
+        // types 검증
+        const allowedTypes = ['id_card', 'animal_production_license', 'adoption_contract_sample', 'breeder_certification'];
+        for (const type of types) {
+            if (!allowedTypes.includes(type)) {
+                throw new BadRequestException(`유효하지 않은 서류 타입입니다: ${type}. 허용된 타입: ${allowedTypes.join(', ')}`);
+            }
+        }
+
+        if (types.length === 0) {
+            throw new BadRequestException('최소 1개 이상의 서류 타입을 입력해야 합니다.');
+        }
+
+        if (types.length > 4) {
+            throw new BadRequestException('최대 4개까지 업로드 가능합니다.');
+        }
+
+        // files와 types 배열 길이 일치 검증
+        if (files.length !== types.length) {
+            throw new BadRequestException(`파일 개수(${files.length})와 서류 타입 개수(${types.length})가 일치하지 않습니다.`);
+        }
+
+        // 파일 타입 및 크기 검증 (PDF, 모든 이미지 허용, 최대 10MB)
+        const allowedMimeTypes = [
+            'application/pdf',
+            'image/jpeg',
+            'image/jpg',
+            'image/png',
+            'image/webp',
+            'image/heic',
+            'image/heif',
+            'image/gif',
+            'image/bmp',
+            'image/tiff',
+        ];
+        for (const file of files) {
+            if (file.size > 10 * 1024 * 1024) {
+                throw new BadRequestException('파일 크기는 10MB를 초과할 수 없습니다.');
+            }
+            if (!allowedMimeTypes.includes(file.mimetype)) {
+                throw new BadRequestException('PDF 또는 이미지 파일만 업로드 가능합니다. (pdf, jpg, jpeg, png, webp, heic, gif 등)');
+            }
+        }
+
+        // 파일 업로드
+        const uploadedDocuments: UploadedVerificationDocument[] = [];
+
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const type = types[i];
+
+            // 파일 업로드 (임시 폴더에 저장, 회원가입 완료 시 브리더 ID 폴더로 이동)
+            const result = await this.storageService.uploadFile(
+                file,
+                'documents/verification/temp'
+            );
+
+            const uploadedDoc: UploadedVerificationDocument = {
+                type,
+                url: result.cdnUrl,
+                filename: result.fileName,
+                size: file.size,
+                uploadedAt: new Date(),
+            };
+
+            uploadedDocuments.push(uploadedDoc);
+        }
+
+        const response = new VerificationDocumentsResponseDto(uploadedDocuments, uploadedDocuments);
+
+        return ApiResponseDto.success(
+            response,
+            `${uploadedDocuments.length}개의 인증 서류가 업로드되었습니다.`
+        );
     }
 
     @Post('single')
