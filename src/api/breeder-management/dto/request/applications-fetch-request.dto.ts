@@ -1,5 +1,6 @@
 import { IsOptional, IsEnum } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+
 import { PaginationRequestDto } from '../../../../common/dto/pagination/pagination-request.dto';
 
 /**

@@ -1,42 +1,31 @@
-import {
-    Controller,
-    Post,
-    Get,
-    Put,
-    Delete,
-    Body,
-    Param,
-    Query,
-    UseGuards,
-    Patch,
-} from '@nestjs/common';
+import { Controller, Post, Get, Put, Delete, Body, Param, Query, UseGuards, Patch } from '@nestjs/common';
 
 import { Roles } from '../../common/decorator/roles.decorator';
 import { ApiController, ApiEndpoint } from '../../common/decorator/swagger.decorator';
 import { CurrentUser } from '../../common/decorator/user.decorator';
 import { RolesGuard } from '../../common/guard/roles.guard';
 import { JwtAuthGuard } from '../../common/guard/jwt-auth.guard';
-import { ApiResponseDto } from '../../common/dto/response/api-response.dto';
 
 import { BreederManagementService } from './breeder-management.service';
 
-// Request DTOs
 import { ProfileUpdateRequestDto } from './dto/request/profileu-update-request.dto';
 import { VerificationSubmitRequestDto } from './dto/request/verification-submit-request.dto';
 import { ParentPetAddDto } from './dto/request/parent-pet-add-request.dto';
 import { AvailablePetAddDto } from './dto/request/available-pet-add-request.dto';
-import { ApplicationStatusUpdateRequestDto } from './dto/request/applicationStatusUpdate-request.dto';
 import { PetStatusUpdateRequestDto } from './dto/request/pet-status-update-request.dto';
 import { ApplicationsGetRequestDto } from './dto/request/applications-fetch-request.dto';
-
-// Response DTOs
-import { BreederDashboardResponseDto } from '../breeder/dto/response/breeder-dashboard-response.dto';
-import { BreederProfileResponseDto } from '../breeder/dto/response/breeder-profileresponse.dto';
-import { ProfileUpdateResponseDto } from './dto/response/profile-update-response.dto';
+import { ApplicationStatusUpdateRequestDto } from './dto/request/applicationStatusUpdate-request.dto';
+import { ApiResponseDto } from '../../common/dto/response/api-response.dto';
 import { PetAddResponseDto } from './dto/response/pet-add-response.dto';
 import { PetUpdateResponseDto } from './dto/response/pet-update-response.dto';
 import { PetRemoveResponseDto } from './dto/response/pet-remove-response.dto';
+import { ProfileUpdateResponseDto } from './dto/response/profile-update-response.dto';
+import { BreederProfileResponseDto } from '../breeder/dto/response/breeder-profileresponse.dto';
+import { BreederDashboardResponseDto } from '../breeder/dto/response/breeder-dashboard-response.dto';
 import { ReceivedApplicationListResponseDto } from '../breeder/dto/response/received-applicationList-response.dto';
+import { VerificationSubmitResponseDto } from './dto/response/verification-submit-response.dto';
+import { PetStatusUpdateResponseDto } from './dto/response/pet-status-update-response.dto';
+import { ApplicationStatusUpdateResponseDto } from './dto/response/application-status-update-response.dto';
 
 @ApiController('브리더 관리')
 @Controller('breeder-management')
@@ -88,9 +77,13 @@ export class BreederManagementController {
     @ApiEndpoint({
         summary: '브리더 인증 신청',
         description: '브리더 인증을 위한 서류를 제출합니다.',
+        responseType: VerificationSubmitResponseDto,
         isPublic: false,
     })
-    async submitVerification(@CurrentUser() user: any, @Body() verificationData: VerificationSubmitRequestDto): Promise<ApiResponseDto<any>> {
+    async submitVerification(
+        @CurrentUser() user: any,
+        @Body() verificationData: VerificationSubmitRequestDto,
+    ): Promise<ApiResponseDto<VerificationSubmitResponseDto>> {
         const result = await this.breederManagementService.submitVerification(user.userId, verificationData);
         return ApiResponseDto.success(result, '인증 신청이 성공적으로 제출되었습니다.');
     }
@@ -102,7 +95,10 @@ export class BreederManagementController {
         responseType: PetAddResponseDto,
         isPublic: false,
     })
-    async addParentPet(@CurrentUser() user: any, @Body() parentPetDto: ParentPetAddDto): Promise<ApiResponseDto<PetAddResponseDto>> {
+    async addParentPet(
+        @CurrentUser() user: any,
+        @Body() parentPetDto: ParentPetAddDto,
+    ): Promise<ApiResponseDto<PetAddResponseDto>> {
         const result = await this.breederManagementService.addParentPet(user.userId, parentPetDto);
         return ApiResponseDto.success(result, '부모 반려동물이 성공적으로 등록되었습니다.');
     }
@@ -130,7 +126,10 @@ export class BreederManagementController {
         responseType: PetRemoveResponseDto,
         isPublic: false,
     })
-    async removeParentPet(@CurrentUser() user: any, @Param('petId') petId: string): Promise<ApiResponseDto<PetRemoveResponseDto>> {
+    async removeParentPet(
+        @CurrentUser() user: any,
+        @Param('petId') petId: string,
+    ): Promise<ApiResponseDto<PetRemoveResponseDto>> {
         const result = await this.breederManagementService.removeParentPet(user.userId, petId);
         return ApiResponseDto.success(result, '부모 반려동물이 성공적으로 삭제되었습니다.');
     }
@@ -170,13 +169,14 @@ export class BreederManagementController {
     @ApiEndpoint({
         summary: '반려동물 상태 변경',
         description: '분양 반려동물의 상태를 변경합니다.',
+        responseType: PetStatusUpdateResponseDto,
         isPublic: false,
     })
     async updatePetStatus(
         @CurrentUser() user: any,
         @Param('petId') petId: string,
         @Body() statusData: PetStatusUpdateRequestDto,
-    ): Promise<ApiResponseDto<any>> {
+    ): Promise<ApiResponseDto<PetStatusUpdateResponseDto>> {
         const result = await this.breederManagementService.updatePetStatus(user.userId, petId, statusData.petStatus);
         return ApiResponseDto.success(result, '반려동물 상태가 성공적으로 변경되었습니다.');
     }
@@ -188,7 +188,10 @@ export class BreederManagementController {
         responseType: PetRemoveResponseDto,
         isPublic: false,
     })
-    async removeAvailablePet(@CurrentUser() user: any, @Param('petId') petId: string): Promise<ApiResponseDto<PetRemoveResponseDto>> {
+    async removeAvailablePet(
+        @CurrentUser() user: any,
+        @Param('petId') petId: string,
+    ): Promise<ApiResponseDto<PetRemoveResponseDto>> {
         const result = await this.breederManagementService.removeAvailablePet(user.userId, petId);
         return ApiResponseDto.success(result, '분양 반려동물이 성공적으로 삭제되었습니다.');
     }
@@ -200,7 +203,10 @@ export class BreederManagementController {
         responseType: ReceivedApplicationListResponseDto,
         isPublic: false,
     })
-    async getReceivedApplications(@CurrentUser() user: any, @Query() queryParams: ApplicationsGetRequestDto): Promise<ApiResponseDto<ReceivedApplicationListResponseDto>> {
+    async getReceivedApplications(
+        @CurrentUser() user: any,
+        @Query() queryParams: ApplicationsGetRequestDto,
+    ): Promise<ApiResponseDto<ReceivedApplicationListResponseDto>> {
         const result = await this.breederManagementService.getReceivedApplications(
             user.userId,
             queryParams.page || 1,
@@ -213,14 +219,19 @@ export class BreederManagementController {
     @ApiEndpoint({
         summary: '입양 신청 상태 업데이트',
         description: '받은 입양 신청의 상태를 변경합니다.',
+        responseType: ApplicationStatusUpdateResponseDto,
         isPublic: false,
     })
     async updateApplicationStatus(
         @CurrentUser() user: any,
         @Param('applicationId') applicationId: string,
         @Body() updateData: ApplicationStatusUpdateRequestDto,
-    ): Promise<ApiResponseDto<any>> {
-        const result = await this.breederManagementService.updateApplicationStatus(user.userId, applicationId, updateData);
+    ): Promise<ApiResponseDto<ApplicationStatusUpdateResponseDto>> {
+        const result = await this.breederManagementService.updateApplicationStatus(
+            user.userId,
+            applicationId,
+            updateData,
+        );
         return ApiResponseDto.success(result, '입양 신청 상태가 성공적으로 변경되었습니다.');
     }
 }
