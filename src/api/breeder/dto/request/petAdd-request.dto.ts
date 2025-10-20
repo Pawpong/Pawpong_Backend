@@ -12,6 +12,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
+
 import { PetType, PetGender } from '../../../../common/enum/user.enum';
 
 /**
@@ -24,7 +25,7 @@ export class PetHealthInfoDto {
      */
     @ApiProperty({
         description: '예방접종 완료 여부',
-        example: true
+        example: true,
     })
     @IsBoolean()
     isVaccinated: boolean;
@@ -35,7 +36,7 @@ export class PetHealthInfoDto {
      */
     @ApiProperty({
         description: '중성화 수술 완료 여부',
-        example: false
+        example: false,
     })
     @IsBoolean()
     isNeutered: boolean;
@@ -46,7 +47,7 @@ export class PetHealthInfoDto {
      */
     @ApiProperty({
         description: '건강 검진 완료 여부',
-        example: true
+        example: true,
     })
     @IsBoolean()
     isHealthChecked: boolean;
@@ -58,7 +59,7 @@ export class PetHealthInfoDto {
     @ApiProperty({
         description: '특이사항 또는 건강 문제',
         example: '슬개골 탈구 약함',
-        required: false
+        required: false,
     })
     @IsString()
     @IsOptional()
@@ -75,7 +76,7 @@ export class ParentPetAddDto {
      */
     @ApiProperty({
         description: '부모 반려동물 이름',
-        example: '골든맘'
+        example: '골든맘',
     })
     @IsString()
     @IsNotEmpty()
@@ -88,7 +89,7 @@ export class ParentPetAddDto {
     @ApiProperty({
         description: '반려동물 종류',
         example: 'dog',
-        enum: PetType
+        enum: PetType,
     })
     @IsEnum(PetType)
     petType: PetType;
@@ -99,7 +100,7 @@ export class ParentPetAddDto {
      */
     @ApiProperty({
         description: '품종명',
-        example: '골든 리트리버'
+        example: '골든 리트리버',
     })
     @IsString()
     @IsNotEmpty()
@@ -112,7 +113,7 @@ export class ParentPetAddDto {
     @ApiProperty({
         description: '나이 (개월 수)',
         example: 36,
-        minimum: 0
+        minimum: 0,
     })
     @Type(() => Number)
     @IsNumber()
@@ -126,7 +127,7 @@ export class ParentPetAddDto {
     @ApiProperty({
         description: '성별',
         example: 'female',
-        enum: PetGender
+        enum: PetGender,
     })
     @IsEnum(PetGender)
     gender: PetGender;
@@ -139,7 +140,7 @@ export class ParentPetAddDto {
         description: '반려동물 사진 URL 배열',
         example: ['https://example.com/pet1.jpg', 'https://example.com/pet2.jpg'],
         type: [String],
-        required: false
+        required: false,
     })
     @IsArray()
     @IsString({ each: true })
@@ -151,7 +152,7 @@ export class ParentPetAddDto {
      */
     @ApiProperty({
         description: '건강 정보',
-        type: PetHealthInfoDto
+        type: PetHealthInfoDto,
     })
     @ValidateNested()
     @Type(() => PetHealthInfoDto)
@@ -169,7 +170,7 @@ export class AvailablePetAddDto {
      */
     @ApiProperty({
         description: '반려동물 이름',
-        example: '골든베이비'
+        example: '골든베이비',
     })
     @IsString()
     @IsNotEmpty()
@@ -182,7 +183,7 @@ export class AvailablePetAddDto {
     @ApiProperty({
         description: '반려동물 종류',
         example: 'dog',
-        enum: PetType
+        enum: PetType,
     })
     @IsEnum(PetType)
     petType: PetType;
@@ -193,7 +194,7 @@ export class AvailablePetAddDto {
      */
     @ApiProperty({
         description: '품종명',
-        example: '골든 리트리버'
+        example: '골든 리트리버',
     })
     @IsString()
     @IsNotEmpty()
@@ -206,7 +207,7 @@ export class AvailablePetAddDto {
     @ApiProperty({
         description: '출생일',
         example: '2023-12-15',
-        format: 'date'
+        format: 'date',
     })
     @IsDateString()
     birthDate: string;
@@ -218,7 +219,7 @@ export class AvailablePetAddDto {
     @ApiProperty({
         description: '성별',
         example: 'male',
-        enum: PetGender
+        enum: PetGender,
     })
     @IsEnum(PetGender)
     gender: PetGender;
@@ -231,7 +232,7 @@ export class AvailablePetAddDto {
         description: '반려동물 사진 URL 배열',
         example: ['https://example.com/baby1.jpg', 'https://example.com/baby2.jpg'],
         type: [String],
-        required: false
+        required: false,
     })
     @IsArray()
     @IsString({ each: true })
@@ -245,7 +246,7 @@ export class AvailablePetAddDto {
     @ApiProperty({
         description: '분양 가격 (원)',
         example: 1500000,
-        minimum: 0
+        minimum: 0,
     })
     @Type(() => Number)
     @IsNumber()
@@ -257,7 +258,7 @@ export class AvailablePetAddDto {
      */
     @ApiProperty({
         description: '건강 정보',
-        type: PetHealthInfoDto
+        type: PetHealthInfoDto,
     })
     @ValidateNested()
     @Type(() => PetHealthInfoDto)
@@ -269,7 +270,7 @@ export class AvailablePetAddDto {
      */
     @ApiProperty({
         description: '부모 정보',
-        required: false
+        required: false,
     })
     @IsOptional()
     parentInfo?: {

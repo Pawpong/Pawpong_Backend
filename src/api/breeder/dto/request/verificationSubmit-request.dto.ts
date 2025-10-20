@@ -1,5 +1,6 @@
 import { IsEnum, IsArray, IsString, IsBoolean, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+
 import { BreederPlan } from '../../../../common/enum/user.enum';
 
 /**
@@ -13,7 +14,7 @@ export class VerificationSubmitRequestDto {
      */
     @ApiProperty({
         description: '사업자등록번호',
-        example: '123-45-67890'
+        example: '123-45-67890',
     })
     @IsString()
     businessNumber: string;
@@ -24,7 +25,7 @@ export class VerificationSubmitRequestDto {
      */
     @ApiProperty({
         description: '사업체명',
-        example: '행복한 강아지 농장'
+        example: '행복한 강아지 농장',
     })
     @IsString()
     businessName: string;
@@ -36,7 +37,7 @@ export class VerificationSubmitRequestDto {
     @ApiProperty({
         description: '구독할 플랜 유형',
         example: 'premium',
-        enum: BreederPlan
+        enum: BreederPlan,
     })
     @IsEnum(BreederPlan)
     plan: BreederPlan;
@@ -49,7 +50,7 @@ export class VerificationSubmitRequestDto {
         description: '제출 서류 URL 배열',
         example: ['https://example.com/business_license.pdf', 'https://example.com/facility_photo.jpg'],
         type: [String],
-        required: false
+        required: false,
     })
     @IsArray()
     @IsString({ each: true })
@@ -63,7 +64,7 @@ export class VerificationSubmitRequestDto {
     @ApiProperty({
         description: '이메일로 추가 서류 제출 여부',
         example: false,
-        required: false
+        required: false,
     })
     @IsBoolean()
     @IsOptional()

@@ -1,17 +1,18 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsEnum, IsOptional, IsNumber, Min, Max, IsString } from 'class-validator';
+
 import { PetType, PetSize, FurLength, BreederLevel } from '../../../../common/enum/user.enum';
 
 /**
  * 브리더 검색 정렬 기준
  */
 export enum BreederSortBy {
-    LATEST = 'latest',              // 최신 등록순
-    FAVORITE = 'favorite',          // 찜 많은순
-    REVIEW = 'review',              // 리뷰 많은순
-    PRICE_ASC = 'price_asc',        // 가격 오름차순
-    PRICE_DESC = 'price_desc',      // 가격 내림차순
+    LATEST = 'latest', // 최신 등록순
+    FAVORITE = 'favorite', // 찜 많은순
+    REVIEW = 'review', // 리뷰 많은순
+    PRICE_ASC = 'price_asc', // 가격 오름차순
+    PRICE_DESC = 'price_desc', // 가격 내림차순
 }
 
 export class SearchBreederRequestDto {

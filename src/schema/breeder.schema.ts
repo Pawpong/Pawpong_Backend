@@ -97,20 +97,23 @@ export class BreederVerification {
 export class BreederProfile {
     /**
      * 브리더 소개글 (공백 포함 최대 1500자)
+     * 회원가입 초기에는 비어있을 수 있음
      */
-    @Prop({ required: true, maxlength: 1500 })
+    @Prop({ required: false, maxlength: 1500, default: '' })
     description: string;
 
     /**
      * 브리더 위치 정보
+     * 회원가입 초기에는 district가 비어있을 수 있음
      */
     @Prop({
         type: {
-            city: { type: String, required: true },
-            district: { type: String, required: true },
+            city: { type: String, required: false, default: '' },
+            district: { type: String, required: false, default: '' },
             address: String,
         },
-        required: true,
+        required: false,
+        default: { city: '', district: '', address: '' },
     })
     location: {
         city: string;

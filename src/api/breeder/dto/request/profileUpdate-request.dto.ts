@@ -1,6 +1,6 @@
 import { IsString, IsOptional, IsNumber, IsArray, Min, Max } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { Transform, Type } from 'class-transformer';
+import { Type } from 'class-transformer';
 
 /**
  * 브리더 프로필 업데이트 요청 DTO
@@ -14,7 +14,7 @@ export class ProfileUpdateRequestDto {
     @ApiProperty({
         description: '브리더 소개 설명',
         example: '10년 경력의 전문 브리더로 건강한 강아지들을 분양하고 있습니다.',
-        required: false
+        required: false,
     })
     @IsOptional()
     @IsString()
@@ -27,7 +27,7 @@ export class ProfileUpdateRequestDto {
     @ApiProperty({
         description: '브리더 위치 (시/구)',
         example: '서울시 강남구',
-        required: false
+        required: false,
     })
     @IsOptional()
     @IsString()
@@ -42,7 +42,7 @@ export class ProfileUpdateRequestDto {
         type: 'array',
         items: { type: 'string' },
         example: ['https://example.com/photo1.jpg', 'https://example.com/photo2.jpg'],
-        required: false
+        required: false,
     })
     @IsOptional()
     @IsArray()
@@ -55,7 +55,7 @@ export class ProfileUpdateRequestDto {
     @ApiProperty({
         description: '전문 분야 (특화 품종)',
         example: '골든리트리버, 래브라도',
-        required: false
+        required: false,
     })
     @IsOptional()
     @IsString()
@@ -70,7 +70,7 @@ export class ProfileUpdateRequestDto {
         example: 10,
         minimum: 0,
         maximum: 50,
-        required: false
+        required: false,
     })
     @IsOptional()
     @Type(() => Number)
@@ -86,7 +86,7 @@ export class ProfileUpdateRequestDto {
     @ApiProperty({
         description: '연락처 전화번호',
         example: '010-1234-5678',
-        required: false
+        required: false,
     })
     @IsOptional()
     @IsString()
@@ -99,7 +99,7 @@ export class ProfileUpdateRequestDto {
     @ApiProperty({
         description: '웹사이트 URL',
         example: 'https://mybreeding.com',
-        required: false
+        required: false,
     })
     @IsOptional()
     @IsString()
@@ -113,7 +113,7 @@ export class ProfileUpdateRequestDto {
         description: '소셜 미디어 계정',
         type: 'object',
         additionalProperties: true,
-        example: { instagram: '@mybreeding', facebook: 'MyBreedingFarm' }
+        example: { instagram: '@mybreeding', facebook: 'MyBreedingFarm' },
     })
     @IsOptional()
     socialMediaAccounts?: Record<string, string>;

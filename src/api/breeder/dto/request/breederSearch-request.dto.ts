@@ -1,7 +1,9 @@
 import { IsOptional, IsString, IsEnum, IsNumber, Min, Max, IsBoolean } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
+
 import { PetType } from '../../../../common/enum/user.enum';
+
 import { PaginationRequestDto } from '../../../../common/dto/pagination/pagination-request.dto';
 
 /**
