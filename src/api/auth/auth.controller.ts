@@ -29,11 +29,14 @@ import { SendVerificationCodeRequestDto, VerifyCodeRequestDto } from './dto/requ
 import { CompleteSocialRegistrationDto } from './dto/request/social-login-request.dto';
 import { CheckNicknameRequestDto } from './dto/request/check-nickname-request.dto';
 import { BreederDocumentUploadRequestDto } from './dto/request/breeder-document-upload-request.dto';
+import { RegisterBreederRequestDto } from './dto/request/register-breeder-request.dto';
 import { ApiResponseDto } from '../../common/dto/response/api-response.dto';
 import { AuthResponseDto } from './dto/response/auth-response.dto';
 import { TokenResponseDto } from './dto/response/token-response.dto';
 import { PhoneVerificationResponseDto } from './dto/response/phone-verification-response.dto';
 import { BreederDocumentUploadResponseDto } from './dto/response/breeder-document-upload-response.dto';
+import { RegisterBreederResponseDto } from './dto/response/register-breeder-response.dto';
+import { LogoutResponseDto } from './dto/response/logout-response.dto';
 
 @ApiController('인증')
 @Controller('auth')
@@ -63,11 +66,17 @@ export class AuthController {
     @ApiEndpoint({
         summary: '로그아웃',
         description: 'Refresh 토큰을 무효화하여 로그아웃 처리합니다.',
+        responseType: LogoutResponseDto,
         isPublic: false,
     })
-    async logout(@CurrentUser() user: any): Promise<ApiResponseDto<any>> {
+    async logout(@CurrentUser() user: any): Promise<ApiResponseDto<LogoutResponseDto>> {
         await this.authService.logout(user.userId, user.role);
-        return ApiResponseDto.success(null, '로그아웃되었습니다.');
+        const response: LogoutResponseDto = {
+            success: true,
+            loggedOutAt: new Date().toISOString(),
+            message: '로그아웃되었습니다.',
+        };
+        return ApiResponseDto.success(response, '로그아웃되었습니다.');
     }
 
     @Post('phone/send-code')
@@ -261,6 +270,51 @@ export class AuthController {
     ): Promise<ApiResponseDto<AuthResponseDto>> {
         const result = await this.authService.completeSocialRegistrationWithTempId(dto);
         return ApiResponseDto.success(result, '소셜 회원가입이 완료되었습니다.');
+    }
+
+    @Post('register/breeder')
+    @HttpCode(HttpStatus.OK)
+    @ApiEndpoint({
+        summary: '브리더 회원가입',
+        description: `브리더 회원가입을 처리합니다. 일반 가입과 소셜 로그인 모두 지원합니다.
+
+**프론트엔드 회원가입 플로우:**
+1. UserTypeSection: userType 선택 (breeder)
+2. AnimalSection: animal 선택 (cat/dog)
+3. PlanSection: plan 선택 (basic/pro)
+4. UserInfoSection: email, phoneNumber, agreements 입력
+5. BreederInfoSection: breederName, breederLocation, breeds, photo 입력
+6. DocumentSection: level 선택 (MVP에서는 서류 제출 skip 가능)
+7. SignupComplete: 완료
+
+**주의사항:**
+- 버킷(파일 업로드) 연결은 제외되어 있습니다.
+- 서류 제출은 나중에 별도로 진행할 수 있습니다.
+- 소셜 로그인 사용자는 tempId와 provider를 함께 전송합니다.`,
+        responseType: RegisterBreederResponseDto,
+        isPublic: true,
+    })
+    async registerBreeder(
+        @Body() dto: RegisterBreederRequestDto,
+    ): Promise<ApiResponseDto<RegisterBreederResponseDto>> {
+        const result = await this.authService.registerBreeder(dto);
+
+        return ApiResponseDto.success(
+            {
+                breederId: result.breederId,
+                email: result.email,
+                breederName: result.breederName,
+                breederLocation: result.breederLocation,
+                animal: result.animal,
+                breeds: result.breeds,
+                plan: result.plan,
+                level: result.level,
+                verificationStatus: result.verificationStatus,
+                createdAt: result.createdAt,
+                accessToken: result.accessToken,
+            },
+            '브리더 회원가입이 완료되었습니다.',
+        );
     }
 
     @Post('breeder/submit-documents')
