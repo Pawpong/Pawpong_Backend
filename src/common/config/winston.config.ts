@@ -32,7 +32,7 @@ export const winstonConfig: WinstonModuleOptions = {
         winston.format.errors({ stack: true }),
         winston.format.json(),
     ),
-    defaultMeta: { service: 'pawpong-backend' },
+    // defaultMeta 제거하여 "- { service: 'pawpong-backend' }" 출력 제거
     transports: [
         // 콘솔 출력 (개발 환경)
         new winston.transports.Console({

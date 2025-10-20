@@ -19,6 +19,8 @@ import { AdoptionApplication, AdoptionApplicationSchema } from '../../schema/ado
                 const uri = configService.get<string>('MONGODB_URI');
                 console.log('[DatabaseModule] MongoDB URI:', uri ? uri.replace(/:[^:]*@/, ':****@') : 'NOT SET');
 
+                const isDevelopment = process.env.NODE_ENV !== 'production';
+
                 return {
                     uri: uri,
                     connectionFactory: (connection) => {
@@ -31,14 +33,28 @@ import { AdoptionApplication, AdoptionApplicationSchema } from '../../schema/ado
                         connection.on('error', (error) => {
                             console.error('[DatabaseModule] MongoDB connection error:', error.message);
                         });
+
+                        // Development 환경에서 MongoDB 쿼리 로깅 활성화 (성능 문제로 임시 비활성화)
+                        // if (isDevelopment) {
+                        //     connection.set('debug', (collectionName: string, method: string, query: any, doc: any) => {
+                        //         console.log(`\n[MongoDB Query] ${collectionName}.${method}()`);
+                        //         if (query && Object.keys(query).length > 0) {
+                        //             console.log(`  Filter: ${JSON.stringify(query)}`);
+                        //         }
+                        //         if (doc && Object.keys(doc).length > 0) {
+                        //             console.log(`  Document: ${JSON.stringify(doc)}`);
+                        //         }
+                        //     });
+                        // }
+
                         return connection;
                     },
-                    // 연결 옵션 추가
-                    retryAttempts: 3,
-                    retryDelay: 1000,
-                    serverSelectionTimeoutMS: 5000,
-                    connectTimeoutMS: 10000,
-                    socketTimeoutMS: 45000,
+                    // 연결 옵션 추가 (타임아웃 단축)
+                    retryAttempts: 2,
+                    retryDelay: 500,
+                    serverSelectionTimeoutMS: 3000,
+                    connectTimeoutMS: 5000,
+                    socketTimeoutMS: 10000,
                 };
             },
             inject: [ConfigService],

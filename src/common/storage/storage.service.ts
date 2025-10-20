@@ -15,17 +15,28 @@ export class StorageService {
   private readonly logger = new Logger(StorageService.name);
 
   constructor(private configService: ConfigService) {
-    const projectId = this.configService.get<string>('GCP_PROJECT_ID');
-    const keyFilePath = this.configService.get<string>('GCP_KEYFILE_PATH');
-    this.bucketName = this.configService.get<string>('GCP_BUCKET_NAME') || '';
-    this.cdnBaseUrl = this.configService.get<string>('CDN_BASE_URL') || '';
-    this.cdnKeyName = this.configService.get<string>('CDN_KEY_NAME') || '';
-    this.cdnPrivateKey = this.configService.get<string>('CDN_PRIVATE_KEY') || '';
+    try {
+      this.logger.log('[StorageService] Initializing GCP Storage...');
 
-    this.storage = new Storage({
-      projectId,
-      keyFilename: keyFilePath,
-    });
+      const projectId = this.configService.get<string>('GCP_PROJECT_ID');
+      const keyFilePath = this.configService.get<string>('GCP_KEYFILE_PATH');
+      this.bucketName = this.configService.get<string>('GCP_BUCKET_NAME') || '';
+      this.cdnBaseUrl = this.configService.get<string>('CDN_BASE_URL') || '';
+      this.cdnKeyName = this.configService.get<string>('CDN_KEY_NAME') || '';
+      this.cdnPrivateKey = this.configService.get<string>('CDN_PRIVATE_KEY') || '';
+
+      this.logger.log(`[StorageService] GCP Config - Project: ${projectId}, Key: ${keyFilePath}, Bucket: ${this.bucketName}`);
+
+      this.storage = new Storage({
+        projectId,
+        keyFilename: keyFilePath,
+      });
+
+      this.logger.log('[StorageService] GCP Storage initialized successfully');
+    } catch (error) {
+      this.logger.error('[StorageService] Failed to initialize GCP Storage:', error);
+      throw error;
+    }
   }
 
   /**
@@ -35,8 +46,9 @@ export class StorageService {
     file: Express.Multer.File,
     folder: string = '',
   ): Promise<{ fileName: string; cdnUrl: string; storageUrl: string }> {
+    const fileName = this.generateFileName(file.originalname, folder);
+
     try {
-      const fileName = this.generateFileName(file.originalname, folder);
       const bucket = this.storage.bucket(this.bucketName);
       const blob = bucket.file(fileName);
 

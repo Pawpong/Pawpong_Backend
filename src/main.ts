@@ -8,6 +8,7 @@ import path from 'path';
 
 import { CustomLoggerService } from './common/logger/custom-logger.service';
 import { HttpStatusInterceptor } from './common/interceptor/http-status.interceptor';
+import { HttpExceptionFilter, AllExceptionsFilter } from './common/filter/http-exception.filter';
 import { AppModule } from './app.module';
 
 declare const module: any;
@@ -37,6 +38,38 @@ async function bootstrap(): Promise<void> {
     expressApp.set('trust proxy', true);
     expressApp.set('etag', false); // ETag 비활성화로 캐싱 문제 완화
 
+    // 요청 로깅 미들웨어 (모든 요청 로그)
+    app.use((req, res, next) => {
+        console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        console.log(`→ Request: ${req.method} ${req.url}`);
+        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        console.log(`  IP: ${req.ip}`);
+
+        // Bearer 토큰 로깅
+        const authHeader = req.headers.authorization;
+        if (authHeader) {
+            if (authHeader.startsWith('Bearer ')) {
+                const token = authHeader.substring(7);
+                console.log(`  Bearer Token: ${token.substring(0, 20)}...`);
+            } else {
+                console.log(`  Authorization: ${authHeader.substring(0, 30)}...`);
+            }
+        }
+
+        // Body 로깅 (multipart 제외)
+        if (req.body && Object.keys(req.body).length > 0) {
+            console.log(`  Body: ${JSON.stringify(req.body)}`);
+        }
+
+        // Content-Type 로깅
+        if (req.headers['content-type']) {
+            console.log(`  Content-Type: ${req.headers['content-type']}`);
+        }
+
+        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+        next();
+    });
+
     // 모든 응답에 연결 유지 헤더 추가
     app.use((req, res, next) => {
         res.setHeader('Alt-Svc', ''); // HTTP/3 광고 비활성화
@@ -55,6 +88,10 @@ async function bootstrap(): Promise<void> {
             forbidUnknownValues: true,
         }),
     );
+
+    // 전역 예외 필터 적용 (ApiResponseDto 형식으로 에러 응답)
+    app.useGlobalFilters(new AllExceptionsFilter());
+    app.useGlobalFilters(new HttpExceptionFilter());
 
     // HTTP 상태 코드 통일 인터셉터 적용
     app.useGlobalInterceptors(new HttpStatusInterceptor());
