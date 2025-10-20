@@ -14,6 +14,12 @@ import { ReviewCreateRequestDto } from './dto/request/review-create-request.dto'
 import { FavoriteAddRequestDto } from './dto/request/favorite-add-request.dto';
 import { ReportCreateRequestDto } from './dto/request/report-create-request.dto';
 import { AdopterProfileResponseDto } from './dto/response/adopter-profile-response.dto';
+import { ApplicationCreateResponseDto } from './dto/response/applicationCreate-response.dto';
+import { ReviewCreateResponseDto } from './dto/response/review-create-response.dto';
+import { FavoriteAddResponseDto } from './dto/response/favorite-add-response.dto';
+import { FavoriteRemoveResponseDto } from './dto/response/favorite-remove-response.dto';
+import { ReportCreateResponseDto } from './dto/response/report-create-response.dto';
+import { ProfileUpdateResponseDto } from './dto/response/profile-update-response.dto';
 
 @ApiController('입양자')
 @Controller('adopter')
@@ -26,9 +32,10 @@ export class AdopterController {
     @ApiEndpoint({
         summary: '입양 신청 제출',
         description: '브리더에게 입양 신청을 제출합니다.',
+        responseType: ApplicationCreateResponseDto,
         isPublic: false,
     })
-    async createApplication(@CurrentUser() user: any, @Body() createApplicationDto: ApplicationCreateRequestDto): Promise<ApiResponseDto<any>> {
+    async createApplication(@CurrentUser() user: any, @Body() createApplicationDto: ApplicationCreateRequestDto): Promise<ApiResponseDto<ApplicationCreateResponseDto>> {
         const result = await this.adopterService.createApplication(user.userId, createApplicationDto);
         return ApiResponseDto.success(result, '입양 신청이 성공적으로 제출되었습니다.');
     }
@@ -37,9 +44,10 @@ export class AdopterController {
     @ApiEndpoint({
         summary: '브리더 후기 작성',
         description: '입양 완료 후 브리더에 대한 후기를 작성합니다.',
+        responseType: ReviewCreateResponseDto,
         isPublic: false,
     })
-    async createReview(@CurrentUser() user: any, @Body() createReviewDto: ReviewCreateRequestDto): Promise<ApiResponseDto<any>> {
+    async createReview(@CurrentUser() user: any, @Body() createReviewDto: ReviewCreateRequestDto): Promise<ApiResponseDto<ReviewCreateResponseDto>> {
         const result = await this.adopterService.createReview(user.userId, createReviewDto);
         return ApiResponseDto.success(result, '후기가 성공적으로 작성되었습니다.');
     }
@@ -48,9 +56,10 @@ export class AdopterController {
     @ApiEndpoint({
         summary: '즐겨찾기 브리더 추가',
         description: '관심 있는 브리더를 즐겨찾기에 추가합니다.',
+        responseType: FavoriteAddResponseDto,
         isPublic: false,
     })
-    async addFavorite(@CurrentUser() user: any, @Body() addFavoriteDto: FavoriteAddRequestDto): Promise<ApiResponseDto<any>> {
+    async addFavorite(@CurrentUser() user: any, @Body() addFavoriteDto: FavoriteAddRequestDto): Promise<ApiResponseDto<FavoriteAddResponseDto>> {
         const result = await this.adopterService.addFavorite(user.userId, addFavoriteDto);
         return ApiResponseDto.success(result, '즐겨찾기에 성공적으로 추가되었습니다.');
     }
@@ -59,9 +68,10 @@ export class AdopterController {
     @ApiEndpoint({
         summary: '즐겨찾기 브리더 삭제',
         description: '즐겨찾기에서 브리더를 삭제합니다.',
+        responseType: FavoriteRemoveResponseDto,
         isPublic: false,
     })
-    async removeFavorite(@CurrentUser() user: any, @Param('breederId') breederId: string): Promise<ApiResponseDto<any>> {
+    async removeFavorite(@CurrentUser() user: any, @Param('breederId') breederId: string): Promise<ApiResponseDto<FavoriteRemoveResponseDto>> {
         const result = await this.adopterService.removeFavorite(user.userId, breederId);
         return ApiResponseDto.success(result, '즐겨찾기에서 성공적으로 삭제되었습니다.');
     }
@@ -70,9 +80,10 @@ export class AdopterController {
     @ApiEndpoint({
         summary: '브리더 신고',
         description: '부적절한 사용자나 브리더를 신고합니다.',
+        responseType: ReportCreateResponseDto,
         isPublic: false,
     })
-    async createReport(@CurrentUser() user: any, @Body() createReportDto: ReportCreateRequestDto): Promise<ApiResponseDto<any>> {
+    async createReport(@CurrentUser() user: any, @Body() createReportDto: ReportCreateRequestDto): Promise<ApiResponseDto<ReportCreateResponseDto>> {
         const result = await this.adopterService.createReport(user.userId, createReportDto);
         return ApiResponseDto.success(result, '신고가 성공적으로 제출되었습니다.');
     }
@@ -93,12 +104,13 @@ export class AdopterController {
     @ApiEndpoint({
         summary: '입양자 프로필 수정',
         description: '입양자의 프로필 정보를 수정합니다.',
+        responseType: ProfileUpdateResponseDto,
         isPublic: false,
     })
     async updateProfile(
         @CurrentUser() user: any,
         @Body() updateData: { name?: string; phone?: string; profileImage?: string },
-    ): Promise<ApiResponseDto<any>> {
+    ): Promise<ApiResponseDto<ProfileUpdateResponseDto>> {
         const result = await this.adopterService.updateProfile(user.userId, updateData);
         return ApiResponseDto.success(result, '프로필이 성공적으로 수정되었습니다.');
     }
