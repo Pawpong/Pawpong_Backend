@@ -113,7 +113,7 @@ export class AdminService {
                         verificationStatus: breeder.verification?.status || 'pending',
                         subscriptionPlan: breeder.verification?.plan || 'basic',
                         submittedAt: breeder.verification?.submittedAt,
-                        documentUrls: breeder.verification?.documents?.map(doc => doc.url) || [],
+                        documentUrls: breeder.verification?.documents?.map((doc) => doc.url) || [],
                         isSubmittedByEmail: breeder.verification?.submittedByEmail || false,
                     },
                     profileInfo: breeder.profile,
@@ -425,7 +425,7 @@ export class AdminService {
 
         const report = await this.breederReportModel.findOne({
             _id: reportId,
-            breederId: breederId
+            breederId: breederId,
         });
 
         if (!report) {
@@ -464,7 +464,7 @@ export class AdminService {
 
         const review = await this.breederReviewModel.findOne({
             _id: reviewId,
-            breederId: breederId
+            breederId: breederId,
         });
 
         if (!review) {

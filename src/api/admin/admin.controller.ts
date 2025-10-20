@@ -20,6 +20,12 @@ import { ApplicationMonitoringRequestDto } from './dto/request/applicationMonito
 import { BreederVerificationResponseDto } from './dto/response/breederVerification-response.dto';
 import { UserManagementResponseDto } from './dto/response/userManagement-response.dto';
 import { ReportManagementResponseDto } from './dto/response/reportManagement-response.dto';
+import { AdminProfileResponseDto } from './dto/response/admin-profile-response.dto';
+import { BreederVerificationActionResponseDto } from './dto/response/breeder-verification-action-response.dto';
+import { UserStatusUpdateResponseDto } from './dto/response/user-status-update-response.dto';
+import { ApplicationMonitoringResponseDto } from './dto/response/application-monitoring-response.dto';
+import { ReportActionResponseDto } from './dto/response/report-action-response.dto';
+import { ReviewDeleteResponseDto } from './dto/response/review-delete-response.dto';
 
 @ApiController('관리자')
 @Controller('admin')
@@ -32,9 +38,10 @@ export class AdminController {
     @ApiEndpoint({
         summary: '관리자 프로필 조회',
         description: '관리자의 프로필 정보를 조회합니다.',
+        responseType: AdminProfileResponseDto,
         isPublic: false,
     })
-    async getProfile(@CurrentUser() user: any): Promise<ApiResponseDto<any>> {
+    async getProfile(@CurrentUser() user: any): Promise<ApiResponseDto<AdminProfileResponseDto>> {
         const result = await this.adminService.getAdminProfile(user.userId);
         return ApiResponseDto.success(result, '관리자 프로필이 조회되었습니다.');
     }
@@ -55,13 +62,14 @@ export class AdminController {
     @ApiEndpoint({
         summary: '브리더 인증 승인/거절',
         description: '브리더의 인증 신청을 승인하거나 거절합니다.',
+        responseType: BreederVerificationActionResponseDto,
         isPublic: false,
     })
     async updateBreederVerification(
         @CurrentUser() user: any,
         @Param('breederId') breederId: string,
         @Body() verificationData: BreederVerificationRequestDto,
-    ): Promise<ApiResponseDto<any>> {
+    ): Promise<ApiResponseDto<BreederVerificationActionResponseDto>> {
         const result = await this.adminService.updateBreederVerification(user.userId, breederId, verificationData);
         return ApiResponseDto.success(result, '브리더 인증 처리가 완료되었습니다.');
     }
@@ -82,6 +90,7 @@ export class AdminController {
     @ApiEndpoint({
         summary: '사용자 상태 변경',
         description: '사용자의 계정 상태를 변경합니다.',
+        responseType: UserStatusUpdateResponseDto,
         isPublic: false,
     })
     async updateUserStatus(
@@ -89,7 +98,7 @@ export class AdminController {
         @Param('userId') userId: string,
         @Query('role') role: 'adopter' | 'breeder',
         @Body() userData: UserManagementRequestDto,
-    ): Promise<ApiResponseDto<any>> {
+    ): Promise<ApiResponseDto<UserStatusUpdateResponseDto>> {
         const result = await this.adminService.updateUserStatus(user.userId, userId, role, userData);
         return ApiResponseDto.success(result, '사용자 상태가 변경되었습니다.');
     }
@@ -98,9 +107,10 @@ export class AdminController {
     @ApiEndpoint({
         summary: '입양 신청 모니터링',
         description: '전체 입양 신청 현황을 모니터링합니다.',
+        responseType: ApplicationMonitoringResponseDto,
         isPublic: false,
     })
-    async getApplications(@CurrentUser() user: any, @Query() filter: ApplicationMonitoringRequestDto): Promise<ApiResponseDto<any>> {
+    async getApplications(@CurrentUser() user: any, @Query() filter: ApplicationMonitoringRequestDto): Promise<ApiResponseDto<ApplicationMonitoringResponseDto>> {
         const result = await this.adminService.getApplications(user.userId, filter);
         return ApiResponseDto.success(result, '입양 신청 현황이 조회되었습니다.');
     }
@@ -125,6 +135,7 @@ export class AdminController {
     @ApiEndpoint({
         summary: '신고 처리',
         description: '접수된 신고를 처리합니다.',
+        responseType: ReportActionResponseDto,
         isPublic: false,
     })
     async updateReportStatus(
@@ -132,7 +143,7 @@ export class AdminController {
         @Param('breederId') breederId: string,
         @Param('reportId') reportId: string,
         @Body() reportAction: ReportActionRequestDto,
-    ): Promise<ApiResponseDto<any>> {
+    ): Promise<ApiResponseDto<ReportActionResponseDto>> {
         const result = await this.adminService.updateReportStatus(user.userId, breederId, reportId, reportAction);
         return ApiResponseDto.success(result, '신고 처리가 완료되었습니다.');
     }
@@ -141,13 +152,14 @@ export class AdminController {
     @ApiEndpoint({
         summary: '부적절한 후기 삭제',
         description: '신고된 부적절한 후기를 삭제합니다.',
+        responseType: ReviewDeleteResponseDto,
         isPublic: false,
     })
     async deleteReview(
         @CurrentUser() user: any,
         @Param('breederId') breederId: string,
         @Param('reviewId') reviewId: string,
-    ): Promise<ApiResponseDto<any>> {
+    ): Promise<ApiResponseDto<ReviewDeleteResponseDto>> {
         const result = await this.adminService.deleteReview(user.userId, breederId, reviewId);
         return ApiResponseDto.success(result, '부적절한 후기가 삭제되었습니다.');
     }
