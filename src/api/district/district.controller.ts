@@ -1,7 +1,10 @@
 import { Controller, Get, Param } from '@nestjs/common';
+
 import { ApiController, ApiEndpoint } from '../../common/decorator/swagger.decorator';
-import { ApiResponseDto } from '../../common/dto/response/api-response.dto';
+
 import { DistrictService } from './district.service';
+
+import { ApiResponseDto } from '../../common/dto/response/api-response.dto';
 import { GetDistrictsResponseDto } from './dto/response/get-districts-response.dto';
 
 @ApiController('districts')
