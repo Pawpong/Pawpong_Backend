@@ -1,14 +1,17 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+
+import { StorageService } from '../../common/storage/storage.service';
+
 import { Breeder, BreederDocument } from '../../schema/breeder.schema';
 import { Adopter, AdopterDocument } from '../../schema/adopter.schema';
 import { AvailablePet, AvailablePetDocument } from '../../schema/available-pet.schema';
+
+import { PaginationBuilder } from '../../common/dto/pagination/pagination-builder.dto';
 import { SearchBreederRequestDto, BreederSortBy } from './dto/request/search-breeder-request.dto';
 import { BreederCardResponseDto } from './dto/response/breeder-card-response.dto';
 import { PaginationResponseDto } from '../../common/dto/pagination/pagination-response.dto';
-import { PaginationBuilder } from '../../common/dto/pagination/pagination-builder.dto';
-import { StorageService } from '../../common/storage/storage.service';
 
 /**
  * 브리더 탐색 서비스
@@ -30,17 +33,17 @@ export class BreederExploreService {
         searchDto: SearchBreederRequestDto,
         userId?: string,
     ): Promise<PaginationResponseDto<BreederCardResponseDto>> {
-        const { 
-            petType, 
-            dogSize, 
-            catFurLength, 
-            province, 
-            city, 
-            isAdoptionAvailable, 
-            breederLevel, 
-            sortBy, 
-            page = 1, 
-            take = 20 
+        const {
+            petType,
+            dogSize,
+            catFurLength,
+            province,
+            city,
+            isAdoptionAvailable,
+            breederLevel,
+            sortBy,
+            page = 1,
+            take = 20,
         } = searchDto;
 
         // 기본 필터 조건
@@ -55,7 +58,7 @@ export class BreederExploreService {
             filter['availablePets.size'] = { $in: dogSize };
         }
 
-        // 고양이 털 길이 필터 (고양이일 때만)  
+        // 고양이 털 길이 필터 (고양이일 때만)
         if (petType === 'cat' && catFurLength && catFurLength.length > 0) {
             filter['availablePets.furLength'] = { $in: catFurLength };
         }
@@ -64,7 +67,7 @@ export class BreederExploreService {
         if (province && province.length > 0 && city && city.length > 0) {
             filter['$and'] = [
                 { 'profile.location.city': { $in: province } },
-                { 'profile.location.district': { $in: city } }
+                { 'profile.location.district': { $in: city } },
             ];
         } else if (province && province.length > 0) {
             filter['profile.location.city'] = { $in: province };
@@ -75,7 +78,7 @@ export class BreederExploreService {
         // 입양 가능 여부 필터
         if (isAdoptionAvailable === true) {
             filter['availablePets'] = {
-                $elemMatch: { status: 'available' }
+                $elemMatch: { status: 'available' },
             };
         }
 
@@ -111,13 +114,7 @@ export class BreederExploreService {
 
         // 데이터 조회
         const [breeders, totalItems] = await Promise.all([
-            this.breederModel
-                .find(filter)
-                .sort(sort)
-                .skip(skip)
-                .limit(take)
-                .lean()
-                .exec(),
+            this.breederModel.find(filter).sort(sort).skip(skip).limit(take).lean().exec(),
             this.breederModel.countDocuments(filter),
         ]);
 
@@ -126,12 +123,12 @@ export class BreederExploreService {
         if (userId) {
             const adopter = await this.adopterModel.findById(userId).lean();
             if (adopter) {
-                favoritedBreederIds = adopter.favoriteBreederList?.map(f => f.favoriteBreederId) || [];
+                favoritedBreederIds = adopter.favoriteBreederList?.map((f) => f.favoriteBreederId) || [];
             }
         }
 
         // 브리더 ID 목록 추출
-        const breederIds = breeders.map(b => b._id);
+        const breederIds = breeders.map((b) => b._id);
 
         // 각 브리더의 분양 가능 애완동물 확인 (별도 컬렉션에서 조회)
         const availablePetsMap = new Map<string, boolean>();
@@ -139,29 +136,27 @@ export class BreederExploreService {
             const hasAvailable = await this.availablePetModel.exists({
                 breederId: breederId,
                 isActive: true,
-                status: 'available'
+                status: 'available',
             });
             availablePetsMap.set(breederId.toString(), !!hasAvailable);
         }
 
         // 카드 데이터로 변환
-        const cards: BreederCardResponseDto[] = breeders.map(breeder => {
+        const cards: BreederCardResponseDto[] = breeders.map((breeder) => {
             // 이미지 URL을 Signed URL로 변환
             const representativePhotos = this.storageService.generateSignedUrls(
                 breeder.profile?.representativePhotos || [],
-                60 // 1시간 유효
+                60, // 1시간 유효
             );
-            const profileImage = this.storageService.generateSignedUrlSafe(
-                breeder.profileImageUrl,
-                60
-            );
+            const profileImage = this.storageService.generateSignedUrlSafe(breeder.profileImageUrl, 60);
 
             return {
                 breederId: breeder._id.toString(),
                 breederName: breeder.name,
                 breederLevel: breeder.verification?.level || 'new',
-                location: breeder.profile?.location ?
-                    `${breeder.profile.location.city} ${breeder.profile.location.district}` : '',
+                location: breeder.profile?.location
+                    ? `${breeder.profile.location.city} ${breeder.profile.location.district}`
+                    : '',
                 mainBreed: breeder.breeds?.[0] || '',
                 isAdoptionAvailable: availablePetsMap.get(breeder._id.toString()) || false,
                 priceRange: {
@@ -202,41 +197,41 @@ export class BreederExploreService {
             .lean()
             .exec();
 
-        return Promise.all(breeders.map(async breeder => {
-            // 이미지 URL을 Signed URL로 변환
-            const representativePhotos = this.storageService.generateSignedUrls(
-                breeder.profile?.representativePhotos || [],
-                60 // 1시간 유효
-            );
-            const profileImage = this.storageService.generateSignedUrlSafe(
-                breeder.profileImageUrl,
-                60
-            );
+        return Promise.all(
+            breeders.map(async (breeder) => {
+                // 이미지 URL을 Signed URL로 변환
+                const representativePhotos = this.storageService.generateSignedUrls(
+                    breeder.profile?.representativePhotos || [],
+                    60, // 1시간 유효
+                );
+                const profileImage = this.storageService.generateSignedUrlSafe(breeder.profileImageUrl, 60);
 
-            // 분양 가능 여부 확인
-            const hasAvailable = await this.availablePetModel.exists({
-                breederId: breeder._id,
-                isActive: true,
-                status: 'available'
-            });
+                // 분양 가능 여부 확인
+                const hasAvailable = await this.availablePetModel.exists({
+                    breederId: breeder._id,
+                    isActive: true,
+                    status: 'available',
+                });
 
-            return {
-                breederId: breeder._id.toString(),
-                breederName: breeder.name,
-                breederLevel: breeder.verification?.level || 'new',
-                location: breeder.profile?.location ?
-                    `${breeder.profile.location.city} ${breeder.profile.location.district}` : '',
-                mainBreed: breeder.breeds?.[0] || '',
-                isAdoptionAvailable: !!hasAvailable,
-                priceRange: undefined, // 로그인 필요
-                favoriteCount: breeder.stats?.totalFavorites || 0,
-                isFavorited: false,
-                representativePhotos: representativePhotos,
-                profileImage: profileImage,
-                totalReviews: breeder.stats?.totalReviews || 0,
-                averageRating: breeder.stats?.averageRating || 0,
-                createdAt: (breeder as any).createdAt || new Date(),
-            };
-        }));
+                return {
+                    breederId: breeder._id.toString(),
+                    breederName: breeder.name,
+                    breederLevel: breeder.verification?.level || 'new',
+                    location: breeder.profile?.location
+                        ? `${breeder.profile.location.city} ${breeder.profile.location.district}`
+                        : '',
+                    mainBreed: breeder.breeds?.[0] || '',
+                    isAdoptionAvailable: !!hasAvailable,
+                    priceRange: undefined, // 로그인 필요
+                    favoriteCount: breeder.stats?.totalFavorites || 0,
+                    isFavorited: false,
+                    representativePhotos: representativePhotos,
+                    profileImage: profileImage,
+                    totalReviews: breeder.stats?.totalReviews || 0,
+                    averageRating: breeder.stats?.averageRating || 0,
+                    createdAt: (breeder as any).createdAt || new Date(),
+                };
+            }),
+        );
     }
 }

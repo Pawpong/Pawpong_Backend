@@ -9,9 +9,7 @@ import { GetDistrictsResponseDto } from './dto/response/get-districts-response.d
 export class DistrictService {
     private isSeeded = false;
 
-    constructor(
-        @InjectModel(District.name) private readonly districtModel: Model<District>,
-    ) {}
+    constructor(@InjectModel(District.name) private readonly districtModel: Model<District>) {}
 
     /**
      * 필요시에만 시드 데이터 삽입 (Lazy Loading)
@@ -39,7 +37,7 @@ export class DistrictService {
     async getAllCities(): Promise<string[]> {
         await this.ensureSeeded();
         const districts = await this.districtModel.find().select('city -_id').exec();
-        const cities = districts.map(d => d.city);
+        const cities = districts.map((d) => d.city);
         return cities;
     }
 

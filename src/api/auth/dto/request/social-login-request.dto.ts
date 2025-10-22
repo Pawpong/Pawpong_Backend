@@ -1,16 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsArray, IsEnum, IsOptional, IsString, MinLength, MaxLength, Matches } from 'class-validator';
 
-export enum UserRole {
-    ADOPTER = 'adopter',
-    BREEDER = 'breeder',
-}
-
-export enum SocialProvider {
-    GOOGLE = 'google',
-    KAKAO = 'kakao',
-    NAVER = 'naver',
-}
+import { UserRole } from '../../../../common/enum/user.enum';
 
 export class CompleteSocialRegistrationDto {
     @ApiProperty({

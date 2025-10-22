@@ -2,11 +2,11 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigService } from '@nestjs/config';
 
+import { Admin, AdminSchema } from '../../schema/admin.schema';
 import { Adopter, AdopterSchema } from '../../schema/adopter.schema';
 import { Breeder, BreederSchema } from '../../schema/breeder.schema';
-import { Admin, AdminSchema } from '../../schema/admin.schema';
-import { SystemStats, SystemStatsSchema } from '../../schema/system-stats.schema';
 import { ParentPet, ParentPetSchema } from '../../schema/parent-pet.schema';
+import { SystemStats, SystemStatsSchema } from '../../schema/system-stats.schema';
 import { AvailablePet, AvailablePetSchema } from '../../schema/available-pet.schema';
 import { BreederReview, BreederReviewSchema } from '../../schema/breeder-review.schema';
 import { BreederReport, BreederReportSchema } from '../../schema/breeder-report.schema';
@@ -33,19 +33,6 @@ import { AdoptionApplication, AdoptionApplicationSchema } from '../../schema/ado
                         connection.on('error', (error) => {
                             console.error('[DatabaseModule] MongoDB connection error:', error.message);
                         });
-
-                        // Development 환경에서 MongoDB 쿼리 로깅 활성화 (성능 문제로 임시 비활성화)
-                        // if (isDevelopment) {
-                        //     connection.set('debug', (collectionName: string, method: string, query: any, doc: any) => {
-                        //         console.log(`\n[MongoDB Query] ${collectionName}.${method}()`);
-                        //         if (query && Object.keys(query).length > 0) {
-                        //             console.log(`  Filter: ${JSON.stringify(query)}`);
-                        //         }
-                        //         if (doc && Object.keys(doc).length > 0) {
-                        //             console.log(`  Document: ${JSON.stringify(doc)}`);
-                        //         }
-                        //     });
-                        // }
 
                         return connection;
                     },

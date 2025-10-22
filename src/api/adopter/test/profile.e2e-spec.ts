@@ -88,7 +88,7 @@ describe('Adopter Profile API (e2e)', () => {
                 .expect(200)
                 .expect((res: any) => {
                     const profile = res.body.item;
-                    
+
                     // 필수 필드 확인
                     expect(profile).toHaveProperty('id');
                     expect(profile).toHaveProperty('email');
@@ -98,7 +98,7 @@ describe('Adopter Profile API (e2e)', () => {
                     expect(profile).toHaveProperty('status');
                     expect(profile).toHaveProperty('createdAt');
                     expect(profile).toHaveProperty('updatedAt');
-                    
+
                     // 선택 필드 확인 (기본값)
                     expect(profile).toHaveProperty('profileImage');
                     expect(profile).toHaveProperty('preferences');
@@ -138,7 +138,7 @@ describe('Adopter Profile API (e2e)', () => {
                     expect(res.body.item.name).toBe('업데이트된 입양자');
                     expect(res.body.item.phone).toBe('010-9999-8888');
                     expect(res.body.item.profileImage).toBe('https://example.com/updated-profile.jpg');
-                    
+
                     // updatedAt이 최신으로 변경되었는지 확인
                     const updatedAt = new Date(res.body.item.updatedAt);
                     const createdAt = new Date(res.body.item.createdAt);
@@ -357,7 +357,7 @@ describe('Adopter Profile API (e2e)', () => {
                     expect(statistics).toHaveProperty('reviewsWritten');
                     expect(statistics).toHaveProperty('reportsSubmitted');
                     expect(statistics).toHaveProperty('lastActivityAt');
-                    
+
                     // 초기 통계값 확인
                     expect(typeof statistics.totalApplications).toBe('number');
                     expect(typeof statistics.successfulAdoptions).toBe('number');
@@ -403,16 +403,11 @@ describe('Adopter Profile API (e2e)', () => {
 
     describe('Access Control and Security', () => {
         it('GET /api/adopter/profile - 인증 없는 접근 거부', async () => {
-            await request(app.getHttpServer())
-                .get('/api/adopter/profile')
-                .expect(401);
+            await request(app.getHttpServer()).get('/api/adopter/profile').expect(401);
         });
 
         it('PATCH /api/adopter/profile - 인증 없는 업데이트 거부', async () => {
-            await request(app.getHttpServer())
-                .patch('/api/adopter/profile')
-                .send({ name: '해킹 시도' })
-                .expect(401);
+            await request(app.getHttpServer()).patch('/api/adopter/profile').send({ name: '해킹 시도' }).expect(401);
         });
 
         it('GET /api/adopter/profile - 브리더 권한으로 접근 거부', async () => {
@@ -449,7 +444,7 @@ describe('Adopter Profile API (e2e)', () => {
                     expect(res.body).toHaveProperty('item');
                     expect(res.body).toHaveProperty('timestamp');
                     expect(res.body.success).toBe(true);
-                    
+
                     // 프로필 데이터 타입 검증
                     const profile = res.body.item;
                     expect(typeof profile.id).toBe('string');
@@ -460,7 +455,7 @@ describe('Adopter Profile API (e2e)', () => {
                     expect(typeof profile.status).toBe('string');
                     expect(typeof profile.createdAt).toBe('string');
                     expect(typeof profile.updatedAt).toBe('string');
-                    
+
                     // 날짜 형식 검증
                     expect(new Date(profile.createdAt)).toBeInstanceOf(Date);
                     expect(new Date(profile.updatedAt)).toBeInstanceOf(Date);

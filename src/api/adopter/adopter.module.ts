@@ -1,7 +1,11 @@
 import { Module, forwardRef } from '@nestjs/common';
+
 import { AdopterController } from './adopter.controller';
+
 import { AdopterService } from './adopter.service';
+
 import { AdopterRepository } from './adopter.repository';
+
 import { AdopterDatabaseModule } from '../../common/database/database.module';
 import { BreederManagementModule } from '../breeder-management/breeder-management.module';
 

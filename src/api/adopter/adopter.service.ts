@@ -1,25 +1,19 @@
-import {
-    Injectable,
-    NotFoundException,
-    BadRequestException,
-    ConflictException,
-    Inject,
-    forwardRef,
-} from '@nestjs/common';
+import { Injectable, BadRequestException, ConflictException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 
-import { ApplicationStatus, ReviewType, ReportStatus } from '../../common/enum/user.enum';
+import { ApplicationStatus, ReportStatus } from '../../common/enum/user.enum';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+
 import { BreederReview, BreederReviewDocument } from '../../schema/breeder-review.schema';
 
 import { AdopterRepository } from './adopter.repository';
 import { BreederRepository } from '../breeder-management/breeder.repository';
 
-import { ApplicationCreateRequestDto } from './dto/request/application-create-request.dto';
-import { ReviewCreateRequestDto } from './dto/request/review-create-request.dto';
 import { FavoriteAddRequestDto } from './dto/request/favorite-add-request.dto';
+import { ReviewCreateRequestDto } from './dto/request/review-create-request.dto';
 import { ReportCreateRequestDto } from './dto/request/report-create-request.dto';
+import { ApplicationCreateRequestDto } from './dto/request/application-create-request.dto';
 import { AdopterProfileResponseDto } from './dto/response/adopter-profile-response.dto';
 
 /**
@@ -213,7 +207,7 @@ export class AdopterService {
             // 브리더 평점 통계 실시간 재계산 및 업데이트 (BreederReview 컬렉션에서 조회)
             const reviews = await this.breederReviewModel.find({
                 breederId: application.targetBreederId,
-                isVisible: true
+                isVisible: true,
             });
 
             if (reviews.length > 0) {
@@ -303,6 +297,95 @@ export class AdopterService {
         await this.adopterRepository.removeFavoriteBreeder(userId, breederId);
 
         return { message: '즐겨찾기에서 브리더를 제거했습니다.' };
+    }
+
+    /**
+     * 즐겨찾기 브리더 목록 조회
+     * 페이지네이션을 지원하며, 브리더의 최신 정보와 함께 반환
+     *
+     * @param userId 입양자 고유 ID
+     * @param page 페이지 번호 (기본값: 1)
+     * @param limit 페이지당 항목 수 (기본값: 10)
+     * @returns 즐겨찾기 브리더 목록과 페이지네이션 정보
+     * @throws BadRequestException 존재하지 않는 입양자
+     */
+    async getFavoriteList(userId: string, page: number = 1, limit: number = 10): Promise<any> {
+        const adopter = await this.adopterRepository.findById(userId);
+        if (!adopter) {
+            throw new BadRequestException('입양자 정보를 찾을 수 없습니다.');
+        }
+
+        const { favorites, total } = await this.adopterRepository.findFavoriteList(userId, page, limit);
+
+        // 각 즐겨찾기 브리더의 최신 정보 조회
+        const favoriteListWithDetails = await Promise.all(
+            favorites.map(async (fav: any) => {
+                try {
+                    const breeder = await this.breederRepository.findById(fav.favoriteBreederId);
+
+                    if (!breeder) {
+                        // 브리더가 삭제되었거나 비활성화된 경우
+                        return {
+                            breederId: fav.favoriteBreederId,
+                            breederName: fav.breederName,
+                            profileImageUrl: fav.breederProfileImageUrl || '',
+                            location: fav.breederLocation || '',
+                            specialization: '',
+                            averageRating: 0,
+                            totalReviews: 0,
+                            availablePets: 0,
+                            addedAt: fav.addedAt,
+                            isActive: false,
+                        };
+                    }
+
+                    return {
+                        breederId: (breeder._id as any).toString(),
+                        breederName: breeder.name,
+                        profileImageUrl: breeder.profileImageUrl || '',
+                        location:
+                            `${breeder.profile?.location?.city || ''} ${breeder.profile?.location?.district || ''}`.trim(),
+                        specialization: breeder.profile?.specialization || '',
+                        averageRating: breeder.stats?.averageRating || 0,
+                        totalReviews: breeder.stats?.totalReviews || 0,
+                        availablePets:
+                            (breeder as any).availablePets?.filter(
+                                (pet: any) => pet.status === 'available' && pet.isActive,
+                            ).length || 0,
+                        addedAt: fav.addedAt,
+                        isActive: true,
+                    };
+                } catch (error) {
+                    // 에러 발생 시 기본 정보 반환
+                    return {
+                        breederId: fav.favoriteBreederId,
+                        breederName: fav.breederName,
+                        profileImageUrl: fav.breederProfileImageUrl || '',
+                        location: fav.breederLocation || '',
+                        specialization: '',
+                        averageRating: 0,
+                        totalReviews: 0,
+                        availablePets: 0,
+                        addedAt: fav.addedAt,
+                        isActive: false,
+                    };
+                }
+            }),
+        );
+
+        const totalPages = Math.ceil(total / limit);
+
+        return {
+            items: favoriteListWithDetails,
+            pagination: {
+                currentPage: page,
+                pageSize: limit,
+                totalItems: total,
+                totalPages,
+                hasNextPage: page < totalPages,
+                hasPrevPage: page > 1,
+            },
+        };
     }
 
     /**

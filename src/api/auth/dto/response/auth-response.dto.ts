@@ -10,7 +10,7 @@ export class AuthenticatedUserDto {
      */
     @ApiProperty({
         description: '사용자 고유 ID',
-        example: '507f1f77bcf86cd799439011'
+        example: '507f1f77bcf86cd799439011',
     })
     userId: string;
 
@@ -20,7 +20,7 @@ export class AuthenticatedUserDto {
      */
     @ApiProperty({
         description: '사용자 이메일 주소',
-        example: 'user@example.com'
+        example: 'user@example.com',
     })
     emailAddress: string;
 
@@ -30,7 +30,7 @@ export class AuthenticatedUserDto {
      */
     @ApiProperty({
         description: '사용자 닉네임',
-        example: '행복한입양자'
+        example: '행복한입양자',
     })
     nickname: string;
 
@@ -41,7 +41,7 @@ export class AuthenticatedUserDto {
     @ApiProperty({
         description: '사용자 역할',
         example: 'adopter',
-        enum: ['adopter', 'breeder', 'admin']
+        enum: ['adopter', 'breeder', 'admin'],
     })
     userRole: string;
 
@@ -52,7 +52,7 @@ export class AuthenticatedUserDto {
     @ApiProperty({
         description: '계정 상태',
         example: 'active',
-        enum: ['active', 'suspended', 'deactivated', 'pending']
+        enum: ['active', 'suspended', 'deactivated', 'pending'],
     })
     accountStatus: string;
 
@@ -63,7 +63,7 @@ export class AuthenticatedUserDto {
     @ApiProperty({
         description: '프로필 이미지 URL',
         example: 'https://example.com/profile.jpg',
-        required: false
+        required: false,
     })
     profileImageUrl?: string;
 }
@@ -79,7 +79,7 @@ export class AuthResponseDto {
      */
     @ApiProperty({
         description: 'JWT 액세스 토큰',
-        example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+        example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
     })
     accessToken: string;
 
@@ -89,7 +89,7 @@ export class AuthResponseDto {
      */
     @ApiProperty({
         description: 'JWT 리프레시 토큰',
-        example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+        example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
     })
     refreshToken: string;
 
@@ -99,7 +99,7 @@ export class AuthResponseDto {
      */
     @ApiProperty({
         description: '액세스 토큰 만료 시간 (초 단위)',
-        example: 3600
+        example: 3600,
     })
     accessTokenExpiresIn: number;
 
@@ -109,7 +109,7 @@ export class AuthResponseDto {
      */
     @ApiProperty({
         description: '리프레시 토큰 만료 시간 (초 단위)',
-        example: 604800
+        example: 604800,
     })
     refreshTokenExpiresIn: number;
 
@@ -118,7 +118,7 @@ export class AuthResponseDto {
      */
     @ApiProperty({
         description: '인증된 사용자 정보',
-        type: AuthenticatedUserDto
+        type: AuthenticatedUserDto,
     })
     userInfo: AuthenticatedUserDto;
 
@@ -128,7 +128,7 @@ export class AuthResponseDto {
      */
     @ApiProperty({
         description: '인증 완료 메시지',
-        example: '로그인이 완료되었습니다.'
+        example: '로그인이 완료되었습니다.',
     })
     message: string;
 }

@@ -27,9 +27,9 @@ import { StorageModule } from 'src/common/storage/storage.module';
         WinstonModule.forRoot(winstonConfig),
         JwtModule.registerAsync({
             useFactory: async (configService: ConfigService) => ({
-                secret: configService.get<string>('JWT_SECRET') || 'your-jwt-secret-pawpong',
+                secret: configService.get<string>('JWT_SECRET'),
                 signOptions: {
-                    expiresIn: configService.get<string>('JWT_EXPIRATION') || '24h',
+                    expiresIn: configService.get<string>('JWT_EXPIRATION'),
                 },
             }),
             inject: [ConfigService],

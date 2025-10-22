@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+
 import { Adopter, AdopterDocument } from '../../schema/adopter.schema';
 
 /**
@@ -382,6 +383,42 @@ export class AdopterRepository {
         } catch (error) {
             // 치명적이지 않은 오류이므로 로깅만 수행
             console.error(`입양자 활동 시간 업데이트 실패: ${error.message}`);
+        }
+    }
+
+    /**
+     * 입양자의 즐겨찾기 브리더 목록 조회
+     * 페이지네이션 지원
+     *
+     * @param adopterId 입양자 ID
+     * @param page 페이지 번호 (기본값: 1)
+     * @param limit 페이지당 항목 수 (기본값: 10)
+     * @returns 즐겨찾기 브리더 목록과 페이지네이션 정보
+     */
+    async findFavoriteList(adopterId: string, page: number = 1, limit: number = 10): Promise<any> {
+        try {
+            const adopter = await this.adopterModel.findById(adopterId).select('favorite_breeder_list').lean().exec();
+
+            if (!adopter || !adopter.favoriteBreederList) {
+                return {
+                    favorites: [],
+                    total: 0,
+                };
+            }
+
+            const allFavorites = adopter.favoriteBreederList;
+            const total = allFavorites.length;
+
+            // 페이지네이션 적용
+            const skip = (page - 1) * limit;
+            const favorites = allFavorites.slice(skip, skip + limit);
+
+            return {
+                favorites,
+                total,
+            };
+        } catch (error) {
+            throw new Error(`즐겨찾기 목록 조회 실패: ${error.message}`);
         }
     }
 

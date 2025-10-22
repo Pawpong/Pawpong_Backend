@@ -374,8 +374,8 @@ describe('Adopter Favorites API (e2e)', () => {
                 .expect(200)
                 .expect((res: any) => {
                     expect(res.body.success).toBe(true);
-                    const matchingFavorites = res.body.item.filter((fav: any) => 
-                        fav.breederName.includes('Test Breeder')
+                    const matchingFavorites = res.body.item.filter((fav: any) =>
+                        fav.breederName.includes('Test Breeder'),
                     );
                     expect(matchingFavorites.length).toBeGreaterThan(0);
                 });
@@ -392,21 +392,18 @@ describe('Adopter Favorites API (e2e)', () => {
             ];
 
             for (const endpoint of endpoints) {
-                await request(app.getHttpServer())[endpoint.method](endpoint.path)
-                    .expect(401);
+                await request(app.getHttpServer())[endpoint.method](endpoint.path).expect(401);
             }
         });
 
         it('GET /api/adopter/favorites - 다른 입양자의 즐겨찾기 접근 불가', async () => {
             // 다른 입양자 생성
-            const otherAdopterResponse = await request(app.getHttpServer())
-                .post('/api/auth/register/adopter')
-                .send({
-                    email: 'other@test.com',
-                    password: 'testpassword123',
-                    name: 'Other Adopter',
-                    phone: '010-5555-5555',
-                });
+            const otherAdopterResponse = await request(app.getHttpServer()).post('/api/auth/register/adopter').send({
+                email: 'other@test.com',
+                password: 'testpassword123',
+                name: 'Other Adopter',
+                phone: '010-5555-5555',
+            });
 
             const otherAdopterToken = otherAdopterResponse.body.access_token;
 
@@ -454,7 +451,7 @@ describe('Adopter Favorites API (e2e)', () => {
                     expect(res.body).toHaveProperty('success');
                     expect(res.body).toHaveProperty('item');
                     expect(res.body).toHaveProperty('timestamp');
-                    
+
                     if (res.body.item.length > 0) {
                         const favorite = res.body.item[0];
                         expect(favorite).toHaveProperty('breederId');
@@ -477,7 +474,7 @@ describe('Adopter Favorites API (e2e)', () => {
                     expect(res.body.item).toHaveProperty('isFavorite');
                     expect(res.body.item).toHaveProperty('addedAt');
                     expect(typeof res.body.item.isFavorite).toBe('boolean');
-                    
+
                     if (res.body.item.isFavorite) {
                         expect(res.body.item.addedAt).not.toBeNull();
                         expect(new Date(res.body.item.addedAt)).toBeInstanceOf(Date);

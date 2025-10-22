@@ -1,5 +1,6 @@
 import { applyDecorators, Type } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+
 import { ApiResponseDto } from '../dto/response/api-response.dto';
 
 /**
@@ -67,8 +68,5 @@ export function ApiPaginatedEndpoint(options: {
  * 컨트롤러 스웨거 데코레이터
  */
 export function ApiController(tagName: string) {
-    return applyDecorators(
-        ApiTags(tagName),
-        ApiBearerAuth('JWT-Auth'),
-    );
+    return applyDecorators(ApiTags(tagName), ApiBearerAuth('JWT-Auth'));
 }

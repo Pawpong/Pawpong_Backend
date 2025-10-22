@@ -526,4 +526,182 @@ export class BreederManagementService {
             stats: breeder.stats,
         };
     }
+
+    /**
+     * 브리더 자신의 개체 목록 조회 (관리용)
+     * 모든 상태의 개체를 포함하며, 비활성화된 개체도 조회 가능
+     *
+     * @param userId 브리더 고유 ID
+     * @param status 상태 필터 (선택사항)
+     * @param includeInactive 비활성화된 개체 포함 여부
+     * @param page 페이지 번호
+     * @param limit 페이지당 항목 수
+     * @returns 페이지네이션된 개체 목록과 통계
+     */
+    async getMyPets(
+        userId: string,
+        status?: string,
+        includeInactive: boolean = false,
+        page: number = 1,
+        limit: number = 20,
+    ): Promise<any> {
+        const breeder = await this.breederRepository.findById(userId);
+        if (!breeder) {
+            throw new BadRequestException('브리더 정보를 찾을 수 없습니다.');
+        }
+
+        // 필터 조건 구성
+        const filter: any = { breederId: userId };
+        if (!includeInactive) {
+            filter.isActive = true;
+        }
+        if (status) {
+            filter.status = status;
+        }
+
+        // 통계 계산
+        const [total, availableCount, reservedCount, adoptedCount, inactiveCount] = await Promise.all([
+            this.availablePetModel.countDocuments(filter),
+            this.availablePetModel.countDocuments({ breederId: userId, status: PetStatus.AVAILABLE, isActive: true }),
+            this.availablePetModel.countDocuments({ breederId: userId, status: PetStatus.RESERVED, isActive: true }),
+            this.availablePetModel.countDocuments({ breederId: userId, status: PetStatus.ADOPTED, isActive: true }),
+            this.availablePetModel.countDocuments({ breederId: userId, isActive: false }),
+        ]);
+
+        // 페이지네이션
+        const skip = (page - 1) * limit;
+        const pets = await this.availablePetModel
+            .find(filter)
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .lean();
+
+        // 각 개체별 입양 신청 수 조회
+        const petIds = pets.map((pet: any) => pet.petId);
+        const applicationCounts = await this.adoptionApplicationModel.aggregate([
+            { $match: { petId: { $in: petIds } } },
+            { $group: { _id: '$petId', count: { $sum: 1 } } },
+        ]);
+
+        const applicationCountMap = new Map(applicationCounts.map((item: any) => [item._id, item.count]));
+
+        // 데이터 변환
+        const items = pets.map((pet: any) => {
+            const birthDate = new Date(pet.birthDate);
+            const now = new Date();
+            const ageInMonths = Math.floor((now.getTime() - birthDate.getTime()) / (1000 * 60 * 60 * 24 * 30));
+
+            return {
+                petId: pet.petId,
+                name: pet.name,
+                breed: pet.breed,
+                gender: pet.gender,
+                birthDate: pet.birthDate,
+                ageInMonths,
+                price: pet.price,
+                status: pet.status,
+                isActive: pet.isActive,
+                mainPhoto: pet.photos?.[0] || '',
+                photoCount: pet.photos?.length || 0,
+                viewCount: pet.viewCount || 0,
+                applicationCount: applicationCountMap.get(pet.petId) || 0,
+                createdAt: pet.createdAt,
+                updatedAt: pet.updatedAt,
+            };
+        });
+
+        const totalPages = Math.ceil(total / limit);
+
+        return {
+            items,
+            pagination: {
+                currentPage: page,
+                pageSize: limit,
+                totalItems: total,
+                totalPages,
+                hasNextPage: page < totalPages,
+                hasPrevPage: page > 1,
+            },
+            availableCount,
+            reservedCount,
+            adoptedCount,
+            inactiveCount,
+        };
+    }
+
+    /**
+     * 브리더 자신에게 달린 후기 목록 조회 (관리용)
+     * 공개/비공개 후기 모두 조회 가능
+     *
+     * @param userId 브리더 고유 ID
+     * @param visibility 공개 여부 필터 (all, visible, hidden)
+     * @param page 페이지 번호
+     * @param limit 페이지당 항목 수
+     * @returns 페이지네이션된 후기 목록과 통계
+     */
+    async getMyReviews(
+        userId: string,
+        visibility: string = 'all',
+        page: number = 1,
+        limit: number = 10,
+    ): Promise<any> {
+        const breeder = await this.breederRepository.findById(userId);
+        if (!breeder) {
+            throw new BadRequestException('브리더 정보를 찾을 수 없습니다.');
+        }
+
+        // 브리더 스키마의 reviews 필드에서 조회
+        let allReviews = (breeder as any).reviews || [];
+
+        // 공개 여부 필터링
+        if (visibility === 'visible') {
+            allReviews = allReviews.filter((review: any) => review.isVisible);
+        } else if (visibility === 'hidden') {
+            allReviews = allReviews.filter((review: any) => !review.isVisible);
+        }
+
+        const total = allReviews.length;
+        const visibleCount = (breeder as any).reviews?.filter((r: any) => r.isVisible).length || 0;
+        const hiddenCount = total - visibleCount;
+
+        // 최신순 정렬 및 페이지네이션
+        const skip = (page - 1) * limit;
+        const reviews = allReviews
+            .sort((a: any, b: any) => new Date(b.writtenAt).getTime() - new Date(a.writtenAt).getTime())
+            .slice(skip, skip + limit)
+            .map((review: any) => ({
+                reviewId: review.reviewId,
+                adopterId: review.adopterId || '',
+                adopterName: review.adopterName,
+                petName: review.petName || '',
+                rating: review.rating || 0,
+                petHealthRating: review.petHealthRating,
+                communicationRating: review.communicationRating,
+                content: review.content,
+                photos: review.photos || [],
+                writtenAt: review.writtenAt,
+                type: review.type || 'adoption',
+                isVisible: review.isVisible,
+                reportCount: review.reportCount || 0,
+            }));
+
+        const totalPages = Math.ceil(total / limit);
+
+        return {
+            items: reviews,
+            pagination: {
+                currentPage: page,
+                pageSize: limit,
+                totalItems: total,
+                totalPages,
+                hasNextPage: page < totalPages,
+                hasPrevPage: page > 1,
+            },
+            averageRating: breeder.stats?.averageRating || 0,
+            totalReviews: total,
+            visibleReviews: visibleCount,
+            hiddenReviews: hiddenCount,
+        };
+    }
 }

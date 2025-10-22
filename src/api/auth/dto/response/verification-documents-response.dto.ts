@@ -1,5 +1,14 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { VerificationDocumentType } from '../request/upload-verification-documents.dto';
+
+/**
+ * 인증 서류 타입
+ */
+export enum VerificationDocumentType {
+    ID_CARD = 'id_card',
+    ANIMAL_PRODUCTION_LICENSE = 'animal_production_license',
+    ADOPTION_CONTRACT_SAMPLE = 'adoption_contract_sample',
+    BREEDER_CERTIFICATION = 'breeder_certification',
+}
 
 /**
  * 업로드된 인증 서류 정보

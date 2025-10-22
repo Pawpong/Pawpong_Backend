@@ -12,6 +12,11 @@ export enum SocialProvider {
     APPLE = 'apple',
 }
 
+export enum UserRole {
+    ADOPTER = 'adopter',
+    BREEDER = 'breeder',
+}
+
 export enum PetType {
     DOG = 'dog',
     CAT = 'cat',
@@ -56,25 +61,25 @@ export enum BreederPlan {
  * 브리더 레벨 열거형
  */
 export enum BreederLevel {
-    NEW = 'new',      // 뉴 브리더
-    ELITE = 'elite',  // 엘리트 브리더
+    NEW = 'new', // 뉴 브리더
+    ELITE = 'elite', // 엘리트 브리더
 }
 
 /**
  * 반려동물 크기 열거형 (강아지)
  */
 export enum PetSize {
-    SMALL = 'small',     // 소형견
-    MEDIUM = 'medium',   // 중형견
-    LARGE = 'large',     // 대형견
+    SMALL = 'small', // 소형견
+    MEDIUM = 'medium', // 중형견
+    LARGE = 'large', // 대형견
 }
 
 /**
  * 반려동물 털 길이 열거형 (고양이)
  */
 export enum FurLength {
-    SHORT = 'short',  // 단모종
-    LONG = 'long',    // 장모종
+    SHORT = 'short', // 단모종
+    LONG = 'long', // 장모종
 }
 
 export enum ReportType {

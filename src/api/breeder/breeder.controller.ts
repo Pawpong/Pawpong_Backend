@@ -13,6 +13,9 @@ import { BreederProfileResponseDto } from './dto/response/breeder-profilerespons
 import { SearchBreederRequestDto } from './dto/request/search-breeder-request.dto';
 import { BreederCardResponseDto } from './dto/response/breeder-card-response.dto';
 import { PaginationResponseDto } from '../../common/dto/pagination/pagination-response.dto';
+import { BreederReviewsResponseDto, BreederReviewItemDto } from './dto/response/breeder-reviews-response.dto';
+import { PetDetailResponseDto } from './dto/response/pet-detail-response.dto';
+import { PetsListResponseDto, PetItemDto } from './dto/response/pets-list-response.dto';
 
 @ApiController('브리더')
 @Controller('breeder')
@@ -75,5 +78,58 @@ export class BreederController {
     ): Promise<ApiResponseDto<BreederProfileResponseDto>> {
         const result = await this.breederService.getBreederProfile(breederId, user?.userId);
         return ApiResponseDto.success(result, '브리더 프로필이 조회되었습니다.');
+    }
+
+    @Get(':id/reviews')
+    @ApiPaginatedEndpoint({
+        summary: '브리더 후기 목록 조회',
+        description: '특정 브리더의 후기 목록을 페이지네이션과 함께 조회합니다. 최신 후기부터 정렬되어 반환됩니다.',
+        responseType: BreederReviewsResponseDto,
+        isPublic: true,
+    })
+    async getBreederReviews(
+        @Param('id') breederId: string,
+        @Query('page') page: number = 1,
+        @Query('limit') limit: number = 10,
+    ): Promise<ApiResponseDto<PaginationResponseDto<BreederReviewItemDto>>> {
+        const result = await this.breederService.getBreederReviews(breederId, Number(page), Number(limit));
+        return ApiResponseDto.success(result, '후기 목록이 조회되었습니다.');
+    }
+
+    @Get(':id/pets')
+    @ApiPaginatedEndpoint({
+        summary: '브리더 개체 목록 조회',
+        description: '특정 브리더의 개체(반려동물) 목록을 조회합니다. status 파라미터로 분양 가능, 예약, 입양 완료 상태별 필터링이 가능합니다.',
+        responseType: PetsListResponseDto,
+        isPublic: true,
+    })
+    async getBreederPets(
+        @Param('id') breederId: string,
+        @Query('status') status?: string,
+        @Query('page') page: number = 1,
+        @Query('limit') limit: number = 20,
+    ): Promise<ApiResponseDto<PaginationResponseDto<PetItemDto>>> {
+        const result = await this.breederService.getBreederPets(
+            breederId,
+            status,
+            Number(page),
+            Number(limit),
+        );
+        return ApiResponseDto.success(result, '개체 목록이 조회되었습니다.');
+    }
+
+    @Get(':id/pet/:petId')
+    @ApiEndpoint({
+        summary: '개체 상세 정보 조회',
+        description: '특정 개체(반려동물)의 상세 정보를 조회합니다. 백신 접종 기록, 건강 기록, 부모 정보 등이 포함됩니다.',
+        responseType: PetDetailResponseDto,
+        isPublic: true,
+    })
+    async getPetDetail(
+        @Param('id') breederId: string,
+        @Param('petId') petId: string,
+    ): Promise<ApiResponseDto<PetDetailResponseDto>> {
+        const result = await this.breederService.getPetDetail(breederId, petId);
+        return ApiResponseDto.success(result, '개체 상세 정보가 조회되었습니다.');
     }
 }

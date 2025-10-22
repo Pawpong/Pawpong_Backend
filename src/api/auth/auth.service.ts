@@ -16,6 +16,7 @@ import { RefreshTokenRequestDto } from './dto/request/refresh-token-request.dto'
 
 import { AuthResponseDto } from './dto/response/auth-response.dto';
 import { TokenResponseDto } from './dto/response/token-response.dto';
+import { VerificationDocumentsResponseDto } from './dto/response/verification-documents-response.dto';
 
 @Injectable()
 export class AuthService {
@@ -83,20 +84,11 @@ export class AuthService {
 
         if (lowerFileName.includes('id_card') || lowerFileName.includes('신분증')) {
             return 'id_card';
-        } else if (
-            lowerFileName.includes('animal_production') ||
-            lowerFileName.includes('동물생산업')
-        ) {
+        } else if (lowerFileName.includes('animal_production') || lowerFileName.includes('동물생산업')) {
             return 'animal_production_license';
-        } else if (
-            lowerFileName.includes('adoption_contract') ||
-            lowerFileName.includes('입양계약서')
-        ) {
+        } else if (lowerFileName.includes('adoption_contract') || lowerFileName.includes('입양계약서')) {
             return 'adoption_contract_sample';
-        } else if (
-            lowerFileName.includes('pedigree') ||
-            lowerFileName.includes('혈통서')
-        ) {
+        } else if (lowerFileName.includes('pedigree') || lowerFileName.includes('혈통서')) {
             return 'pedigree';
         } else if (
             lowerFileName.includes('breeder_certification') ||
@@ -108,6 +100,23 @@ export class AuthService {
         }
 
         return 'other';
+    }
+
+    /**
+     * 문서 타입을 camelCase에서 snake_case로 변환
+     * 프론트엔드는 camelCase를 사용하지만, MongoDB 스키마는 snake_case enum을 사용
+     */
+    private convertDocumentTypeToSnakeCase(camelCaseType: string): string {
+        const typeMapping: Record<string, string> = {
+            idCard: 'id_card',
+            animalProductionLicense: 'animal_production_license',
+            adoptionContractSample: 'adoption_contract_sample',
+            recentAssociationDocument: 'pedigree', // 프론트엔드에서 사용하는 이름
+            pedigree: 'pedigree',
+            breederCertification: 'breeder_certification',
+        };
+
+        return typeMapping[camelCaseType] || camelCaseType;
     }
 
     async validateUser(userId: string, role: string): Promise<any> {
@@ -277,15 +286,21 @@ export class AuthService {
     }
 
     /**
-     * tempId로 소셜 회원가입 완료 처리
+     * 입양자 회원가입 처리 (일반 + 소셜 로그인 모두 지원)
      */
-    async completeSocialRegistrationWithTempId(dto: any): Promise<AuthResponseDto> {
-        this.logger.logStart(
-            'completeSocialRegistrationWithTempId',
-            'tempId 기반 소셜 회원가입 처리',
-            dto,
-            'AuthService',
-        );
+    async registerAdopter(dto: any): Promise<{
+        adopterId: string;
+        email: string;
+        nickname: string;
+        phoneNumber: string;
+        profileImage: string;
+        userRole: string;
+        accountStatus: string;
+        createdAt: string;
+        accessToken: string;
+        refreshToken: string;
+    }> {
+        this.logger.logStart('registerAdopter', '입양자 회원가입 처리 시작', dto, 'AuthService');
 
         // tempId 파싱: "temp_kakao_4479198661_1759826027884" 형식
         const tempIdParts = dto.tempId.split('_');
@@ -297,65 +312,92 @@ export class AuthService {
         const providerId = tempIdParts[2]; // 소셜 제공자의 사용자 ID
 
         this.logger.logSuccess(
-            'completeSocialRegistrationWithTempId',
+            'registerAdopter',
             'tempId 파싱 완료',
-            { provider, providerId, nickname: dto.nickname, role: dto.role },
+            { provider, providerId, nickname: dto.nickname },
             'AuthService',
         );
 
         // 소셜 제공자로부터 기존 사용자 정보 조회 (이미 가입했는지 확인)
-        let adopter = await this.adopterModel.findOne({
+        const existingAdopter = await this.adopterModel.findOne({
             'socialAuthInfo.authProvider': provider,
             'socialAuthInfo.providerUserId': providerId,
         });
 
-        let breeder = await this.breederModel.findOne({
-            'socialAuth.provider': provider,
-            'socialAuth.providerId': providerId,
-        });
-
-        if (adopter) {
+        if (existingAdopter) {
             throw new ConflictException('이미 입양자로 가입된 소셜 계정입니다.');
         }
 
-        if (breeder) {
-            throw new ConflictException('이미 브리더로 가입된 소셜 계정입니다.');
-        }
-
-        // 소셜 제공자의 이메일은 tempId에서 복원할 수 없으므로 DTO에서 받아야 함
-        // 하지만 보안을 위해 프론트에서 URL 파라미터로 받은 email을 다시 보내도록 함
-        // 여기서는 DTO에 email이 없으므로 에러 처리
+        // 필수 필드 검증
         if (!dto.email) {
             throw new BadRequestException('이메일 정보가 필요합니다.');
         }
 
-        if (!dto.name) {
-            throw new BadRequestException('이름 정보가 필요합니다.');
+        if (!dto.nickname) {
+            throw new BadRequestException('닉네임이 필요합니다.');
         }
 
-        // 기존 메서드 호출
-        return this.completeSocialRegistration(
-            {
-                provider,
-                providerId,
-                email: dto.email,
-                name: dto.name,
-                profileImage: dto.profileImage || '',
+        // 닉네임 중복 체크
+        const existingNickname = await this.adopterModel.findOne({
+            nickname: dto.nickname,
+        });
+
+        if (existingNickname) {
+            throw new ConflictException('이미 사용 중인 닉네임입니다.');
+        }
+
+        // 입양자 생성
+        const adopter = new this.adopterModel({
+            emailAddress: dto.email,
+            nickname: dto.nickname,
+            phoneNumber: this.normalizePhoneNumber(dto.phone),
+            profileImageUrl: dto.profileImage || '',
+            socialAuthInfo: {
+                authProvider: provider,
+                providerUserId: providerId,
+                providerEmail: dto.email,
             },
-            {
-                role: dto.role,
-                nickname: dto.nickname,
-                phone: dto.phone,
-                petType: dto.petType,
-                plan: dto.plan,
-                breederName: dto.breederName,
-                introduction: dto.introduction,
-                district: dto.district,
-                breeds: dto.breeds,
-                level: dto.level,
-                marketingAgreed: dto.marketingAgreed,
+            accountStatus: UserStatus.ACTIVE,
+            userRole: 'adopter',
+            notificationSettings: {
+                emailNotifications: true,
+                smsNotifications: false,
+                marketingNotifications: dto.marketingAgreed || false,
             },
-        );
+            favoriteBreederList: [],
+            adoptionApplicationList: [],
+            writtenReviewList: [],
+            submittedReportList: [],
+        });
+
+        const savedAdopter = await adopter.save();
+
+        // 토큰 생성
+        const tokens = this.generateTokens((savedAdopter._id as any).toString(), savedAdopter.emailAddress, 'adopter');
+
+        // Refresh 토큰 저장
+        const hashedRefreshToken = await this.hashRefreshToken(tokens.refreshToken);
+        savedAdopter.refreshToken = hashedRefreshToken;
+        savedAdopter.lastActivityAt = new Date();
+        await savedAdopter.save();
+
+        this.logger.logSuccess('registerAdopter', '입양자 회원가입 완료', {
+            userId: (savedAdopter._id as any).toString(),
+            nickname: savedAdopter.nickname,
+        });
+
+        return {
+            adopterId: (savedAdopter._id as any).toString(),
+            email: savedAdopter.emailAddress,
+            nickname: savedAdopter.nickname,
+            phoneNumber: savedAdopter.phoneNumber || '',
+            profileImage: savedAdopter.profileImageUrl || '',
+            userRole: 'adopter',
+            accountStatus: savedAdopter.accountStatus,
+            createdAt: savedAdopter.createdAt?.toISOString() || new Date().toISOString(),
+            accessToken: tokens.accessToken,
+            refreshToken: tokens.refreshToken,
+        };
     }
 
     /**
@@ -919,14 +961,16 @@ export class AuthService {
         email: string;
         phoneNumber: string;
         breederName: string;
-        breederLocation: string;
+        breederLocation: { city: string; district?: string };
         animal: string;
         breeds: string[];
         plan: string;
         level: string;
-        termAgreed: boolean;
-        privacyAgreed: boolean;
-        marketingAgreed?: boolean;
+        agreements: {
+            termsOfService: boolean;
+            privacyPolicy: boolean;
+            marketingConsent?: boolean;
+        };
         tempId?: string;
         provider?: string;
         profileImage?: string;
@@ -956,7 +1000,7 @@ export class AuthService {
         });
 
         // 필수 약관 동의 확인
-        if (!dto.termAgreed || !dto.privacyAgreed) {
+        if (!dto.agreements.termsOfService || !dto.agreements.privacyPolicy) {
             throw new BadRequestException('필수 약관에 동의해야 합니다.');
         }
 
@@ -1001,38 +1045,28 @@ export class AuthService {
             }
         }
 
-        // 브리더 위치 파싱 ("서울특별시 강남구" -> city: "서울특별시", district: "강남구")
-        let city = '';
-        let district = '';
-
-        if (dto.breederLocation) {
-            const locationParts = dto.breederLocation.split(' ');
-            if (locationParts.length >= 2) {
-                city = locationParts[0];
-                district = locationParts.slice(1).join(' ');
-            } else {
-                city = dto.breederLocation;
-                district = '';
-            }
-        }
+        // breederLocation은 이미 객체 형태로 전달됨 (district는 선택)
+        const city = dto.breederLocation.city;
+        const district = dto.breederLocation.district || '';
 
         // 업로드된 서류 URL 배열을 documents 배열로 변환
         const verificationDocuments =
-            dto.documentUrls?.map((url, index) => ({
-                url: url,  // 스키마에 맞게 'url' 필드 사용
-                type: dto.documentTypes?.[index] || this.extractDocumentType(url),  // documentTypes 우선 사용, 없으면 URL에서 추출
-                uploadedAt: new Date(),
-            })) || [];
+            dto.documentUrls?.map((url, index) => {
+                const camelCaseType = dto.documentTypes?.[index] || this.extractDocumentType(url);
+                // camelCase를 snake_case로 변환 (스키마 enum 형식에 맞춤)
+                const snakeCaseType = this.convertDocumentTypeToSnakeCase(camelCaseType);
+                return {
+                    url: url,
+                    type: snakeCaseType,
+                    uploadedAt: new Date(),
+                };
+            }) || [];
 
         if (verificationDocuments.length > 0) {
-            this.logger.logSuccess(
-                'registerBreeder',
-                '인증 서류 URL 처리 완료',
-                {
-                    documentCount: verificationDocuments.length,
-                    documentTypes: verificationDocuments.map((doc) => doc.type),
-                },
-            );
+            this.logger.logSuccess('registerBreeder', '인증 서류 URL 처리 완료', {
+                documentCount: verificationDocuments.length,
+                documentTypes: verificationDocuments.map((doc) => doc.type),
+            });
         }
 
         // 브리더 생성
@@ -1045,9 +1079,9 @@ export class AuthService {
             socialAuthInfo: socialAuthInfo,
             userRole: 'breeder',
             accountStatus: UserStatus.ACTIVE,
-            termsAgreed: dto.termAgreed,
-            privacyAgreed: dto.privacyAgreed,
-            marketingAgreed: dto.marketingAgreed || false,
+            termsAgreed: dto.agreements.termsOfService,
+            privacyAgreed: dto.agreements.privacyPolicy,
+            marketingAgreed: dto.agreements.marketingConsent || false,
             lastLoginAt: new Date(),
             lastActivityAt: new Date(),
 
@@ -1095,11 +1129,7 @@ export class AuthService {
         });
 
         // 토큰 생성
-        const tokens = this.generateTokens(
-            (savedBreeder._id as any).toString(),
-            savedBreeder.emailAddress,
-            'breeder',
-        );
+        const tokens = this.generateTokens((savedBreeder._id as any).toString(), savedBreeder.emailAddress, 'breeder');
 
         // Refresh 토큰 저장
         const hashedRefreshToken = await this.hashRefreshToken(tokens.refreshToken);
@@ -1115,7 +1145,7 @@ export class AuthService {
             breederId: (savedBreeder._id as any).toString(),
             email: savedBreeder.emailAddress,
             breederName: savedBreeder.name,
-            breederLocation: dto.breederLocation,
+            breederLocation: `${city} ${district}`.trim(),
             animal: savedBreeder.petType,
             breeds: savedBreeder.breeds,
             plan: savedBreeder.verification.plan,
@@ -1124,6 +1154,213 @@ export class AuthService {
             createdAt: savedBreeder.createdAt?.toISOString() || new Date().toISOString(),
             accessToken: tokens.accessToken,
             refreshToken: tokens.refreshToken,
+        };
+    }
+
+    /**
+     * 프로필 이미지 업로드 (회원가입 시 사용)
+     * 로그인 사용자의 경우 자동으로 DB에 저장
+     */
+    async uploadProfileImage(
+        file: Express.Multer.File,
+        user?: { userId: string; role: string },
+    ): Promise<{ cdnUrl: string; fileName: string; size: number }> {
+        this.logger.logStart('uploadProfileImage', '프로필 이미지 업로드 시작', {
+            fileSize: file.size,
+            mimeType: file.mimetype,
+            hasUser: !!user,
+        });
+
+        // 파일 크기 검증 (5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            throw new BadRequestException('파일 크기는 5MB를 초과할 수 없습니다.');
+        }
+
+        // 파일 타입 검증
+        const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        if (!allowedMimeTypes.includes(file.mimetype)) {
+            throw new BadRequestException('이미지 파일만 업로드 가능합니다. (jpg, jpeg, png, gif, webp)');
+        }
+
+        // GCP Storage에 업로드
+        const result = await this.storageService.uploadFile(file, 'profiles');
+
+        // 로그인 사용자인 경우 DB 업데이트
+        if (user) {
+            if (user.role === 'breeder') {
+                await this.breederModel.findByIdAndUpdate(user.userId, {
+                    profileImageUrl: result.cdnUrl,
+                });
+                this.logger.logSuccess('uploadProfileImage', '브리더 프로필 이미지 DB 저장 완료', {
+                    userId: user.userId,
+                });
+            } else if (user.role === 'adopter') {
+                await this.adopterModel.findByIdAndUpdate(user.userId, {
+                    profileImageUrl: result.cdnUrl,
+                });
+                this.logger.logSuccess('uploadProfileImage', '입양자 프로필 이미지 DB 저장 완료', {
+                    userId: user.userId,
+                });
+            }
+        }
+
+        this.logger.logSuccess('uploadProfileImage', '프로필 이미지 업로드 완료', {
+            cdnUrl: result.cdnUrl,
+            fileName: result.fileName,
+        });
+
+        return {
+            cdnUrl: result.cdnUrl,
+            fileName: result.fileName,
+            size: file.size,
+        };
+    }
+
+    /**
+     * 브리더 인증 서류 업로드 (회원가입 시 사용)
+     * New/Elite 레벨에 따라 필수 서류 검증
+     */
+    async uploadBreederDocuments(
+        files: Express.Multer.File[],
+        types: string[],
+        level: 'new' | 'elite',
+    ): Promise<{ response: VerificationDocumentsResponseDto; count: number }> {
+        this.logger.logStart('uploadBreederDocuments', '브리더 인증 서류 업로드 시작', {
+            fileCount: files.length,
+            types,
+            level,
+        });
+
+        if (!files || files.length === 0) {
+            throw new BadRequestException('파일이 업로드되지 않았습니다.');
+        }
+
+        // New/Elite 레벨별 허용 서류 타입 정의
+        const allowedTypes = {
+            new: ['idCard', 'animalProductionLicense'],
+            elite: [
+                'idCard',
+                'animalProductionLicense',
+                'adoptionContractSample',
+                'recentAssociationDocument',
+                'breederCertification',
+                'ticaCfaDocument', // 선택
+            ],
+        };
+
+        // New/Elite 레벨별 필수 서류 정의
+        const requiredTypes = {
+            new: ['idCard', 'animalProductionLicense'], // 필수 2개
+            elite: [
+                'idCard',
+                'animalProductionLicense',
+                'adoptionContractSample',
+                'recentAssociationDocument',
+                'breederCertification',
+            ], // 필수 5개 (ticaCfaDocument는 선택)
+        };
+
+        // 레벨 검증
+        if (!['new', 'elite'].includes(level)) {
+            throw new BadRequestException('레벨은 "new" 또는 "elite"만 가능합니다.');
+        }
+
+        // 서류 타입 검증
+        const validTypes = allowedTypes[level];
+        for (const type of types) {
+            if (!validTypes.includes(type)) {
+                throw new BadRequestException(
+                    `${level} 레벨에서 유효하지 않은 서류 타입입니다: ${type}. 허용된 타입: ${validTypes.join(', ')}`,
+                );
+            }
+        }
+
+        // 중복 서류 타입 검증
+        const uniqueTypes = new Set(types);
+        if (uniqueTypes.size !== types.length) {
+            throw new BadRequestException('중복된 서류 타입이 있습니다. 각 서류는 한 번만 업로드해야 합니다.');
+        }
+
+        // 필수 서류 검증
+        const required = requiredTypes[level];
+        const missingRequired = required.filter((type) => !types.includes(type));
+        if (missingRequired.length > 0) {
+            throw new BadRequestException(`${level} 레벨 필수 서류가 누락되었습니다: ${missingRequired.join(', ')}`);
+        }
+
+        // files와 types 배열 길이 일치 검증
+        if (files.length !== types.length) {
+            throw new BadRequestException(
+                `파일 개수(${files.length})와 서류 타입 개수(${types.length})가 일치하지 않습니다.`,
+            );
+        }
+
+        // 파일 타입 및 크기 검증 (PDF, 모든 이미지 허용, 최대 10MB)
+        const allowedMimeTypes = [
+            'application/pdf',
+            'image/jpeg',
+            'image/jpg',
+            'image/png',
+            'image/webp',
+            'image/heic',
+            'image/heif',
+            'image/gif',
+            'image/bmp',
+            'image/tiff',
+        ];
+
+        for (const file of files) {
+            if (file.size > 10 * 1024 * 1024) {
+                throw new BadRequestException(`파일 "${file.originalname}"의 크기는 10MB를 초과할 수 없습니다.`);
+            }
+            if (!allowedMimeTypes.includes(file.mimetype)) {
+                throw new BadRequestException(
+                    `파일 "${file.originalname}"은(는) PDF 또는 이미지 파일만 업로드 가능합니다. (pdf, jpg, jpeg, png, webp, heic, gif 등)`,
+                );
+            }
+        }
+
+        // 파일 업로드
+        const uploadedDocuments: Array<{
+            type: string;
+            url: string;
+            filename: string;
+            size: number;
+            uploadedAt: Date;
+        }> = [];
+
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const type = types[i];
+
+            // 파일 업로드 (임시 폴더에 저장, 회원가입 완료 시 브리더 ID 폴더로 이동 가능)
+            const result = await this.storageService.uploadFile(file, `documents/verification/temp/${level}`);
+
+            uploadedDocuments.push({
+                type,
+                url: result.cdnUrl,
+                filename: result.fileName,
+                size: file.size,
+                uploadedAt: new Date(),
+            });
+
+            this.logger.logSuccess('uploadBreederDocuments', `서류 업로드 완료 (${i + 1}/${files.length})`, {
+                level,
+                type,
+                fileName: result.fileName,
+            });
+        }
+
+        this.logger.logSuccess('uploadBreederDocuments', `${level} 레벨 인증 서류 업로드 완료`, {
+            totalCount: uploadedDocuments.length,
+            level,
+        });
+
+        const response = new VerificationDocumentsResponseDto(uploadedDocuments, uploadedDocuments);
+
+        return {
+            response,
+            count: uploadedDocuments.length,
         };
     }
 }

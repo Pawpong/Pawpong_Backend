@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
   IsString,
   IsEmail,
@@ -8,7 +9,61 @@ import {
   ArrayMinSize,
   ArrayMaxSize,
   IsOptional,
+  IsBoolean,
+  ValidateNested,
 } from 'class-validator';
+
+/**
+ * 브리더 위치 정보
+ */
+export class BreederLocationDto {
+  @ApiProperty({
+    description: '시/도',
+    example: '서울특별시',
+  })
+  @IsString()
+  @IsNotEmpty()
+  city: string;
+
+  @ApiProperty({
+    description: '시/군/구',
+    example: '강남구',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  district?: string;
+}
+
+/**
+ * 약관 동의 정보
+ */
+export class AgreementsDto {
+  @ApiProperty({
+    description: '서비스 이용약관 동의 여부',
+    example: true,
+  })
+  @IsBoolean()
+  @IsNotEmpty()
+  termsOfService: boolean;
+
+  @ApiProperty({
+    description: '개인정보 처리방침 동의 여부',
+    example: true,
+  })
+  @IsBoolean()
+  @IsNotEmpty()
+  privacyPolicy: boolean;
+
+  @ApiProperty({
+    description: '마케팅 수신 동의 여부 (선택)',
+    example: false,
+    required: false,
+  })
+  @IsBoolean()
+  @IsOptional()
+  marketingConsent?: boolean;
+}
 
 /**
  * 브리더 회원가입 요청 DTO
@@ -61,15 +116,16 @@ export class RegisterBreederRequestDto {
 
   /**
    * 브리더 활동 지역
-   * @example "서울특별시 강남구"
+   * @example { city: "서울특별시", district: "강남구" }
    */
   @ApiProperty({
     description: '브리더 활동 지역',
-    example: '서울특별시 강남구',
+    type: BreederLocationDto,
   })
-  @IsString()
+  @ValidateNested()
+  @Type(() => BreederLocationDto)
   @IsNotEmpty()
-  breederLocation: string;
+  breederLocation: BreederLocationDto;
 
   /**
    * 브리딩 동물 종류
@@ -126,38 +182,17 @@ export class RegisterBreederRequestDto {
   level: string;
 
   /**
-   * 서비스 이용약관 동의 여부
-   * @example true
+   * 약관 동의 정보
+   * @example { termsOfService: true, privacyPolicy: true, marketingConsent: false }
    */
   @ApiProperty({
-    description: '서비스 이용약관 동의 여부',
-    example: true,
+    description: '약관 동의 정보',
+    type: AgreementsDto,
   })
+  @ValidateNested()
+  @Type(() => AgreementsDto)
   @IsNotEmpty()
-  termAgreed: boolean;
-
-  /**
-   * 개인정보 수집 및 이용 동의 여부
-   * @example true
-   */
-  @ApiProperty({
-    description: '개인정보 수집 및 이용 동의 여부',
-    example: true,
-  })
-  @IsNotEmpty()
-  privacyAgreed: boolean;
-
-  /**
-   * 광고성 정보 수신 동의 여부 (선택)
-   * @example false
-   */
-  @ApiProperty({
-    description: '광고성 정보 수신 동의 여부 (선택)',
-    example: false,
-    required: false,
-  })
-  @IsOptional()
-  marketingAgreed?: boolean;
+  agreements: AgreementsDto;
 
   /**
    * 소셜 로그인 임시 ID (선택)

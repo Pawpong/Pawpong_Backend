@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+
 import { PaginationResponseDto } from '../../../../common/dto/pagination/pagination-response.dto';
 
 /**

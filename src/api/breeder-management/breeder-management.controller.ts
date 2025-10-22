@@ -1,10 +1,11 @@
 import { Controller, Post, Get, Put, Delete, Body, Param, Query, UseGuards, Patch } from '@nestjs/common';
 
 import { Roles } from '../../common/decorator/roles.decorator';
-import { ApiController, ApiEndpoint } from '../../common/decorator/swagger.decorator';
+import { ApiController, ApiEndpoint, ApiPaginatedEndpoint } from '../../common/decorator/swagger.decorator';
 import { CurrentUser } from '../../common/decorator/user.decorator';
 import { RolesGuard } from '../../common/guard/roles.guard';
 import { JwtAuthGuard } from '../../common/guard/jwt-auth.guard';
+import { PaginationResponseDto } from '../../common/dto/pagination/pagination-response.dto';
 
 import { BreederManagementService } from './breeder-management.service';
 
@@ -22,10 +23,12 @@ import { PetRemoveResponseDto } from './dto/response/pet-remove-response.dto';
 import { ProfileUpdateResponseDto } from './dto/response/profile-update-response.dto';
 import { BreederProfileResponseDto } from '../breeder/dto/response/breeder-profileresponse.dto';
 import { BreederDashboardResponseDto } from '../breeder/dto/response/breeder-dashboard-response.dto';
-import { ReceivedApplicationListResponseDto } from '../breeder/dto/response/received-applicationList-response.dto';
+import { ReceivedApplicationListResponseDto } from '../breeder/dto/response/received-application-list-response.dto';
 import { VerificationSubmitResponseDto } from './dto/response/verification-submit-response.dto';
 import { PetStatusUpdateResponseDto } from './dto/response/pet-status-update-response.dto';
 import { ApplicationStatusUpdateResponseDto } from './dto/response/application-status-update-response.dto';
+import { MyPetsListResponseDto, MyPetItemDto } from './dto/response/my-pets-list-response.dto';
+import { MyReviewsListResponseDto, MyReviewItemDto } from './dto/response/my-reviews-list-response.dto';
 
 @ApiController('브리더 관리')
 @Controller('breeder-management')
@@ -233,5 +236,51 @@ export class BreederManagementController {
             updateData,
         );
         return ApiResponseDto.success(result, '입양 신청 상태가 성공적으로 변경되었습니다.');
+    }
+
+    @Get('my-pets')
+    @ApiPaginatedEndpoint({
+        summary: '내 개체 목록 조회',
+        description: '브리더 자신의 모든 개체 목록을 관리 목적으로 조회합니다. 비활성화된 개체, 상태별 필터링, 입양 신청 수 등 상세 정보가 포함됩니다.',
+        responseType: MyPetsListResponseDto,
+        isPublic: false,
+    })
+    async getMyPets(
+        @CurrentUser() user: any,
+        @Query('status') status?: string,
+        @Query('includeInactive') includeInactive?: string,
+        @Query('page') page: number = 1,
+        @Query('limit') limit: number = 20,
+    ): Promise<ApiResponseDto<PaginationResponseDto<MyPetItemDto>>> {
+        const result = await this.breederManagementService.getMyPets(
+            user.userId,
+            status,
+            includeInactive === 'true',
+            Number(page),
+            Number(limit),
+        );
+        return ApiResponseDto.success(result, '개체 목록이 조회되었습니다.');
+    }
+
+    @Get('my-reviews')
+    @ApiPaginatedEndpoint({
+        summary: '내게 달린 후기 목록 조회',
+        description: '브리더 자신에게 작성된 모든 후기를 관리 목적으로 조회합니다. 공개/비공개 후기 모두 확인 가능하며, 신고된 후기 정보도 포함됩니다.',
+        responseType: MyReviewsListResponseDto,
+        isPublic: false,
+    })
+    async getMyReviews(
+        @CurrentUser() user: any,
+        @Query('visibility') visibility?: string,
+        @Query('page') page: number = 1,
+        @Query('limit') limit: number = 10,
+    ): Promise<ApiResponseDto<PaginationResponseDto<MyReviewItemDto>>> {
+        const result = await this.breederManagementService.getMyReviews(
+            user.userId,
+            visibility || 'all',
+            Number(page),
+            Number(limit),
+        );
+        return ApiResponseDto.success(result, '후기 목록이 조회되었습니다.');
     }
 }

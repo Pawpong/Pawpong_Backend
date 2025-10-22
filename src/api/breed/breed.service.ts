@@ -1,17 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { Breed } from '../../schema/breed.schema';
+
 import { KOREA_BREEDS } from '../../common/data/breeds.data';
+
+import { Breed } from '../../schema/breed.schema';
+
 import { GetBreedsResponseDto, BreedCategoryDto } from './dto/response/get-breeds-response.dto';
 
 @Injectable()
 export class BreedService {
     private isSeeded = false;
 
-    constructor(
-        @InjectModel(Breed.name) private readonly breedModel: Model<Breed>,
-    ) {}
+    constructor(@InjectModel(Breed.name) private readonly breedModel: Model<Breed>) {}
 
     /**
      * 필요시에만 시드 데이터 삽입 (Lazy Loading)
@@ -40,7 +41,7 @@ export class BreedService {
         await this.ensureSeeded();
         const results = await this.breedModel.find({ petType }).exec();
 
-        const categories: BreedCategoryDto[] = results.map(r => ({
+        const categories: BreedCategoryDto[] = results.map((r) => ({
             category: r.category,
             categoryDescription: r.categoryDescription,
             breeds: r.breeds,
