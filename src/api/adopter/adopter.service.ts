@@ -4,6 +4,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 
 import { ApplicationStatus, ReportStatus } from '../../common/enum/user.enum';
+import { StorageService } from '../../common/storage/storage.service';
 
 import { BreederReview, BreederReviewDocument } from '../../schema/breeder-review.schema';
 import { AdoptionApplication, AdoptionApplicationDocument } from '../../schema/adoption-application.schema';
@@ -39,6 +40,7 @@ export class AdopterService {
     constructor(
         private adopterRepository: AdopterRepository,
         private breederRepository: BreederRepository,
+        private storageService: StorageService,
         @InjectModel(BreederReview.name) private breederReviewModel: Model<BreederReviewDocument>,
         @InjectModel(AdoptionApplication.name) private adoptionApplicationModel: Model<AdoptionApplicationDocument>,
     ) {}
@@ -392,7 +394,17 @@ export class AdopterService {
         }
 
         // 프로필 응답 데이터 구성 (Mapper 패턴 사용)
-        return AdopterMapper.toProfileResponse(adopter);
+        const profileResponse = AdopterMapper.toProfileResponse(adopter);
+
+        // 파일명을 Signed URL로 변환 (1시간 유효)
+        if (profileResponse.profileImageFileName) {
+            profileResponse.profileImageFileName = this.storageService.generateSignedUrlSafe(
+                profileResponse.profileImageFileName,
+                60,
+            );
+        }
+
+        return profileResponse;
     }
 
     /**

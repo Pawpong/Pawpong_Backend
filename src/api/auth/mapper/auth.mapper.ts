@@ -35,7 +35,7 @@ export class AuthMapper {
             email: savedAdopter.emailAddress,
             nickname: savedAdopter.nickname,
             phoneNumber: savedAdopter.phoneNumber || '',
-            profileImage: savedAdopter.profileImageUrl || '',
+            profileImage: savedAdopter.profileImageFileName || '',
             userRole: 'adopter',
             accountStatus: savedAdopter.accountStatus,
             createdAt: savedAdopter.createdAt?.toISOString() || new Date().toISOString(),
@@ -100,7 +100,7 @@ export class AuthMapper {
                 nickname: role === 'adopter' ? savedUser.nickname : savedUser.name,
                 userRole: role,
                 accountStatus: savedUser.accountStatus,
-                profileImageUrl: savedUser.profileImageUrl,
+                profileImageFileName: savedUser.profileImageFileName,
             },
             message: '소셜 회원가입이 완료되었습니다.',
         });
@@ -210,7 +210,7 @@ export class AuthMapper {
         userId: string;
         email: string;
         nickname: string;
-        profileImageUrl: string;
+        profileImageFileName: string;
     } {
         return {
             exists: true,
@@ -218,7 +218,7 @@ export class AuthMapper {
             userId: adopter._id.toString(),
             email: adopter.emailAddress,
             nickname: adopter.nickname,
-            profileImageUrl: adopter.profileImageUrl,
+            profileImageFileName: adopter.profileImageFileName,
         };
     }
 
@@ -234,7 +234,7 @@ export class AuthMapper {
         userId: string;
         email: string;
         nickname: string;
-        profileImageUrl: string;
+        profileImageFileName: string;
     } {
         return {
             exists: true,
@@ -242,7 +242,7 @@ export class AuthMapper {
             userId: breeder._id.toString(),
             email: breeder.emailAddress,
             nickname: breeder.name,
-            profileImageUrl: breeder.profileImageUrl,
+            profileImageFileName: breeder.profileImageFileName,
         };
     }
 

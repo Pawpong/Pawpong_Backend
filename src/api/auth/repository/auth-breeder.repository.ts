@@ -78,10 +78,12 @@ export class AuthBreederRepository {
     }
 
     /**
-     * 프로필 이미지 URL 업데이트
+     * 프로필 이미지 파일명 업데이트
+     * User 스키마의 profileImageFileName 필드에 파일명만 저장
+     * 조회 시 StorageService가 Signed URL을 동적으로 생성
      */
-    async updateProfileImage(id: string, profileImageUrl: string): Promise<void> {
-        await this.breederModel.findByIdAndUpdate(id, { profileImageUrl }).exec();
+    async updateProfileImage(id: string, fileName: string): Promise<void> {
+        await this.breederModel.findByIdAndUpdate(id, { profileImageFileName: fileName }).exec();
     }
 
     /**

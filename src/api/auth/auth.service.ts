@@ -22,15 +22,99 @@ import { AuthMapper } from './mapper/auth.mapper';
 import { AuthAdopterRepository } from './repository/auth-adopter.repository';
 import { AuthBreederRepository } from './repository/auth-breeder.repository';
 
+/**
+ * 임시 업로드 파일 정보 (tempId 기반)
+ */
+interface TempUploadInfo {
+    profileImage?: string; // 파일명
+    documents?: Array<{
+        fileName: string;
+        type: string;
+    }>;
+    createdAt: Date;
+}
+
 @Injectable()
 export class AuthService {
+    /**
+     * tempId를 키로 사용하는 임시 파일 저장소
+     * 회원가입 전 업로드된 파일 정보를 임시 보관
+     */
+    private tempUploads = new Map<string, TempUploadInfo>();
+
     constructor(
         private readonly authAdopterRepository: AuthAdopterRepository,
         private readonly authBreederRepository: AuthBreederRepository,
         private jwtService: JwtService,
         private readonly logger: CustomLoggerService,
         private readonly storageService: StorageService,
-    ) {}
+    ) {
+        // 1시간마다 오래된 임시 데이터 정리 (메모리 누수 방지)
+        setInterval(() => this.cleanupOldTempUploads(), 60 * 60 * 1000);
+    }
+
+    /**
+     * 1시간 이상 된 임시 업로드 데이터 삭제
+     */
+    private cleanupOldTempUploads(): void {
+        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+        let deletedCount = 0;
+
+        for (const [tempId, info] of this.tempUploads.entries()) {
+            if (info.createdAt < oneHourAgo) {
+                this.tempUploads.delete(tempId);
+                deletedCount++;
+            }
+        }
+
+        if (deletedCount > 0) {
+            this.logger.log(`[cleanupOldTempUploads] ${deletedCount}개의 오래된 임시 업로드 데이터 삭제됨`);
+        }
+    }
+
+    /**
+     * URL에서 파일명 추출 (프론트엔드가 잘못된 값을 보낼 경우 대비)
+     *
+     * @param urlOrFilename - Signed URL 또는 파일명
+     * @returns 파일명 (예: "profiles/uuid.png")
+     *
+     * @example
+     * // URL인 경우
+     * extractFilenameFromUrl("https://cdn.pawpong.kr/profiles/uuid.png?Expires=123&Signature=abc")
+     * // → "profiles/uuid.png"
+     *
+     * // 이미 파일명인 경우
+     * extractFilenameFromUrl("profiles/uuid.png")
+     * // → "profiles/uuid.png"
+     */
+    private extractFilenameFromUrl(urlOrFilename: string): string {
+        if (!urlOrFilename) {
+            return urlOrFilename;
+        }
+
+        // URL인지 확인 (http:// 또는 https://로 시작)
+        if (urlOrFilename.startsWith('http://') || urlOrFilename.startsWith('https://')) {
+            try {
+                const url = new URL(urlOrFilename);
+                // 도메인 이후 경로 추출 (맨 앞 / 제거)
+                let pathname = url.pathname;
+                if (pathname.startsWith('/')) {
+                    pathname = pathname.substring(1);
+                }
+                this.logger.logWarning('extractFilenameFromUrl', `URL에서 파일명 추출됨 (프론트엔드가 url 대신 filename을 보내야 함)`, {
+                    원본URL: urlOrFilename,
+                    추출된파일명: pathname,
+                });
+                return pathname;
+            } catch (error) {
+                this.logger.logError('extractFilenameFromUrl', 'URL 파싱 실패', error);
+                return urlOrFilename;
+            }
+        }
+
+        // 이미 파일명인 경우 그대로 반환
+        return urlOrFilename;
+    }
 
     /**
      * Access 토큰과 Refresh 토큰을 생성합니다.
@@ -200,7 +284,7 @@ export class AuthService {
                     email: adopter.emailAddress,
                     name: adopter.nickname,
                     role: 'adopter',
-                    profileImage: adopter.profileImageUrl,
+                    profileImage: adopter.profileImageFileName,
                 },
             };
         }
@@ -217,7 +301,7 @@ export class AuthService {
                     email: breeder.emailAddress,
                     name: breeder.name,
                     role: 'breeder',
-                    profileImage: breeder.profileImageUrl,
+                    profileImage: breeder.profileImageFileName,
                 },
             };
         }
@@ -225,6 +309,10 @@ export class AuthService {
         // 신규 사용자 - 추가 정보 필요
         // 임시 사용자 ID 생성 (세션 또는 JWT로 관리)
         const tempUserId = `temp_${profile.provider}_${profile.providerId}_${Date.now()}`;
+
+        // 소셜 로그인 프로필 이미지는 사용하지 않음
+        // 브리더 서류처럼 사용자가 회원가입 시 직접 업로드한 이미지만 사용
+        this.logger.log(`[handleSocialLogin] 신규 사용자 tempId 생성: ${tempUserId} (프로필 이미지는 사용자가 직접 업로드)`);
 
         return {
             needsAdditionalInfo: true,
@@ -282,7 +370,7 @@ export class AuthService {
             emailAddress: dto.email,
             nickname: dto.nickname,
             phoneNumber: AuthMapper.normalizePhoneNumber(dto.phone),
-            profileImageUrl: dto.profileImage || '',
+            profileImageFileName: dto.profileImage ? this.extractFilenameFromUrl(dto.profileImage) : '',
             socialAuthInfo: {
                 authProvider: provider,
                 providerUserId: providerId,
@@ -362,7 +450,7 @@ export class AuthService {
                 emailAddress: profile.email,
                 nickname: additionalInfo.nickname,
                 phoneNumber: AuthMapper.normalizePhoneNumber(additionalInfo.phone),
-                profileImageUrl: profile.profileImage,
+                profileImageFileName: profile.profileImage,
                 socialAuthInfo: {
                     authProvider: profile.provider,
                     providerUserId: profile.providerId,
@@ -408,7 +496,7 @@ export class AuthService {
                     nickname: savedAdopter.nickname,
                     userRole: 'adopter',
                     accountStatus: savedAdopter.accountStatus,
-                    profileImageUrl: savedAdopter.profileImageUrl,
+                    profileImageFileName: savedAdopter.profileImageFileName,
                 },
                 message: '소셜 회원가입이 완료되었습니다.',
             };
@@ -427,7 +515,7 @@ export class AuthService {
                 emailAddress: profile.email,
                 nickname: additionalInfo.breederName, // 브리더명을 nickname으로 사용
                 phoneNumber: AuthMapper.normalizePhoneNumber(additionalInfo.phone),
-                profileImageUrl: profile.profileImage,
+                profileImageFileName: profile.profileImage,
                 socialAuthInfo: {
                     authProvider: profile.provider,
                     providerUserId: profile.providerId,
@@ -501,7 +589,7 @@ export class AuthService {
                     nickname: savedBreeder.nickname,
                     userRole: 'breeder',
                     accountStatus: savedBreeder.accountStatus,
-                    profileImageUrl: savedBreeder.profileImageUrl,
+                    profileImageFileName: savedBreeder.profileImageFileName,
                 },
                 message: '소셜 회원가입이 완료되었습니다.',
             };
@@ -802,7 +890,7 @@ export class AuthService {
         userId?: string;
         email?: string;
         nickname?: string;
-        profileImageUrl?: string;
+        profileImageFileName?: string;
     }> {
         this.logger.logStart('checkSocialUser', '소셜 사용자 존재 여부 확인', {
             provider,
@@ -937,24 +1025,71 @@ export class AuthService {
         const city = dto.breederLocation.city;
         const district = dto.breederLocation.district || '';
 
-        // 업로드된 서류 URL 배열을 documents 배열로 변환 (Mapper 패턴 사용)
+        // tempId로 임시 저장된 파일 정보 조회 (회원가입 전 업로드한 파일)
+        let tempUploadInfo: TempUploadInfo | undefined;
+        if (dto.tempId) {
+            tempUploadInfo = this.tempUploads.get(dto.tempId);
+            if (tempUploadInfo) {
+                this.logger.logSuccess('registerBreeder', 'tempId로 임시 저장된 파일 정보 조회 완료', {
+                    tempId: dto.tempId,
+                    hasProfileImage: !!tempUploadInfo.profileImage,
+                    documentCount: tempUploadInfo.documents?.length || 0,
+                });
+            } else {
+                this.logger.log(`[registerBreeder] tempId로 임시 저장된 파일 정보가 없습니다: ${dto.tempId}`);
+            }
+        }
+
+        // 프론트엔드가 보낸 값과 임시 저장된 값 병합
+        const finalProfileImage = dto.profileImage || tempUploadInfo?.profileImage;
+        const finalDocumentUrls = dto.documentUrls || tempUploadInfo?.documents?.map((doc) => doc.fileName);
+        const finalDocumentTypes = dto.documentTypes || tempUploadInfo?.documents?.map((doc) => {
+            // snake_case를 camelCase로 변환
+            const typeMapping: Record<string, string> = {
+                id_card: 'idCard',
+                animal_production_license: 'animalProductionLicense',
+                adoption_contract_sample: 'adoptionContractSample',
+                recent_association_document: 'recentAssociationDocument',
+                breeder_certification: 'breederCertification',
+                tica_cfa_document: 'ticaCfaDocument',
+            };
+            return typeMapping[doc.type] || doc.type;
+        });
+
+        // 프론트엔드가 보낸 값 로깅 (디버깅용)
+        this.logger.log(`[registerBreeder] 프론트엔드가 보낸 profileImage: ${dto.profileImage}`);
+        this.logger.log(`[registerBreeder] 프론트엔드가 보낸 documentUrls: ${JSON.stringify(dto.documentUrls)}`);
+        this.logger.log(`[registerBreeder] 최종 profileImage: ${finalProfileImage}`);
+        this.logger.log(`[registerBreeder] 최종 documentUrls: ${JSON.stringify(finalDocumentUrls)}`);
+
+        // 업로드된 서류 파일명 배열을 documents 배열로 변환 (Mapper 패턴 사용)
+        // 최종 파일명과 타입을 사용 (프론트엔드 또는 tempId에서 가져온 값)
         const verificationDocuments =
-            dto.documentUrls?.map((url, index) => {
-                const camelCaseType = dto.documentTypes?.[index] || AuthMapper.extractDocumentType(url);
+            finalDocumentUrls?.map((urlOrFilename, index) => {
+                // URL에서 파일명 추출 (URL이면 경고 로그와 함께 변환, 파일명이면 그대로 사용)
+                const fileName = this.extractFilenameFromUrl(urlOrFilename);
+                const camelCaseType = finalDocumentTypes?.[index] || AuthMapper.extractDocumentType(fileName);
                 // camelCase를 snake_case로 변환 (스키마 enum 형식에 맞춤)
                 const snakeCaseType = AuthMapper.convertDocumentTypeToSnakeCase(camelCaseType);
                 return {
-                    url: url,
+                    fileName: fileName, // 파일명만 저장 (조회 시 동적으로 Signed URL 생성)
                     type: snakeCaseType,
                     uploadedAt: new Date(),
                 };
             }) || [];
 
         if (verificationDocuments.length > 0) {
-            this.logger.logSuccess('registerBreeder', '인증 서류 URL 처리 완료', {
+            this.logger.logSuccess('registerBreeder', '인증 서류 파일명 처리 완료', {
                 documentCount: verificationDocuments.length,
                 documentTypes: verificationDocuments.map((doc) => doc.type),
+                savedFileNames: verificationDocuments.map((doc) => doc.fileName), // 실제 저장되는 파일명
             });
+        }
+
+        // 회원가입 완료 후 tempId 임시 저장소에서 삭제
+        if (dto.tempId && tempUploadInfo) {
+            this.tempUploads.delete(dto.tempId);
+            this.logger.log(`[registerBreeder] tempId 임시 저장소에서 삭제됨: ${dto.tempId}`);
         }
 
         // 브리더 생성
@@ -963,7 +1098,7 @@ export class AuthService {
             emailAddress: dto.email,
             nickname: dto.breederName, // 브리더명을 nickname으로 사용
             phoneNumber: AuthMapper.normalizePhoneNumber(dto.phoneNumber),
-            profileImageUrl: dto.profileImage || undefined,
+            profileImageFileName: finalProfileImage ? this.extractFilenameFromUrl(finalProfileImage) : undefined,
             socialAuthInfo: socialAuthInfo,
             userRole: 'breeder',
             accountStatus: UserStatus.ACTIVE,
@@ -1033,15 +1168,18 @@ export class AuthService {
     /**
      * 프로필 이미지 업로드 (회원가입 시 사용)
      * 로그인 사용자의 경우 자동으로 DB에 저장
+     * 비로그인 사용자의 경우 tempId로 임시 저장
      */
     async uploadProfileImage(
         file: Express.Multer.File,
         user?: { userId: string; role: string },
+        tempId?: string,
     ): Promise<{ cdnUrl: string; fileName: string; size: number }> {
         this.logger.logStart('uploadProfileImage', '프로필 이미지 업로드 시작', {
             fileSize: file.size,
             mimeType: file.mimetype,
             hasUser: !!user,
+            tempId: tempId || 'N/A',
         });
 
         // 파일 크기 검증 (5MB)
@@ -1058,19 +1196,37 @@ export class AuthService {
         // GCP Storage에 업로드
         const result = await this.storageService.uploadFile(file, 'profiles');
 
-        // 로그인 사용자인 경우 DB 업데이트
+        // 로그인 사용자인 경우 DB 업데이트 (파일명만 저장)
         if (user) {
             if (user.role === 'breeder') {
-                await this.authBreederRepository.updateProfileImage(user.userId, result.cdnUrl);
-                this.logger.logSuccess('uploadProfileImage', '브리더 프로필 이미지 DB 저장 완료', {
+                await this.authBreederRepository.updateProfileImage(user.userId, result.fileName);
+                this.logger.logSuccess('uploadProfileImage', '브리더 프로필 이미지 파일명 DB 저장 완료', {
                     userId: user.userId,
+                    fileName: result.fileName,
                 });
             } else if (user.role === 'adopter') {
-                await this.authAdopterRepository.updateProfileImage(user.userId, result.cdnUrl);
-                this.logger.logSuccess('uploadProfileImage', '입양자 프로필 이미지 DB 저장 완료', {
+                await this.authAdopterRepository.updateProfileImage(user.userId, result.fileName);
+                this.logger.logSuccess('uploadProfileImage', '입양자 프로필 이미지 파일명 DB 저장 완료', {
                     userId: user.userId,
+                    fileName: result.fileName,
                 });
             }
+        }
+        // tempId가 있으면 임시 저장 (로그인 여부와 무관하게 저장)
+        // 사용자가 로그인 상태에서 다시 회원가입을 시도할 수 있으므로 둘 다 저장
+        if (tempId) {
+            const existing = this.tempUploads.get(tempId) || { createdAt: new Date() };
+            this.tempUploads.set(tempId, {
+                ...existing,
+                profileImage: result.fileName,
+                createdAt: existing.createdAt, // 기존 생성 시간 유지
+            });
+            this.logger.logSuccess('uploadProfileImage', 'tempId로 프로필 이미지 임시 저장 완료', {
+                tempId,
+                fileName: result.fileName,
+                hasUser: !!user,
+                tempUploadsSize: this.tempUploads.size,
+            });
         }
 
         this.logger.logSuccess('uploadProfileImage', '프로필 이미지 업로드 완료', {
@@ -1088,16 +1244,19 @@ export class AuthService {
     /**
      * 브리더 인증 서류 업로드 (회원가입 시 사용)
      * New/Elite 레벨에 따라 필수 서류 검증
+     * tempId가 있으면 임시 저장소에 보관
      */
     async uploadBreederDocuments(
         files: Express.Multer.File[],
         types: string[],
         level: 'new' | 'elite',
+        tempId?: string,
     ): Promise<{ response: VerificationDocumentsResponseDto; count: number }> {
         this.logger.logStart('uploadBreederDocuments', '브리더 인증 서류 업로드 시작', {
             fileCount: files.length,
             types,
             level,
+            tempId: tempId || 'N/A',
         });
 
         if (!files || files.length === 0) {
@@ -1207,8 +1366,8 @@ export class AuthService {
 
             uploadedDocuments.push({
                 type,
-                url: result.cdnUrl,
-                filename: result.fileName,
+                url: result.cdnUrl, // 응답용 Signed URL
+                filename: result.fileName, // DB 저장용 파일명
                 size: file.size,
                 uploadedAt: new Date(),
             });
@@ -1224,6 +1383,24 @@ export class AuthService {
             totalCount: uploadedDocuments.length,
             level,
         });
+
+        // tempId가 있으면 임시 저장소에 보관
+        if (tempId) {
+            const existing = this.tempUploads.get(tempId) || { createdAt: new Date() };
+            this.tempUploads.set(tempId, {
+                ...existing,
+                documents: uploadedDocuments.map((doc) => ({
+                    fileName: doc.filename,
+                    type: doc.type,
+                })),
+                createdAt: existing.createdAt, // 기존 생성 시간 유지
+            });
+            this.logger.logSuccess('uploadBreederDocuments', 'tempId로 서류 정보 임시 저장 완료', {
+                tempId,
+                documentCount: uploadedDocuments.length,
+                tempUploadsSize: this.tempUploads.size,
+            });
+        }
 
         const response = new VerificationDocumentsResponseDto(uploadedDocuments, uploadedDocuments);
 

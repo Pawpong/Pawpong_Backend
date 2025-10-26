@@ -5,6 +5,7 @@ import { randomUUID } from 'crypto';
 
 import { BreederRepository } from './breeder.repository';
 import { AdopterRepository } from '../adopter/adopter.repository';
+import { StorageService } from '../../common/storage/storage.service';
 import { ProfileUpdateRequestDto } from './dto/request/profile-update-request.dto';
 import { ApplicationStatusUpdateRequestDto } from './dto/request/application-status-update-request.dto';
 import { VerificationSubmitRequestDto } from './dto/request/verification-submit-request.dto';
@@ -37,6 +38,7 @@ export class BreederManagementService {
     constructor(
         private breederRepository: BreederRepository,
         private adopterRepository: AdopterRepository,
+        private storageService: StorageService,
         @InjectModel(AdoptionApplication.name) private adoptionApplicationModel: Model<AdoptionApplicationDocument>,
         @InjectModel(AvailablePet.name) private availablePetModel: Model<AvailablePetDocument>,
         @InjectModel(ParentPet.name) private parentPetModel: Model<ParentPetDocument>,
@@ -522,14 +524,27 @@ export class BreederManagementService {
             this.availablePetModel.find({ breederId: userId, isActive: true }).lean(),
         ]);
 
+        // 파일명을 Signed URL로 변환 (1시간 유효)
+        const profileImageFileName = this.storageService.generateSignedUrlSafe(breeder.profileImageFileName, 60);
+
+        // verification.documents의 fileName을 동적으로 Signed URL로 변환
+        const verificationWithSignedUrls = {
+            ...breeder.verification,
+            documents: breeder.verification.documents.map((doc: any) => ({
+                type: doc.type,
+                url: this.storageService.generateSignedUrl(doc.fileName, 60), // fileName → Signed URL 변환
+                uploadedAt: doc.uploadedAt,
+            })),
+        };
+
         return {
             id: (breeder._id as any).toString(),
             name: breeder.name,
             email: breeder.emailAddress,
             phone: breeder.phoneNumber,
-            profileImage: breeder.profileImageUrl,
+            profileImage: profileImageFileName,
             status: breeder.accountStatus,
-            verification: breeder.verification,
+            verification: verificationWithSignedUrls,
             profile: breeder.profile,
             parentPets,
             availablePets,

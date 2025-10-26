@@ -8,6 +8,7 @@ import {
     Get,
     Req,
     Res,
+    Query,
     UseInterceptors,
     UploadedFiles,
     UploadedFile,
@@ -336,8 +337,20 @@ export class AuthController {
         description: `브리더 또는 입양자의 프로필 이미지를 Google Cloud Storage에 업로드합니다.
 
 **회원가입 플로우:**
-1. 이 엔드포인트로 프로필 이미지 업로드 → cdnUrl 받기
-2. 받은 cdnUrl을 회원가입 API의 profileImage 필드에 포함
+1. 이 엔드포인트로 프로필 이미지 업로드
+2. 응답의 **filename** 필드를 회원가입 API의 profileImage 필드에 포함
+3. url 필드는 미리보기용 Signed URL (1시간 유효)
+
+**⚠️ 중요: 응답 필드 사용법**
+- url: Signed URL (미리보기용, 1시간 유효) - ❌ DB 저장 금지
+- filename: 파일 경로 (DB 저장용) - ✅ 회원가입 시 profileImage에 사용
+- size: 파일 크기
+
+**잘못된 사용 (X):**
+profileImage에 url 필드 값을 넣는 경우 (예: "https://cdn.pawpong.kr/profiles/uuid.png?Expires=...")
+
+**올바른 사용 (O):**
+profileImage에 filename 필드 값을 넣는 경우 (예: "profiles/uuid.png")
 
 **로그인 후 사용:**
 - 로그인 상태에서 업로드하면 자동으로 DB에 저장됩니다.
@@ -351,19 +364,22 @@ export class AuthController {
     @UseInterceptors(FileInterceptor('file'))
     async uploadProfile(
         @UploadedFile() file: Express.Multer.File,
+        @Query('tempId') tempId?: string,
         @CurrentUser() user?: any,
     ): Promise<ApiResponseDto<UploadResponseDto>> {
         if (!file) {
             throw new BadRequestException('파일이 업로드되지 않았습니다.');
         }
 
-        const result = await this.authService.uploadProfileImage(file, user);
+        const result = await this.authService.uploadProfileImage(file, user, tempId);
 
         const response = new UploadResponseDto(result.cdnUrl, result.fileName, result.size);
 
         const message = user
             ? '프로필 이미지가 업로드되고 저장되었습니다.'
-            : '프로필 이미지가 업로드되었습니다. 회원가입 시 cdnUrl을 사용하세요.';
+            : tempId
+            ? '프로필 이미지가 업로드되고 임시 저장되었습니다. 회원가입 시 자동으로 적용됩니다.'
+            : '프로필 이미지가 업로드되었습니다. 회원가입 시 응답의 filename 필드를 profileImage에 사용하세요.';
 
         return ApiResponseDto.success(response, message);
     }
@@ -376,8 +392,21 @@ export class AuthController {
         description: `브리더 입점 인증 서류를 업로드합니다. 회원가입 전에 미리 업로드할 수 있습니다.
 
 **회원가입 플로우:**
-1. 이 엔드포인트로 서류 업로드 → URL 배열 받기
-2. 받은 URL과 타입을 회원가입 API의 documentUrls, documentTypes에 포함
+1. 이 엔드포인트로 서류 업로드
+2. 응답의 각 항목에서 **filename** 필드를 documentUrls 배열에 포함
+3. url 필드는 미리보기용 Signed URL (1시간 유효)
+
+**⚠️ 중요: 응답 필드 사용법**
+- url: Signed URL (미리보기용, 1시간 유효) - ❌ DB 저장 금지
+- filename: 파일 경로 (DB 저장용) - ✅ 회원가입 시 documentUrls에 사용
+- type: 서류 타입
+- size: 파일 크기
+
+**잘못된 사용 (X):**
+documentUrls에 url 필드 값을 넣는 경우
+
+**올바른 사용 (O):**
+documentUrls에 filename 필드 값을 넣는 경우
 
 **New 레벨 (필수 2개):**
 - idCard: 신분증 사본
@@ -414,15 +443,18 @@ export class AuthController {
     async uploadBreederDocuments(
         @UploadedFiles() files: Express.Multer.File[],
         @Body() dto: UploadBreederDocumentsRequestDto,
+        @Query('tempId') tempId?: string,
     ): Promise<ApiResponseDto<VerificationDocumentsResponseDto>> {
         if (!files || files.length === 0) {
             throw new BadRequestException('파일이 업로드되지 않았습니다.');
         }
 
-        const result = await this.authService.uploadBreederDocuments(files, dto.types, dto.level);
-        return ApiResponseDto.success(
-            result.response,
-            `${dto.level} 레벨 브리더 인증 서류 ${result.count}개가 업로드되었습니다.`,
-        );
+        const result = await this.authService.uploadBreederDocuments(files, dto.types, dto.level, tempId);
+
+        const message = tempId
+            ? `${dto.level} 레벨 브리더 인증 서류 ${result.count}개가 업로드되고 임시 저장되었습니다. 회원가입 시 자동으로 적용됩니다.`
+            : `${dto.level} 레벨 브리더 인증 서류 ${result.count}개가 업로드되었습니다.`;
+
+        return ApiResponseDto.success(result.response, message);
     }
 }

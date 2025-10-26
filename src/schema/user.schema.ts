@@ -62,10 +62,10 @@ export class User {
     phoneNumber?: string;
 
     /**
-     * 프로필 이미지 URL
+     * 프로필 이미지 파일 이름
      */
     @Prop()
-    profileImageUrl?: string;
+    profileImageFileName?: string;
 
     /**
      * 소셜 인증 정보

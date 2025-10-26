@@ -242,7 +242,7 @@ export class BreederProfileResponseDto {
         example: 'https://example.com/profile.jpg',
         required: false
     })
-    profileImageUrl?: string;
+    profileImageFileName?: string;
 
     /**
      * 브리더 프로필 상세 정보

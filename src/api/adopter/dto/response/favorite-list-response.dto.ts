@@ -22,7 +22,7 @@ export class FavoriteBreederDataDto {
      * 프로필 이미지 URL
      */
     @ApiProperty({ description: '프로필 이미지 URL', required: false })
-    profileImageUrl?: string;
+    profileImageFileName?: string;
 
     /**
      * 위치 정보

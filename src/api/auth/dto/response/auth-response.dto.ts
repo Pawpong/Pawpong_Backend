@@ -65,7 +65,7 @@ export class AuthenticatedUserDto {
         example: 'https://example.com/profile.jpg',
         required: false,
     })
-    profileImageUrl?: string;
+    profileImageFileName?: string;
 }
 
 /**

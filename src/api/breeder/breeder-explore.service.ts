@@ -148,7 +148,7 @@ export class BreederExploreService {
                 breeder.profile?.representativePhotos || [],
                 60, // 1시간 유효
             );
-            const profileImage = this.storageService.generateSignedUrlSafe(breeder.profileImageUrl, 60);
+            const profileImage = this.storageService.generateSignedUrlSafe(breeder.profileImageFileName, 60);
 
             return {
                 breederId: breeder._id.toString(),
@@ -204,7 +204,7 @@ export class BreederExploreService {
                     breeder.profile?.representativePhotos || [],
                     60, // 1시간 유효
                 );
-                const profileImage = this.storageService.generateSignedUrlSafe(breeder.profileImageUrl, 60);
+                const profileImage = this.storageService.generateSignedUrlSafe(breeder.profileImageFileName, 60);
 
                 // 분양 가능 여부 확인
                 const hasAvailable = await this.availablePetModel.exists({

@@ -12,6 +12,8 @@ import {
     ApplicationStatus,
 } from '../../common/enum/user.enum';
 
+import { StorageService } from '../../common/storage/storage.service';
+
 import { UserSearchRequestDto } from './dto/request/user-search-request.dto';
 import { StatsFilterRequestDto } from './dto/request/stats-filter-request.dto';
 import { AdminStatsResponseDto } from './dto/response/admin-stats-response.dto';
@@ -40,6 +42,7 @@ export class AdminService {
         @InjectModel(SystemStats.name) private systemStatsModel: Model<SystemStatsDocument>,
         @InjectModel(BreederReport.name) private breederReportModel: Model<BreederReportDocument>,
         @InjectModel(BreederReview.name) private breederReviewModel: Model<BreederReviewDocument>,
+        private readonly storageService: StorageService,
     ) {}
 
     private async logAdminActivity(
@@ -113,7 +116,10 @@ export class AdminService {
                         verificationStatus: breeder.verification?.status || 'pending',
                         subscriptionPlan: breeder.verification?.plan || 'basic',
                         submittedAt: breeder.verification?.submittedAt,
-                        documentUrls: breeder.verification?.documents?.map((doc) => doc.url) || [],
+                        // fileName을 동적으로 Signed URL로 변환 (1시간 유효)
+                        documentUrls: breeder.verification?.documents?.map((doc) =>
+                            this.storageService.generateSignedUrl(doc.fileName, 60)
+                        ) || [],
                         isSubmittedByEmail: breeder.verification?.submittedByEmail || false,
                     },
                     profileInfo: breeder.profile,

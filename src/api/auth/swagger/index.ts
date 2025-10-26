@@ -134,7 +134,7 @@ export const AUTH_RESPONSE_EXAMPLE = {
         nickname: '김입양',
         userRole: 'adopter',
         accountStatus: 'active',
-        profileImageUrl: null,
+        profileImageFileName: null,
     },
     message: '로그인이 완료되었습니다.',
 };

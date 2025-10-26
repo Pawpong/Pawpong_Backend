@@ -54,7 +54,7 @@ export class AdopterProfileResponseDto {
         example: 'https://example.com/profile.jpg',
         required: false,
     })
-    profileImageUrl?: string;
+    profileImageFileName?: string;
 
     /**
      * 계정 상태

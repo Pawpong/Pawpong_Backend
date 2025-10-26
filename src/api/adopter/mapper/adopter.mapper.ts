@@ -54,7 +54,7 @@ export class AdopterMapper {
             emailAddress: adopter.emailAddress,
             nickname: adopter.nickname,
             phoneNumber: adopter.phoneNumber || '',
-            profileImageUrl: adopter.profileImageUrl,
+            profileImageFileName: adopter.profileImageFileName,
             accountStatus: adopter.accountStatus,
             favoriteBreederList: (adopter.favoriteBreederList || []).map((fav: any) => ({
                 breederId: fav.favoriteBreederId,
@@ -94,7 +94,7 @@ export class AdopterMapper {
             return {
                 breederId: favorite.favoriteBreederId,
                 breederName: favorite.breederName,
-                profileImageUrl: favorite.breederProfileImageUrl || '',
+                profileImageFileName: favorite.breederProfileImageUrl || '',
                 location: favorite.breederLocation || '',
                 specialization: '',
                 averageRating: 0,
@@ -108,7 +108,7 @@ export class AdopterMapper {
         return {
             breederId: breeder._id.toString(),
             breederName: breeder.name,
-            profileImageUrl: breeder.profileImageUrl || '',
+            profileImageFileName: breeder.profileImageFileName || '',
             location: `${breeder.profile?.location?.city || ''} ${breeder.profile?.location?.district || ''}`.trim(),
             specialization: breeder.profile?.specialization || '',
             averageRating: breeder.stats?.averageRating || 0,
@@ -203,7 +203,7 @@ export class AdopterMapper {
         return {
             favoriteBreederId: breederId,
             breederName: breeder.name,
-            breederProfileImageUrl: breeder.profileImageUrl || '',
+            breederProfileImageUrl: breeder.profileImageFileName || '',
             breederLocation: `${breeder.profile?.location?.city || ''} ${breeder.profile?.location?.district || ''}`,
             addedAt: new Date(),
         };
@@ -249,7 +249,7 @@ export class AdopterMapper {
         const mappedData: any = {};
         if (updateData.name) mappedData.fullName = updateData.name;
         if (updateData.phone) mappedData.phoneNumber = updateData.phone;
-        if (updateData.profileImage) mappedData.profileImageUrl = updateData.profileImage;
+        if (updateData.profileImage) mappedData.profileImageFileName = updateData.profileImage;
         return mappedData;
     }
 }

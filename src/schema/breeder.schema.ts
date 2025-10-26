@@ -29,8 +29,12 @@ export class VerificationDocument {
     })
     type: string;
 
+    /**
+     * 파일 경로 (파일명만 저장, 조회 시 동적으로 Signed URL 생성)
+     * @example "documents/verification/temp/new/uuid.pdf"
+     */
     @Prop({ required: true })
-    url: string;
+    fileName: string;
 
     @Prop({ default: Date.now })
     uploadedAt: Date;
