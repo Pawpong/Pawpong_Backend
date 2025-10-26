@@ -4,7 +4,7 @@ import { ApiProperty } from '@nestjs/swagger';
  * 브리더 프로필 수정 응답 DTO
  * 브리더가 프로필을 성공적으로 수정했을 때 반환되는 데이터 구조입니다.
  */
-export class ProfileUpdateResponseDto {
+export class BreederProfileUpdateResponseDto {
     /**
      * 브리더 고유 ID
      * @example "507f1f77bcf86cd799439011"

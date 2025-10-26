@@ -1,120 +1,183 @@
-import { IsString, IsOptional, IsNumber, IsArray, Min, Max } from 'class-validator';
+import {
+    IsString,
+    IsArray,
+    IsOptional,
+    IsNumber,
+    IsEnum,
+    IsNotEmpty,
+    MaxLength,
+    ValidateNested,
+    Min,
+} from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
-import { Transform, Type } from 'class-transformer';
+import { PetType } from '../../../../common/enum/user.enum';
 
 /**
- * 브리더 프로필 업데이트 요청 DTO
- * 브리더가 자신의 프로필 정보를 수정할 때 사용됩니다.
+ * 브리더 위치 정보 업데이트 DTO
+ */
+export class LocationUpdateDto {
+    /**
+     * 도시명
+     * @example "서울"
+     */
+    @ApiProperty({
+        description: '도시명',
+        example: '서울',
+    })
+    @IsString()
+    @IsNotEmpty()
+    cityName: string;
+
+    /**
+     * 구/군명
+     * @example "강남구"
+     */
+    @ApiProperty({
+        description: '구/군명',
+        example: '강남구',
+    })
+    @IsString()
+    @IsNotEmpty()
+    districtName: string;
+
+    /**
+     * 상세 주소 (선택사항)
+     * @example "테헤란로 123번길"
+     */
+    @ApiProperty({
+        description: '상세 주소',
+        example: '테헤란로 123번길',
+        required: false,
+    })
+    @IsString()
+    @IsOptional()
+    detailAddress?: string;
+}
+
+/**
+ * 브리더 가격대 정보 업데이트 DTO
+ */
+export class PriceRangeUpdateDto {
+    /**
+     * 최소 가격 (원)
+     * @example 500000
+     */
+    @ApiProperty({
+        description: '최소 가격 (원)',
+        example: 500000,
+        minimum: 0,
+    })
+    @Type(() => Number)
+    @IsNumber()
+    @Min(0)
+    minimumPrice: number;
+
+    /**
+     * 최대 가격 (원)
+     * @example 2000000
+     */
+    @ApiProperty({
+        description: '최대 가격 (원)',
+        example: 2000000,
+        minimum: 0,
+    })
+    @Type(() => Number)
+    @IsNumber()
+    @Min(0)
+    maximumPrice: number;
+}
+
+/**
+ * 브리더 프로필 수정 요청 DTO
+ * 브리더가 자신의 프로필을 업데이트할 때 사용됩니다.
  */
 export class ProfileUpdateRequestDto {
     /**
      * 브리더 소개 설명
-     * @example "10년 경력의 전문 브리더로 건강한 강아지들을 분양하고 있습니다."
+     * @example "20년 경력의 전문 브리더입니다. 건강하고 성격 좋은 반려동물을 분양합니다."
      */
     @ApiProperty({
         description: '브리더 소개 설명',
-        example: '10년 경력의 전문 브리더로 건강한 강아지들을 분양하고 있습니다.',
+        example: '20년 경력의 전문 브리더입니다. 건강하고 성격 좋은 반려동물을 분양합니다.',
+        maxLength: 1000,
         required: false,
     })
-    @IsOptional()
     @IsString()
-    description?: string;
+    @IsOptional()
+    @MaxLength(1000)
+    profileDescription?: string;
 
     /**
-     * 브리더 위치 (시/구)
-     * @example "서울시 강남구"
+     * 위치 정보
      */
     @ApiProperty({
-        description: '브리더 위치 (시/구)',
-        example: '서울시 강남구',
+        description: '위치 정보',
+        type: LocationUpdateDto,
         required: false,
     })
+    @ValidateNested()
+    @Type(() => LocationUpdateDto)
     @IsOptional()
-    @IsString()
-    location?: string;
+    locationInfo?: LocationUpdateDto;
 
     /**
-     * 프로필 사진 URL 배열
+     * 브리더 사진 URL 배열
      * @example ["https://example.com/photo1.jpg", "https://example.com/photo2.jpg"]
      */
     @ApiProperty({
-        description: '프로필 사진 URL 배열',
-        type: 'array',
-        items: { type: 'string' },
+        description: '브리더 사진 URL 배열',
         example: ['https://example.com/photo1.jpg', 'https://example.com/photo2.jpg'],
+        type: [String],
         required: false,
     })
-    @IsOptional()
     @IsArray()
-    photos?: string[];
+    @IsString({ each: true })
+    @IsOptional()
+    profilePhotos?: string[];
 
     /**
-     * 전문 분야 (특화 품종)
-     * @example "골든리트리버, 래브라도"
+     * 분양 가격대 정보
      */
     @ApiProperty({
-        description: '전문 분야 (특화 품종)',
-        example: '골든리트리버, 래브라도',
+        description: '분양 가격대 정보',
+        type: PriceRangeUpdateDto,
         required: false,
     })
+    @ValidateNested()
+    @Type(() => PriceRangeUpdateDto)
     @IsOptional()
-    @IsString()
-    specialization?: string;
+    priceRangeInfo?: PriceRangeUpdateDto;
 
     /**
-     * 브리딩 경험 연수
-     * @example 10
+     * 전문 분야 (반려동물 종류)
+     * @example ["dog", "cat"]
      */
     @ApiProperty({
-        description: '브리딩 경험 연수',
-        example: 10,
+        description: '전문 분야 (반려동물 종류)',
+        example: ['dog', 'cat'],
+        type: [String],
+        enum: PetType,
+        required: false,
+    })
+    @IsArray()
+    @IsEnum(PetType, { each: true })
+    @IsOptional()
+    specializationTypes?: PetType[];
+
+    /**
+     * 경력 연수
+     * @example 20
+     */
+    @ApiProperty({
+        description: '경력 연수',
+        example: 20,
         minimum: 0,
-        maximum: 50,
         required: false,
     })
-    @IsOptional()
     @Type(() => Number)
     @IsNumber()
+    @IsOptional()
     @Min(0)
-    @Max(50)
     experienceYears?: number;
-
-    /**
-     * 연락처 전화번호
-     * @example "010-1234-5678"
-     */
-    @ApiProperty({
-        description: '연락처 전화번호',
-        example: '010-1234-5678',
-        required: false,
-    })
-    @IsOptional()
-    @IsString()
-    phoneNumber?: string;
-
-    /**
-     * 웹사이트 URL
-     * @example "https://mybreeding.com"
-     */
-    @ApiProperty({
-        description: '웹사이트 URL',
-        example: 'https://mybreeding.com',
-        required: false,
-    })
-    @IsOptional()
-    @IsString()
-    websiteUrl?: string;
-
-    /**
-     * 소셜 미디어 계정
-     * @example { "instagram": "@mybreeding", "facebook": "MyBreedingFarm" }
-     */
-    @ApiProperty({
-        description: '소셜 미디어 계정',
-        type: 'object',
-        additionalProperties: true,
-        example: { instagram: '@mybreeding', facebook: 'MyBreedingFarm' },
-    })
-    @IsOptional()
-    socialMediaAccounts?: Record<string, string>;
 }

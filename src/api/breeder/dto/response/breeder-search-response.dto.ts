@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { PaginationResponseDto } from '../../../../common/dto/pagination/pagination-response.dto';
-import { BreederProfileResponseDto } from './breeder-profileresponse.dto';
+import { BreederProfileResponseDto } from './breeder-profile-response.dto';
 
 /**
  * 브리더 검색 결과 응답 DTO

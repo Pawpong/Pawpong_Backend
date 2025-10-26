@@ -118,4 +118,14 @@ export class RegisterBreederResponseDto {
     example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
   })
   accessToken: string;
+
+  /**
+   * JWT 리프레시 토큰
+   * @example "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+   */
+  @ApiProperty({
+    description: 'JWT 리프레시 토큰',
+    example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+  })
+  refreshToken: string;
 }
