@@ -29,8 +29,8 @@ import { SmsService } from './sms.service';
 
 import { RefreshTokenRequestDto } from './dto/request/refresh-token-request.dto';
 import { CheckNicknameRequestDto } from './dto/request/check-nickname-request.dto';
+import { RegisterAdopterRequestDto } from './dto/request/register-adopter-request.dto';
 import { RegisterBreederRequestDto } from './dto/request/register-breeder-request.dto';
-import { CompleteSocialRegistrationDto } from './dto/request/social-login-request.dto';
 import { UploadBreederDocumentsRequestDto } from './dto/request/upload-breeder-documents-request.dto';
 import { SendVerificationCodeRequestDto, VerifyCodeRequestDto } from './dto/request/phone-verification-request.dto';
 import { ApiResponseDto } from '../../common/dto/response/api-response.dto';
@@ -294,7 +294,7 @@ export class AuthController {
         isPublic: true,
     })
     async registerAdopter(
-        @Body() dto: CompleteSocialRegistrationDto,
+        @Body() dto: RegisterAdopterRequestDto,
     ): Promise<ApiResponseDto<RegisterAdopterResponseDto>> {
         const result = await this.authService.registerAdopter(dto);
         return ApiResponseDto.success(result, '입양자 회원가입이 완료되었습니다.');

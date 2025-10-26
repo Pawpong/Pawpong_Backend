@@ -1,28 +1,32 @@
 import { Injectable, UnauthorizedException, ConflictException, BadRequestException, Inject } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 
 import { SocialProvider, UserStatus, VerificationStatus, BreederPlan } from '../../common/enum/user.enum';
 
-import { StorageService } from 'src/common/storage/storage.service';
+import { StorageService } from '../../common/storage/storage.service';
 import { CustomLoggerService } from '../../common/logger/custom-logger.service';
 
 import { Adopter, AdopterDocument } from '../../schema/adopter.schema';
 import { Breeder, BreederDocument } from '../../schema/breeder.schema';
 
 import { RefreshTokenRequestDto } from './dto/request/refresh-token-request.dto';
+import { RegisterAdopterRequestDto } from './dto/request/register-adopter-request.dto';
 
 import { AuthResponseDto } from './dto/response/auth-response.dto';
 import { TokenResponseDto } from './dto/response/token-response.dto';
 import { VerificationDocumentsResponseDto } from './dto/response/verification-documents-response.dto';
+import { RegisterAdopterResponseDto } from './dto/response/register-adopter-response.dto';
+
+import { AuthMapper } from './mapper/auth.mapper';
+import { AuthAdopterRepository } from './repository/auth-adopter.repository';
+import { AuthBreederRepository } from './repository/auth-breeder.repository';
 
 @Injectable()
 export class AuthService {
     constructor(
-        @InjectModel(Adopter.name) private adopterModel: Model<AdopterDocument>,
-        @InjectModel(Breeder.name) private breederModel: Model<BreederDocument>,
+        private readonly authAdopterRepository: AuthAdopterRepository,
+        private readonly authBreederRepository: AuthBreederRepository,
         private jwtService: JwtService,
         private readonly logger: CustomLoggerService,
         private readonly storageService: StorageService,
@@ -66,64 +70,13 @@ export class AuthService {
         return bcrypt.hash(refreshToken, 10);
     }
 
-    /**
-     * 전화번호 정규화 (하이픈 제거, 숫자만)
-     */
-    private normalizePhoneNumber(phone?: string): string | undefined {
-        if (!phone) return undefined;
-        return phone.replace(/[^0-9]/g, '');
-    }
-
-    /**
-     * 서류 URL에서 문서 타입 추출
-     * URL 경로에서 파일명을 분석하여 문서 타입을 추론
-     */
-    private extractDocumentType(url: string): string {
-        const fileName = url.split('/').pop() || '';
-        const lowerFileName = fileName.toLowerCase();
-
-        if (lowerFileName.includes('id_card') || lowerFileName.includes('신분증')) {
-            return 'id_card';
-        } else if (lowerFileName.includes('animal_production') || lowerFileName.includes('동물생산업')) {
-            return 'animal_production_license';
-        } else if (lowerFileName.includes('adoption_contract') || lowerFileName.includes('입양계약서')) {
-            return 'adoption_contract_sample';
-        } else if (lowerFileName.includes('pedigree') || lowerFileName.includes('혈통서')) {
-            return 'pedigree';
-        } else if (
-            lowerFileName.includes('breeder_certification') ||
-            lowerFileName.includes('브리더인증') ||
-            lowerFileName.includes('tica') ||
-            lowerFileName.includes('cfa')
-        ) {
-            return 'breeder_certification';
-        }
-
-        return 'other';
-    }
-
-    /**
-     * 문서 타입을 camelCase에서 snake_case로 변환
-     * 프론트엔드는 camelCase를 사용하지만, MongoDB 스키마는 snake_case enum을 사용
-     */
-    private convertDocumentTypeToSnakeCase(camelCaseType: string): string {
-        const typeMapping: Record<string, string> = {
-            idCard: 'id_card',
-            animalProductionLicense: 'animal_production_license',
-            adoptionContractSample: 'adoption_contract_sample',
-            recentAssociationDocument: 'pedigree', // 프론트엔드에서 사용하는 이름
-            pedigree: 'pedigree',
-            breederCertification: 'breeder_certification',
-        };
-
-        return typeMapping[camelCaseType] || camelCaseType;
-    }
+    // 유틸리티 메서드들은 AuthMapper로 이동되었습니다.
 
     async validateUser(userId: string, role: string): Promise<any> {
         if (role === 'adopter') {
-            return this.adopterModel.findById(userId);
+            return this.authAdopterRepository.findById(userId);
         } else if (role === 'breeder') {
-            return this.breederModel.findById(userId);
+            return this.authBreederRepository.findById(userId);
         }
         return null;
     }
@@ -146,10 +99,10 @@ export class AuthService {
             let hashedToken: string;
 
             if (payload.role === 'adopter') {
-                user = await this.adopterModel.findById(payload.sub);
+                user = await this.authAdopterRepository.findById(payload.sub);
                 hashedToken = user?.refreshToken;
             } else if (payload.role === 'breeder') {
-                user = await this.breederModel.findById(payload.sub);
+                user = await this.authBreederRepository.findById(payload.sub);
                 hashedToken = user?.refreshToken;
             } else {
                 throw new UnauthorizedException('유효하지 않은 사용자 역할입니다.');
@@ -174,8 +127,12 @@ export class AuthService {
 
             // 새 Refresh 토큰 해시 후 저장
             const newHashedRefreshToken = await this.hashRefreshToken(tokens.refreshToken);
-            user.refreshToken = newHashedRefreshToken;
-            await user.save();
+
+            if (payload.role === 'adopter') {
+                await this.authAdopterRepository.updateRefreshToken(payload.sub, newHashedRefreshToken);
+            } else if (payload.role === 'breeder') {
+                await this.authBreederRepository.updateRefreshToken(payload.sub, newHashedRefreshToken);
+            }
 
             return tokens;
         } catch (error) {
@@ -194,13 +151,9 @@ export class AuthService {
      */
     async logout(userId: string, role: string): Promise<void> {
         if (role === 'adopter') {
-            await this.adopterModel.findByIdAndUpdate(userId, {
-                refreshToken: null,
-            });
+            await this.authAdopterRepository.updateRefreshToken(userId, null);
         } else if (role === 'breeder') {
-            await this.breederModel.findByIdAndUpdate(userId, {
-                refreshToken: null,
-            });
+            await this.authBreederRepository.updateRefreshToken(userId, null);
         }
     }
 
@@ -208,10 +161,10 @@ export class AuthService {
      * 이메일 중복 체크 - 입양자와 브리더 모두 확인
      */
     async checkEmailDuplicate(email: string): Promise<boolean> {
-        const adopter = await this.adopterModel.findOne({ emailAddress: email }).lean().exec();
+        const adopter = await this.authAdopterRepository.findByEmail(email);
         if (adopter) return true;
 
-        const breeder = await this.breederModel.findOne({ email: email }).lean().exec();
+        const breeder = await this.authBreederRepository.findByEmail(email);
         if (breeder) return true;
 
         return false;
@@ -221,7 +174,7 @@ export class AuthService {
      * 닉네임 중복 체크 - 입양자만 확인
      */
     async checkNicknameDuplicate(nickname: string): Promise<boolean> {
-        const adopter = await this.adopterModel.findOne({ nickname: nickname });
+        const adopter = await this.authAdopterRepository.findByNickname(nickname);
         return !!adopter;
     }
 
@@ -236,10 +189,7 @@ export class AuthService {
         profileImage?: string;
     }): Promise<{ needsAdditionalInfo: boolean; tempUserId?: string; user?: any }> {
         // 기존 사용자 조회 (Adopter)
-        let adopter = await this.adopterModel.findOne({
-            'socialAuthInfo.authProvider': profile.provider,
-            'socialAuthInfo.providerUserId': profile.providerId,
-        });
+        let adopter = await this.authAdopterRepository.findBySocialAuth(profile.provider, profile.providerId);
 
         if (adopter) {
             // 기존 사용자 로그인
@@ -256,10 +206,7 @@ export class AuthService {
         }
 
         // 기존 사용자 조회 (Breeder)
-        let breeder = await this.breederModel.findOne({
-            'socialAuth.provider': profile.provider,
-            'socialAuth.providerId': profile.providerId,
-        });
+        let breeder = await this.authBreederRepository.findBySocialAuth(profile.provider, profile.providerId);
 
         if (breeder) {
             // 기존 사용자 로그인
@@ -288,18 +235,7 @@ export class AuthService {
     /**
      * 입양자 회원가입 처리 (일반 + 소셜 로그인 모두 지원)
      */
-    async registerAdopter(dto: any): Promise<{
-        adopterId: string;
-        email: string;
-        nickname: string;
-        phoneNumber: string;
-        profileImage: string;
-        userRole: string;
-        accountStatus: string;
-        createdAt: string;
-        accessToken: string;
-        refreshToken: string;
-    }> {
+    async registerAdopter(dto: RegisterAdopterRequestDto): Promise<RegisterAdopterResponseDto> {
         this.logger.logStart('registerAdopter', '입양자 회원가입 처리 시작', dto, 'AuthService');
 
         // tempId 파싱: "temp_kakao_4479198661_1759826027884" 형식
@@ -319,10 +255,7 @@ export class AuthService {
         );
 
         // 소셜 제공자로부터 기존 사용자 정보 조회 (이미 가입했는지 확인)
-        const existingAdopter = await this.adopterModel.findOne({
-            'socialAuthInfo.authProvider': provider,
-            'socialAuthInfo.providerUserId': providerId,
-        });
+        const existingAdopter = await this.authAdopterRepository.findBySocialAuth(provider, providerId);
 
         if (existingAdopter) {
             throw new ConflictException('이미 입양자로 가입된 소셜 계정입니다.');
@@ -338,19 +271,17 @@ export class AuthService {
         }
 
         // 닉네임 중복 체크
-        const existingNickname = await this.adopterModel.findOne({
-            nickname: dto.nickname,
-        });
+        const existingNickname = await this.authAdopterRepository.findByNickname(dto.nickname);
 
         if (existingNickname) {
             throw new ConflictException('이미 사용 중인 닉네임입니다.');
         }
 
         // 입양자 생성
-        const adopter = new this.adopterModel({
+        const savedAdopter = await this.authAdopterRepository.create({
             emailAddress: dto.email,
             nickname: dto.nickname,
-            phoneNumber: this.normalizePhoneNumber(dto.phone),
+            phoneNumber: AuthMapper.normalizePhoneNumber(dto.phone),
             profileImageUrl: dto.profileImage || '',
             socialAuthInfo: {
                 authProvider: provider,
@@ -359,10 +290,12 @@ export class AuthService {
             },
             accountStatus: UserStatus.ACTIVE,
             userRole: 'adopter',
+            marketingAgreed: dto.marketingAgreed || false,
             notificationSettings: {
                 emailNotifications: true,
-                smsNotifications: false,
-                marketingNotifications: dto.marketingAgreed || false,
+                pushNotifications: true,
+                applicationStatusNotifications: true,
+                favoriteBreederNotifications: true,
             },
             favoriteBreederList: [],
             adoptionApplicationList: [],
@@ -370,34 +303,23 @@ export class AuthService {
             submittedReportList: [],
         });
 
-        const savedAdopter = await adopter.save();
-
         // 토큰 생성
         const tokens = this.generateTokens((savedAdopter._id as any).toString(), savedAdopter.emailAddress, 'adopter');
 
         // Refresh 토큰 저장
         const hashedRefreshToken = await this.hashRefreshToken(tokens.refreshToken);
-        savedAdopter.refreshToken = hashedRefreshToken;
-        savedAdopter.lastActivityAt = new Date();
-        await savedAdopter.save();
+        await this.authAdopterRepository.update((savedAdopter._id as any).toString(), {
+            refreshToken: hashedRefreshToken,
+            lastActivityAt: new Date(),
+        });
 
         this.logger.logSuccess('registerAdopter', '입양자 회원가입 완료', {
             userId: (savedAdopter._id as any).toString(),
             nickname: savedAdopter.nickname,
         });
 
-        return {
-            adopterId: (savedAdopter._id as any).toString(),
-            email: savedAdopter.emailAddress,
-            nickname: savedAdopter.nickname,
-            phoneNumber: savedAdopter.phoneNumber || '',
-            profileImage: savedAdopter.profileImageUrl || '',
-            userRole: 'adopter',
-            accountStatus: savedAdopter.accountStatus,
-            createdAt: savedAdopter.createdAt?.toISOString() || new Date().toISOString(),
-            accessToken: tokens.accessToken,
-            refreshToken: tokens.refreshToken,
-        };
+        // 응답 데이터 구성 (Mapper 패턴 사용)
+        return AuthMapper.toAdopterRegisterResponse(savedAdopter, tokens);
     }
 
     /**
@@ -429,19 +351,17 @@ export class AuthService {
             // 닉네임 필수 체크
 
             // 닉네임 중복 체크
-            const existingNickname = await this.adopterModel.findOne({
-                nickname: additionalInfo.nickname,
-            });
+            const existingNickname = await this.authAdopterRepository.findByNickname(additionalInfo.nickname!);
 
             if (existingNickname) {
                 throw new ConflictException('Nickname already exists');
             }
 
             // 입양자 생성
-            const adopter = new this.adopterModel({
+            const savedAdopter = await this.authAdopterRepository.create({
                 emailAddress: profile.email,
                 nickname: additionalInfo.nickname,
-                phoneNumber: this.normalizePhoneNumber(additionalInfo.phone),
+                phoneNumber: AuthMapper.normalizePhoneNumber(additionalInfo.phone),
                 profileImageUrl: profile.profileImage,
                 socialAuthInfo: {
                     authProvider: profile.provider,
@@ -450,18 +370,18 @@ export class AuthService {
                 },
                 accountStatus: UserStatus.ACTIVE,
                 userRole: 'adopter',
+                marketingAgreed: additionalInfo.marketingAgreed || false,
                 notificationSettings: {
                     emailNotifications: true,
-                    smsNotifications: false,
-                    marketingNotifications: additionalInfo.marketingAgreed || false,
+                    pushNotifications: true,
+                    applicationStatusNotifications: true,
+                    favoriteBreederNotifications: true,
                 },
                 favoriteBreederList: [],
                 adoptionApplicationList: [],
                 writtenReviewList: [],
                 submittedReportList: [],
             });
-
-            const savedAdopter = await adopter.save();
 
             // 토큰 생성
             const tokens = this.generateTokens(
@@ -472,9 +392,10 @@ export class AuthService {
 
             // Refresh 토큰 저장
             const hashedRefreshToken = await this.hashRefreshToken(tokens.refreshToken);
-            savedAdopter.refreshToken = hashedRefreshToken;
-            savedAdopter.lastActivityAt = new Date();
-            await savedAdopter.save();
+            await this.authAdopterRepository.update((savedAdopter._id as any).toString(), {
+                refreshToken: hashedRefreshToken,
+                lastActivityAt: new Date(),
+            });
 
             return {
                 accessToken: tokens.accessToken,
@@ -501,11 +422,11 @@ export class AuthService {
                 throw new BadRequestException('최소 1개의 품종이 필요합니다.');
             }
 
-            const breeder = new this.breederModel({
+            const savedBreeder = await this.authBreederRepository.create({
                 // User 스키마 필드 (상속)
                 emailAddress: profile.email,
                 nickname: additionalInfo.breederName, // 브리더명을 nickname으로 사용
-                phoneNumber: this.normalizePhoneNumber(additionalInfo.phone),
+                phoneNumber: AuthMapper.normalizePhoneNumber(additionalInfo.phone),
                 profileImageUrl: profile.profileImage,
                 socialAuthInfo: {
                     authProvider: profile.provider,
@@ -537,24 +458,23 @@ export class AuthService {
                         city: additionalInfo.district, // district를 city 필드에 저장
                         district: '',
                     },
-                    priceRange: {
-                        min: 0,
-                        max: 0,
-                    },
                     representativePhotos: [],
                 },
                 applicationForm: [],
                 stats: {
-                    totalReviews: 0,
+                    totalApplications: 0,
+                    totalFavorites: 0,
+                    completedAdoptions: 0,
                     averageRating: 0,
-                    totalAdoptions: 0,
-                    responseRate: 0,
-                    averageResponseTime: 0,
+                    totalReviews: 0,
+                    profileViews: 0,
+                    priceRange: {
+                        min: 0,
+                        max: 0,
+                    },
                     lastUpdated: new Date(),
                 },
             });
-
-            const savedBreeder = await breeder.save();
 
             // 토큰 생성
             const tokens = this.generateTokens(
@@ -565,9 +485,10 @@ export class AuthService {
 
             // Refresh 토큰 저장
             const hashedRefreshToken = await this.hashRefreshToken(tokens.refreshToken);
-            savedBreeder.refreshToken = hashedRefreshToken;
-            savedBreeder.lastLoginAt = new Date();
-            await savedBreeder.save();
+            await this.authBreederRepository.update((savedBreeder._id as any).toString(), {
+                refreshToken: hashedRefreshToken,
+                lastLoginAt: new Date(),
+            });
 
             return {
                 accessToken: tokens.accessToken,
@@ -597,21 +518,15 @@ export class AuthService {
         const hashedRefreshToken = await this.hashRefreshToken(tokens.refreshToken);
 
         if (user.role === 'adopter') {
-            await this.adopterModel.updateOne(
-                { _id: user.userId },
-                {
-                    refreshToken: hashedRefreshToken,
-                    lastActivityAt: new Date(),
-                },
-            );
+            await this.authAdopterRepository.update(user.userId, {
+                refreshToken: hashedRefreshToken,
+                lastActivityAt: new Date(),
+            });
         } else if (user.role === 'breeder') {
-            await this.breederModel.updateOne(
-                { _id: user.userId },
-                {
-                    refreshToken: hashedRefreshToken,
-                    lastLoginAt: new Date(),
-                },
-            );
+            await this.authBreederRepository.update(user.userId, {
+                refreshToken: hashedRefreshToken,
+                lastLoginAt: new Date(),
+            });
         }
 
         return {
@@ -773,7 +688,7 @@ export class AuthService {
             breederLevel,
         });
 
-        const breeder = await this.breederModel.findById(userId);
+        const breeder = await this.authBreederRepository.findById(userId);
 
         if (!breeder) {
             this.logger.logError('submitBreederDocuments', '브리더를 찾을 수 없음', new Error('Breeder not found'));
@@ -834,12 +749,14 @@ export class AuthService {
         }
 
         // 서류 정보를 verification.documents에 저장
-        breeder.verification.documents = documentArray;
-        breeder.verification.level = breederLevel;
-        breeder.verification.status = VerificationStatus.REVIEWING;
-        breeder.verification.submittedAt = new Date();
-
-        await breeder.save();
+        const submittedAt = new Date();
+        await this.authBreederRepository.updateVerificationDocuments(
+            userId,
+            documentArray,
+            breederLevel,
+            VerificationStatus.REVIEWING,
+            submittedAt,
+        );
 
         this.logger.logSuccess('submitBreederDocuments', '브리더 서류 제출 완료', {
             breederId: breeder._id,
@@ -863,10 +780,10 @@ export class AuthService {
 
         return {
             breederId: (breeder._id as any).toString(),
-            verificationStatus: breeder.verification.status,
+            verificationStatus: VerificationStatus.REVIEWING,
             uploadedDocuments,
             isDocumentsComplete: true,
-            submittedAt: breeder.verification.submittedAt,
+            submittedAt: submittedAt,
             estimatedProcessingTime: '3-5일',
         };
     }
@@ -894,51 +811,27 @@ export class AuthService {
         });
 
         // 입양자 검색
-        const adopter = await this.adopterModel
-            .findOne({
-                'socialAuthInfo.authProvider': provider,
-                'socialAuthInfo.providerUserId': providerId,
-            })
-            .lean()
-            .exec();
+        const adopter = await this.authAdopterRepository.findBySocialAuth(provider, providerId);
 
         if (adopter) {
             this.logger.logSuccess('checkSocialUser', '입양자 계정 발견', {
                 userId: adopter._id,
             });
 
-            return {
-                exists: true,
-                userRole: 'adopter',
-                userId: (adopter._id as any).toString(),
-                email: adopter.emailAddress,
-                nickname: adopter.nickname,
-                profileImageUrl: adopter.profileImageUrl,
-            };
+            // 입양자 응답 (Mapper 패턴 사용)
+            return AuthMapper.toSocialUserCheckResponseAdopter(adopter);
         }
 
         // 브리더 검색
-        const breeder = await this.breederModel
-            .findOne({
-                'socialAuth.provider': provider,
-                'socialAuth.providerId': providerId,
-            })
-            .lean()
-            .exec();
+        const breeder = await this.authBreederRepository.findBySocialAuth(provider, providerId);
 
         if (breeder) {
             this.logger.logSuccess('checkSocialUser', '브리더 계정 발견', {
                 userId: breeder._id,
             });
 
-            return {
-                exists: true,
-                userRole: 'breeder',
-                userId: (breeder._id as any).toString(),
-                email: breeder.emailAddress,
-                nickname: breeder.name,
-                profileImageUrl: breeder.profileImageUrl,
-            };
+            // 브리더 응답 (Mapper 패턴 사용)
+            return AuthMapper.toSocialUserCheckResponseBreeder(breeder);
         }
 
         this.logger.logSuccess('checkSocialUser', '미가입 사용자', {
@@ -946,9 +839,8 @@ export class AuthService {
             providerId,
         });
 
-        return {
-            exists: false,
-        };
+        // 미가입 사용자 응답 (Mapper 패턴 사용)
+        return AuthMapper.toSocialUserCheckResponseNotFound();
     }
 
     /**
@@ -1005,18 +897,14 @@ export class AuthService {
         }
 
         // 이메일 중복 체크
-        const existingBreeder = await this.breederModel.findOne({
-            emailAddress: dto.email,
-        });
+        const existingBreeder = await this.authBreederRepository.findByEmail(dto.email);
 
         if (existingBreeder) {
             throw new ConflictException('이미 가입된 이메일입니다.');
         }
 
         // 입양자로도 가입되어 있는지 확인
-        const existingAdopter = await this.adopterModel.findOne({
-            emailAddress: dto.email,
-        });
+        const existingAdopter = await this.authAdopterRepository.findByEmail(dto.email);
 
         if (existingAdopter) {
             throw new ConflictException('해당 이메일로 입양자 계정이 이미 존재합니다.');
@@ -1049,12 +937,12 @@ export class AuthService {
         const city = dto.breederLocation.city;
         const district = dto.breederLocation.district || '';
 
-        // 업로드된 서류 URL 배열을 documents 배열로 변환
+        // 업로드된 서류 URL 배열을 documents 배열로 변환 (Mapper 패턴 사용)
         const verificationDocuments =
             dto.documentUrls?.map((url, index) => {
-                const camelCaseType = dto.documentTypes?.[index] || this.extractDocumentType(url);
+                const camelCaseType = dto.documentTypes?.[index] || AuthMapper.extractDocumentType(url);
                 // camelCase를 snake_case로 변환 (스키마 enum 형식에 맞춤)
-                const snakeCaseType = this.convertDocumentTypeToSnakeCase(camelCaseType);
+                const snakeCaseType = AuthMapper.convertDocumentTypeToSnakeCase(camelCaseType);
                 return {
                     url: url,
                     type: snakeCaseType,
@@ -1070,11 +958,11 @@ export class AuthService {
         }
 
         // 브리더 생성
-        const breeder = new this.breederModel({
+        const savedBreeder = await this.authBreederRepository.create({
             // User 스키마 필드 (상속)
             emailAddress: dto.email,
             nickname: dto.breederName, // 브리더명을 nickname으로 사용
-            phoneNumber: this.normalizePhoneNumber(dto.phoneNumber),
+            phoneNumber: AuthMapper.normalizePhoneNumber(dto.phoneNumber),
             profileImageUrl: dto.profileImage || undefined,
             socialAuthInfo: socialAuthInfo,
             userRole: 'breeder',
@@ -1120,8 +1008,6 @@ export class AuthService {
             },
         });
 
-        const savedBreeder = await breeder.save();
-
         this.logger.logSuccess('registerBreeder', '브리더 생성 완료', {
             breederId: savedBreeder._id,
             email: savedBreeder.emailAddress,
@@ -1133,28 +1019,15 @@ export class AuthService {
 
         // Refresh 토큰 저장
         const hashedRefreshToken = await this.hashRefreshToken(tokens.refreshToken);
-        savedBreeder.refreshToken = hashedRefreshToken;
-        await savedBreeder.save();
+        await this.authBreederRepository.updateRefreshToken((savedBreeder._id as any).toString(), hashedRefreshToken);
 
         this.logger.logSuccess('registerBreeder', '브리더 회원가입 완료', {
             breederId: savedBreeder._id,
             accessToken: tokens.accessToken.substring(0, 20) + '...',
         });
 
-        return {
-            breederId: (savedBreeder._id as any).toString(),
-            email: savedBreeder.emailAddress,
-            breederName: savedBreeder.name,
-            breederLocation: `${city} ${district}`.trim(),
-            animal: savedBreeder.petType,
-            breeds: savedBreeder.breeds,
-            plan: savedBreeder.verification.plan,
-            level: savedBreeder.verification.level,
-            verificationStatus: savedBreeder.verification.status,
-            createdAt: savedBreeder.createdAt?.toISOString() || new Date().toISOString(),
-            accessToken: tokens.accessToken,
-            refreshToken: tokens.refreshToken,
-        };
+        // 응답 데이터 구성 (Mapper 패턴 사용)
+        return AuthMapper.toBreederRegisterResponse(savedBreeder, tokens);
     }
 
     /**
@@ -1188,16 +1061,12 @@ export class AuthService {
         // 로그인 사용자인 경우 DB 업데이트
         if (user) {
             if (user.role === 'breeder') {
-                await this.breederModel.findByIdAndUpdate(user.userId, {
-                    profileImageUrl: result.cdnUrl,
-                });
+                await this.authBreederRepository.updateProfileImage(user.userId, result.cdnUrl);
                 this.logger.logSuccess('uploadProfileImage', '브리더 프로필 이미지 DB 저장 완료', {
                     userId: user.userId,
                 });
             } else if (user.role === 'adopter') {
-                await this.adopterModel.findByIdAndUpdate(user.userId, {
-                    profileImageUrl: result.cdnUrl,
-                });
+                await this.authAdopterRepository.updateProfileImage(user.userId, result.cdnUrl);
                 this.logger.logSuccess('uploadProfileImage', '입양자 프로필 이미지 DB 저장 완료', {
                     userId: user.userId,
                 });

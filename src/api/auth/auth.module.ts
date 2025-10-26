@@ -16,8 +16,11 @@ import { CustomLoggerService } from '../../common/logger/custom-logger.service';
 import { AuthService } from './auth.service';
 import { SmsService } from './sms.service';
 
+import { AuthAdopterRepository } from './repository/auth-adopter.repository';
+import { AuthBreederRepository } from './repository/auth-breeder.repository';
+
+import { StorageModule } from '../../common/storage/storage.module';
 import { AuthDatabaseModule } from '../../common/database/database.module';
-import { StorageModule } from 'src/common/storage/storage.module';
 
 @Module({
     imports: [
@@ -39,6 +42,8 @@ import { StorageModule } from 'src/common/storage/storage.module';
     providers: [
         AuthService,
         SmsService,
+        AuthAdopterRepository,
+        AuthBreederRepository,
         JwtStrategy,
         GoogleStrategy,
         NaverStrategy,
