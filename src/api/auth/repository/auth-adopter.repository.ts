@@ -25,21 +25,21 @@ export class AuthAdopterRepository {
      * ID로 입양자 조회
      */
     async findById(id: string): Promise<AdopterDocument | null> {
-        return this.adopterModel.findById(id).exec();
+        return this.adopterModel.findById(id).exec() as Promise<AdopterDocument | null>;
     }
 
     /**
      * 이메일로 입양자 조회
      */
     async findByEmail(email: string): Promise<AdopterDocument | null> {
-        return this.adopterModel.findOne({ emailAddress: email }).lean().exec();
+        return this.adopterModel.findOne({ emailAddress: email }).exec() as Promise<AdopterDocument | null>;
     }
 
     /**
      * 닉네임으로 입양자 조회
      */
     async findByNickname(nickname: string): Promise<AdopterDocument | null> {
-        return this.adopterModel.findOne({ nickname }).exec();
+        return this.adopterModel.findOne({ nickname }).exec() as Promise<AdopterDocument | null>;
     }
 
     /**
@@ -51,8 +51,7 @@ export class AuthAdopterRepository {
                 'socialAuthInfo.authProvider': provider,
                 'socialAuthInfo.providerUserId': providerId,
             })
-            .lean()
-            .exec();
+            .exec() as Promise<AdopterDocument | null>;
     }
 
     /**
@@ -60,14 +59,14 @@ export class AuthAdopterRepository {
      */
     async create(adopterData: Partial<Adopter>): Promise<AdopterDocument> {
         const adopter = new this.adopterModel(adopterData);
-        return adopter.save();
+        return adopter.save() as any;
     }
 
     /**
      * 입양자 정보 업데이트
      */
     async update(id: string, updateData: Partial<Adopter>): Promise<AdopterDocument | null> {
-        return this.adopterModel.findByIdAndUpdate(id, updateData, { new: true }).exec();
+        return this.adopterModel.findByIdAndUpdate(id, updateData, { new: true }).exec() as Promise<AdopterDocument | null>;
     }
 
     /**

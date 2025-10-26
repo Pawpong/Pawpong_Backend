@@ -25,14 +25,14 @@ export class AuthBreederRepository {
      * ID로 브리더 조회
      */
     async findById(id: string): Promise<BreederDocument | null> {
-        return this.breederModel.findById(id).exec();
+        return this.breederModel.findById(id).exec() as Promise<BreederDocument | null>;
     }
 
     /**
      * 이메일로 브리더 조회
      */
     async findByEmail(email: string): Promise<BreederDocument | null> {
-        return this.breederModel.findOne({ emailAddress: email }).lean().exec();
+        return this.breederModel.findOne({ emailAddress: email }).exec() as Promise<BreederDocument | null>;
     }
 
     /**
@@ -44,8 +44,7 @@ export class AuthBreederRepository {
                 'socialAuth.provider': provider,
                 'socialAuth.providerId': providerId,
             })
-            .lean()
-            .exec();
+            .exec() as Promise<BreederDocument | null>;
     }
 
     /**
@@ -53,14 +52,14 @@ export class AuthBreederRepository {
      */
     async create(breederData: Partial<Breeder>): Promise<BreederDocument> {
         const breeder = new this.breederModel(breederData);
-        return breeder.save();
+        return breeder.save() as any;
     }
 
     /**
      * 브리더 정보 업데이트
      */
     async update(id: string, updateData: Partial<Breeder>): Promise<BreederDocument | null> {
-        return this.breederModel.findByIdAndUpdate(id, updateData, { new: true }).exec();
+        return this.breederModel.findByIdAndUpdate(id, updateData, { new: true }).exec() as Promise<BreederDocument | null>;
     }
 
     /**

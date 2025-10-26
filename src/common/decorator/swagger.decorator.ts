@@ -32,10 +32,15 @@ export function ApiEndpoint(options: {
                         { $ref: getSchemaPath(ApiResponseDto) },
                         {
                             properties: {
+                                success: { type: 'boolean', example: true },
+                                code: { type: 'number', example: 200 },
                                 data: {
                                     $ref: getSchemaPath(options.responseType),
                                 },
+                                message: { type: 'string', example: '요청이 성공적으로 처리되었습니다.' },
+                                timestamp: { type: 'string', example: '2025-01-26T10:30:00.000Z' },
                             },
+                            required: ['success', 'code', 'data', 'timestamp'],
                         },
                     ],
                 },
@@ -46,16 +51,57 @@ export function ApiEndpoint(options: {
             ApiResponse({
                 status: 200,
                 description: '성공',
-                type: ApiResponseDto,
+                schema: {
+                    type: 'object',
+                    properties: {
+                        success: { type: 'boolean', example: true },
+                        code: { type: 'number', example: 200 },
+                        data: { type: 'object', example: {} },
+                        message: { type: 'string', example: '요청이 성공적으로 처리되었습니다.' },
+                        timestamp: { type: 'string', example: '2025-01-26T10:30:00.000Z' },
+                    },
+                    required: ['success', 'code', 'data', 'timestamp'],
+                },
             }),
         );
     }
 
-    decorators.push(ApiResponse({ status: 400, description: '잘못된 요청' }));
+    // 400 에러 응답 스키마 (ApiResponseDto 에러 형식)
+    decorators.push(
+        ApiResponse({
+            status: 400,
+            description: '잘못된 요청',
+            schema: {
+                type: 'object',
+                properties: {
+                    success: { type: 'boolean', example: false },
+                    code: { type: 'number', example: 400 },
+                    error: { type: 'string', example: '잘못된 요청입니다.' },
+                    timestamp: { type: 'string', example: '2025-01-26T10:30:00.000Z' },
+                },
+                required: ['success', 'code', 'error', 'timestamp'],
+            },
+        }),
+    );
 
     if (!options.isPublic) {
         decorators.push(ApiBearerAuth('JWT-Auth'));
-        decorators.push(ApiResponse({ status: 401, description: '인증 실패' }));
+        decorators.push(
+            ApiResponse({
+                status: 401,
+                description: '인증 실패',
+                schema: {
+                    type: 'object',
+                    properties: {
+                        success: { type: 'boolean', example: false },
+                        code: { type: 'number', example: 401 },
+                        error: { type: 'string', example: '인증이 필요합니다.' },
+                        timestamp: { type: 'string', example: '2025-01-26T10:30:00.000Z' },
+                    },
+                    required: ['success', 'code', 'error', 'timestamp'],
+                },
+            }),
+        );
     }
 
     return applyDecorators(...decorators);
@@ -91,6 +137,8 @@ export function ApiPaginatedEndpoint(options: {
                         { $ref: getSchemaPath(ApiResponseDto) },
                         {
                             properties: {
+                                success: { type: 'boolean', example: true },
+                                code: { type: 'number', example: 200 },
                                 data: {
                                     type: 'object',
                                     properties: {
@@ -113,7 +161,10 @@ export function ApiPaginatedEndpoint(options: {
                                         },
                                     },
                                 },
+                                message: { type: 'string', example: '데이터 조회가 완료되었습니다.' },
+                                timestamp: { type: 'string', example: '2025-01-26T10:30:00.000Z' },
                             },
+                            required: ['success', 'code', 'data', 'timestamp'],
                         },
                     ],
                 },
@@ -121,11 +172,42 @@ export function ApiPaginatedEndpoint(options: {
         );
     }
 
-    decorators.push(ApiResponse({ status: 400, description: '잘못된 요청' }));
+    // 400 에러 응답 스키마 (ApiResponseDto 에러 형식)
+    decorators.push(
+        ApiResponse({
+            status: 400,
+            description: '잘못된 요청',
+            schema: {
+                type: 'object',
+                properties: {
+                    success: { type: 'boolean', example: false },
+                    code: { type: 'number', example: 400 },
+                    error: { type: 'string', example: '잘못된 요청입니다.' },
+                    timestamp: { type: 'string', example: '2025-01-26T10:30:00.000Z' },
+                },
+                required: ['success', 'code', 'error', 'timestamp'],
+            },
+        }),
+    );
 
     if (!options.isPublic) {
         decorators.push(ApiBearerAuth('JWT-Auth'));
-        decorators.push(ApiResponse({ status: 401, description: '인증 실패' }));
+        decorators.push(
+            ApiResponse({
+                status: 401,
+                description: '인증 실패',
+                schema: {
+                    type: 'object',
+                    properties: {
+                        success: { type: 'boolean', example: false },
+                        code: { type: 'number', example: 401 },
+                        error: { type: 'string', example: '인증이 필요합니다.' },
+                        timestamp: { type: 'string', example: '2025-01-26T10:30:00.000Z' },
+                    },
+                    required: ['success', 'code', 'error', 'timestamp'],
+                },
+            }),
+        );
     }
 
     return applyDecorators(...decorators);
