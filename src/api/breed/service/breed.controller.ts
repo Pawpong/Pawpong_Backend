@@ -1,11 +1,11 @@
 import { Controller, Get, Param, BadRequestException } from '@nestjs/common';
 
-import { ApiController, ApiEndpoint } from '../../common/decorator/swagger.decorator';
+import { ApiController, ApiEndpoint } from '../../../common/decorator/swagger.decorator';
 
 import { BreedService } from './breed.service';
 
-import { ApiResponseDto } from '../../common/dto/response/api-response.dto';
-import { GetBreedsResponseDto } from './dto/response/get-breeds-response.dto';
+import { ApiResponseDto } from '../../../common/dto/response/api-response.dto';
+import { GetBreedsResponseDto } from '../dto/response/get-breeds-response.dto';
 
 @ApiController('breeds')
 @Controller('breeds')

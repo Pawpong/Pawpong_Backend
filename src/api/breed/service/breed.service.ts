@@ -2,11 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 
-import { KOREA_BREEDS } from '../../common/data/breeds.data';
+import { KOREA_BREEDS } from '../../../common/data/breeds.data';
 
-import { Breed } from '../../schema/breed.schema';
+import { Breed } from '../../../schema/breed.schema';
 
-import { GetBreedsResponseDto, BreedCategoryDto } from './dto/response/get-breeds-response.dto';
+import { GetBreedsResponseDto, BreedCategoryDto } from '../dto/response/get-breeds-response.dto';
 
 @Injectable()
 export class BreedService {
@@ -17,6 +17,7 @@ export class BreedService {
     /**
      * 필요시에만 시드 데이터 삽입 (Lazy Loading)
      */
+    
     private async ensureSeeded() {
         if (this.isSeeded) return;
 

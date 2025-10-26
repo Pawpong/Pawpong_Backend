@@ -2,7 +2,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
 /**
- * 시/군/구 스키마
+ * 지역 스키마
  */
 @Schema({
     timestamps: true,
@@ -10,13 +10,13 @@ import { Document } from 'mongoose';
 })
 export class District extends Document {
     /**
-     * 시/도 이름
+     * 도/특별시/광역시 (예: 경기도, 서울특별시)
      */
     @Prop({ required: true })
     city: string;
 
     /**
-     * 시/군/구 이름 배열
+     * 시/군/구 목록
      */
     @Prop({ type: [String], required: true })
     districts: string[];
