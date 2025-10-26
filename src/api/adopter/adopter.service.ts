@@ -1,14 +1,17 @@
 import { Injectable, BadRequestException, ConflictException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
-
-import { ApplicationStatus, ReportStatus } from '../../common/enum/user.enum';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 
+import { ApplicationStatus, ReportStatus } from '../../common/enum/user.enum';
+
 import { BreederReview, BreederReviewDocument } from '../../schema/breeder-review.schema';
+import { AdoptionApplication, AdoptionApplicationDocument } from '../../schema/adoption-application.schema';
 
 import { AdopterRepository } from './adopter.repository';
 import { BreederRepository } from '../breeder-management/breeder.repository';
+
+import { AdopterMapper } from './mapper/adopter.mapper';
 
 import { FavoriteAddRequestDto } from './dto/request/favorite-add-request.dto';
 import { ReviewCreateRequestDto } from './dto/request/review-create-request.dto';
@@ -37,95 +40,97 @@ export class AdopterService {
         private adopterRepository: AdopterRepository,
         private breederRepository: BreederRepository,
         @InjectModel(BreederReview.name) private breederReviewModel: Model<BreederReviewDocument>,
+        @InjectModel(AdoptionApplication.name) private adoptionApplicationModel: Model<AdoptionApplicationDocument>,
     ) {}
 
     /**
      * 입양 신청서 제출 처리
-     * 입양자와 브리더 양쪽에 신청 내역 동시 저장
+     *
+     * 별도 컬렉션(adoption_applications)에 신청 정보를 저장합니다.
+     * 입양자와 브리더 양쪽에서 이 컬렉션을 참조합니다.
      *
      * 비즈니스 규칙:
      * - 입양자 계정 상태 확인 필수
-     * - 브리더 및 반려동물 존재 여부 검증
-     * - 반려동물 분양 가능 상태 확인
-     * - 중복 신청 방지 검증
-     * - 양방향 데이터 동기화 (입양자 ↔ 브리더)
+     * - 브리더 존재 여부 검증
+     * - 반려동물 ID는 선택사항 (특정 개체 또는 전체 상담)
+     * - 개인정보 수집 동의 필수
+     * - 중복 신청 방지 검증 (같은 브리더에게 대기 중인 신청이 있는 경우)
      *
-     * @param userId 입양자 고유 ID
-     * @param createApplicationDto 입양 신청 데이터
-     * @returns 생성된 신청서 ID 및 성공 메시지
+     * @param userId 입양자 고유 ID (JWT에서 추출)
+     * @param dto 입양 신청 데이터 (Figma 디자인 기반 필드)
+     * @returns 생성된 신청서 정보
      * @throws BadRequestException 잘못된 요청 데이터
      * @throws ConflictException 중복 신청 시도
      */
-    async createApplication(userId: string, createApplicationDto: ApplicationCreateRequestDto): Promise<any> {
-        const { breederId, petId, applicationForm, message, experienceLevel, livingEnvironment, hasOtherPets } =
-            createApplicationDto;
-
-        // 입양자 계정 존재 및 상태 검증
+    async createApplication(userId: string, dto: ApplicationCreateRequestDto): Promise<any> {
+        // 1. 입양자 계정 존재 및 상태 검증
         const adopter = await this.adopterRepository.findById(userId);
         if (!adopter) {
             throw new BadRequestException('입양자 정보를 찾을 수 없습니다.');
         }
 
-        // 브리더 계정 및 반려동물 존재 검증
-        const breeder = await this.breederRepository.findById(breederId);
+        // 2. 개인정보 수집 동의 확인
+        if (!dto.privacyConsent) {
+            throw new BadRequestException('개인정보 수집 및 이용에 동의해야 신청이 가능합니다.');
+        }
+
+        // 3. 브리더 계정 존재 검증
+        const breeder = await this.breederRepository.findById(dto.breederId);
         if (!breeder) {
             throw new BadRequestException('해당 브리더를 찾을 수 없습니다.');
         }
 
-        const pet = await this.breederRepository.findAvailablePetById(breederId, petId);
-        if (!pet) {
-            throw new BadRequestException('해당 반려동물을 찾을 수 없습니다.');
+        // 4. 반려동물 검증 (petId가 있는 경우에만)
+        let pet: any = null;
+        if (dto.petId) {
+            pet = await this.breederRepository.findAvailablePetById(dto.breederId, dto.petId);
+            if (!pet) {
+                throw new BadRequestException('해당 반려동물을 찾을 수 없습니다.');
+            }
+
+            if (pet.status !== 'available') {
+                throw new BadRequestException('현재 분양 신청이 불가능한 반려동물입니다.');
+            }
         }
 
-        if (pet.status !== 'available') {
-            throw new BadRequestException('현재 분양 신청이 불가능한 반려동물입니다.');
+        // 5. 중복 신청 방지 검증 (같은 브리더에게 대기 중인 신청이 있는지 확인)
+        const existingPendingApplication = await this.adoptionApplicationModel.findOne({
+            adopterId: userId,
+            breederId: dto.breederId,
+            status: ApplicationStatus.CONSULTATION_PENDING,
+        });
+
+        if (existingPendingApplication) {
+            throw new ConflictException('해당 브리더에게 이미 대기 중인 상담 신청이 있습니다.');
         }
 
-        // 중복 신청 방지 검증
-        const existingApplication = await this.adopterRepository.findExistingApplication(userId, breederId, petId);
-        if (existingApplication) {
-            throw new ConflictException('이미 해당 반려동물에 대한 입양 신청을 제출하셨습니다.');
-        }
-
-        const applicationId = randomUUID();
-
-        // 입양자 신청 내역에 저장할 데이터 구성
-        const newApplication = {
-            applicationId: applicationId,
-            targetBreederId: breederId,
-            targetBreederName: breeder.name,
-            targetPetId: petId,
-            targetPetName: pet.name,
-            petType: pet.type,
-            petBreedName: pet.breed,
-            applicationFormData: applicationForm || {},
-            applicationStatus: ApplicationStatus.CONSULTATION_PENDING,
-            appliedAt: new Date(),
-            updatedAt: new Date(),
-            isReviewWritten: false,
-        };
-
-        await this.adopterRepository.addApplication(userId, newApplication);
-
-        // 브리더 수신 신청 내역에 저장할 데이터 구성
-        const receivedApplication = {
-            applicationId,
+        // 6. AdoptionApplication 컬렉션에 저장할 데이터 구성
+        const newApplication = new this.adoptionApplicationModel({
+            breederId: dto.breederId,
             adopterId: userId,
             adopterName: adopter.nickname,
             adopterEmail: adopter.emailAddress,
-            petId,
-            petName: pet.name,
+            adopterPhone: adopter.phoneNumber || '',
+            petId: pet ? dto.petId : undefined,
+            petName: pet ? pet.name : undefined,
             status: ApplicationStatus.CONSULTATION_PENDING,
-            applicationData: applicationForm || {},
+            applicationData: {
+                privacyConsent: dto.privacyConsent,
+                selfIntroduction: dto.selfIntroduction,
+                familyMembers: dto.familyMembers,
+                allFamilyConsent: dto.allFamilyConsent,
+                allergyTestInfo: dto.allergyTestInfo,
+                timeAwayFromHome: dto.timeAwayFromHome,
+                livingSpaceDescription: dto.livingSpaceDescription,
+                previousPetExperience: dto.previousPetExperience,
+            },
             appliedAt: new Date(),
-        };
+        });
 
-        await this.breederRepository.addReceivedApplication(breederId, receivedApplication);
+        const savedApplication = await newApplication.save();
 
-        return {
-            applicationId,
-            message: '입양 신청이 성공적으로 제출되었습니다.',
-        };
+        // 7. 응답 데이터 구성 (Mapper 패턴 사용)
+        return AdopterMapper.toApplicationCreateResponse(savedApplication, breeder.name, pet?.name);
     }
 
     /**
@@ -167,21 +172,8 @@ export class AdopterService {
 
         const reviewId = randomUUID();
 
-        // 입양자 후기 목록에 저장할 데이터 구성
-        const newReview = {
-            reviewId: reviewId,
-            targetBreederId: application.targetBreederId,
-            targetBreederName: application.targetBreederName,
-            relatedApplicationId: applicationId,
-            reviewType: reviewType,
-            overallRating: rating,
-            petHealthRating: rating, // 전체 평점을 기본값으로 설정
-            communicationRating: rating, // 전체 평점을 기본값으로 설정
-            reviewContent: content,
-            reviewPhotoUrls: photos,
-            createdAt: new Date(),
-            isVisible: true,
-        };
+        // 입양자 후기 목록에 저장할 데이터 구성 (Mapper 패턴 사용)
+        const newReview = AdopterMapper.toAdopterReview(reviewId, application, reviewType, rating, content, photos);
 
         await this.adopterRepository.addReview(userId, newReview);
         await this.adopterRepository.markReviewWritten(userId, applicationId);
@@ -189,18 +181,17 @@ export class AdopterService {
         // 브리더 후기 캐시에 저장 및 통계 업데이트
         const breeder = await this.breederRepository.findById(application.targetBreederId);
         if (breeder) {
-            const breederReview = {
+            // 브리더 후기 데이터 구성 (Mapper 패턴 사용)
+            const breederReview = AdopterMapper.toBreederReview(
                 reviewId,
-                adopterId: userId,
-                adopterName: adopter.nickname,
+                userId,
+                adopter.nickname,
                 applicationId,
-                type: reviewType,
+                reviewType,
                 rating,
                 content,
                 photos,
-                writtenAt: new Date(),
-                isVisible: true,
-            };
+            );
 
             await this.breederRepository.addReview(application.targetBreederId, breederReview);
 
@@ -262,13 +253,8 @@ export class AdopterService {
             throw new ConflictException('이미 즐겨찾기에 추가된 브리더입니다.');
         }
 
-        const favorite = {
-            favoriteBreederId: breederId,
-            breederName: breeder.name,
-            breederProfileImageUrl: breeder.profileImageUrl || '',
-            breederLocation: `${breeder.profile?.location?.city || ''} ${breeder.profile?.location?.district || ''}`,
-            addedAt: new Date(),
-        };
+        // 즐겨찾기 데이터 구성 (Mapper 패턴 사용)
+        const favorite = AdopterMapper.toFavoriteBreeder(breederId, breeder);
 
         await this.adopterRepository.addFavoriteBreeder(userId, favorite);
 
@@ -317,58 +303,15 @@ export class AdopterService {
 
         const { favorites, total } = await this.adopterRepository.findFavoriteList(userId, page, limit);
 
-        // 각 즐겨찾기 브리더의 최신 정보 조회
+        // 각 즐겨찾기 브리더의 최신 정보 조회 (Mapper 패턴 사용)
         const favoriteListWithDetails = await Promise.all(
             favorites.map(async (fav: any) => {
                 try {
                     const breeder = await this.breederRepository.findById(fav.favoriteBreederId);
-
-                    if (!breeder) {
-                        // 브리더가 삭제되었거나 비활성화된 경우
-                        return {
-                            breederId: fav.favoriteBreederId,
-                            breederName: fav.breederName,
-                            profileImageUrl: fav.breederProfileImageUrl || '',
-                            location: fav.breederLocation || '',
-                            specialization: '',
-                            averageRating: 0,
-                            totalReviews: 0,
-                            availablePets: 0,
-                            addedAt: fav.addedAt,
-                            isActive: false,
-                        };
-                    }
-
-                    return {
-                        breederId: (breeder._id as any).toString(),
-                        breederName: breeder.name,
-                        profileImageUrl: breeder.profileImageUrl || '',
-                        location:
-                            `${breeder.profile?.location?.city || ''} ${breeder.profile?.location?.district || ''}`.trim(),
-                        specialization: breeder.profile?.specialization || '',
-                        averageRating: breeder.stats?.averageRating || 0,
-                        totalReviews: breeder.stats?.totalReviews || 0,
-                        availablePets:
-                            (breeder as any).availablePets?.filter(
-                                (pet: any) => pet.status === 'available' && pet.isActive,
-                            ).length || 0,
-                        addedAt: fav.addedAt,
-                        isActive: true,
-                    };
+                    return AdopterMapper.toFavoriteDetail(fav, breeder);
                 } catch (error) {
                     // 에러 발생 시 기본 정보 반환
-                    return {
-                        breederId: fav.favoriteBreederId,
-                        breederName: fav.breederName,
-                        profileImageUrl: fav.breederProfileImageUrl || '',
-                        location: fav.breederLocation || '',
-                        specialization: '',
-                        averageRating: 0,
-                        totalReviews: 0,
-                        availablePets: 0,
-                        addedAt: fav.addedAt,
-                        isActive: false,
-                    };
+                    return AdopterMapper.toFavoriteDetail(fav, null);
                 }
             }),
         );
@@ -416,15 +359,15 @@ export class AdopterService {
 
         const reportId = randomUUID();
 
-        const report = {
+        // 신고 데이터 구성 (Mapper 패턴 사용)
+        const report = AdopterMapper.toReport(
             reportId,
-            reporterId: userId,
-            reporterName: adopter.nickname,
+            userId,
+            adopter.nickname,
             type,
             description,
-            reportedAt: new Date(),
-            status: ReportStatus.PENDING,
-        };
+            ReportStatus.PENDING,
+        );
 
         await this.breederRepository.addReport(breederId, report);
 
@@ -448,37 +391,8 @@ export class AdopterService {
             throw new BadRequestException('입양자 정보를 찾을 수 없습니다.');
         }
 
-        return {
-            adopterId: (adopter._id as any).toString(),
-            emailAddress: adopter.emailAddress,
-            nickname: adopter.nickname,
-            phoneNumber: adopter.phoneNumber || '',
-            profileImageUrl: adopter.profileImageUrl,
-            accountStatus: adopter.accountStatus,
-            favoriteBreederList: (adopter.favoriteBreederList || []).map((fav: any) => ({
-                breederId: fav.favoriteBreederId,
-                breederName: fav.breederName,
-                addedAt: fav.addedAt,
-                breederProfileImageUrl: fav.breederProfileImageUrl,
-                breederLocation: fav.breederLocation,
-            })),
-            adoptionApplicationList: (adopter.adoptionApplicationList || []).map((app: any) => ({
-                applicationId: app.applicationId,
-                breederId: app.targetBreederId,
-                petId: app.targetPetId,
-                applicationStatus: app.applicationStatus,
-                appliedAt: app.appliedAt,
-            })),
-            writtenReviewList: (adopter.writtenReviewList || []).map((review: any) => ({
-                reviewId: review.reviewId,
-                breederId: review.targetBreederId,
-                rating: review.overallRating,
-                content: review.reviewContent,
-                createdAt: review.createdAt,
-            })),
-            createdAt: (adopter as any).createdAt,
-            updatedAt: (adopter as any).updatedAt,
-        };
+        // 프로필 응답 데이터 구성 (Mapper 패턴 사용)
+        return AdopterMapper.toProfileResponse(adopter);
     }
 
     /**
@@ -494,11 +408,8 @@ export class AdopterService {
         userId: string,
         updateData: { name?: string; phone?: string; profileImage?: string },
     ): Promise<any> {
-        // 요청 데이터를 데이터베이스 스키마에 맞게 변환
-        const mappedUpdateData: any = {};
-        if (updateData.name) mappedUpdateData.fullName = updateData.name;
-        if (updateData.phone) mappedUpdateData.phoneNumber = updateData.phone;
-        if (updateData.profileImage) mappedUpdateData.profileImageUrl = updateData.profileImage;
+        // 요청 데이터를 데이터베이스 스키마에 맞게 변환 (Mapper 패턴 사용)
+        const mappedUpdateData = AdopterMapper.toProfileUpdateData(updateData);
 
         const adopter = await this.adopterRepository.updateProfile(userId, mappedUpdateData);
 

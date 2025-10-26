@@ -17,7 +17,7 @@ import { PaginationResponseDto } from '../../common/dto/pagination/pagination-re
 import { FavoriteAddResponseDto } from './dto/response/favorite-add-response.dto';
 import { ReportCreateResponseDto } from './dto/response/report-create-response.dto';
 import { ReviewCreateResponseDto } from './dto/response/review-create-response.dto';
-import { ProfileUpdateResponseDto } from './dto/response/profile-update-response.dto';
+import { AdopterProfileUpdateResponseDto } from './dto/response/profile-update-response.dto';
 import { AdopterProfileResponseDto } from './dto/response/adopter-profile-response.dto';
 import { FavoriteRemoveResponseDto } from './dto/response/favorite-remove-response.dto';
 import { ApplicationCreateResponseDto } from './dto/response/application-create-response.dto';
@@ -32,8 +32,28 @@ export class AdopterController {
 
     @Post('application')
     @ApiEndpoint({
-        summary: '입양 신청 제출',
-        description: '브리더에게 입양 신청을 제출합니다.',
+        summary: '입양 상담 신청 제출 (Figma 디자인 기반)',
+        description: `브리더에게 입양 상담 신청을 제출합니다.
+
+Figma 상담 신청 폼 기반으로 재설계된 API입니다.
+
+**신청 절차:**
+1. 브리더 ID 필수 입력
+2. 특정 개체 상담인 경우 petId 입력 (선택)
+3. 개인정보 수집 동의 필수 (privacyConsent: true)
+4. 8가지 필수 정보 입력:
+   - 자기소개 (성별, 연령대, 거주지, 생활 패턴 등, 최대 1500자)
+   - 가족 구성원 정보
+   - 모든 가족의 동의 여부
+   - 알러지 검사 정보
+   - 평균적으로 집을 비우는 시간
+   - 거주 공간 소개 (최대 1500자)
+   - 반려동물 경험 (최대 1500자)
+
+**비즈니스 규칙:**
+- 입양자 이름, 이메일, 연락처는 JWT 토큰에서 자동 추출
+- 같은 브리더에게 대기 중인 신청이 있으면 중복 신청 불가
+- 신청 후 브리더의 검토 대기 상태(consultation_pending)로 변경`,
         responseType: ApplicationCreateResponseDto,
         isPublic: false,
     })
@@ -48,7 +68,24 @@ export class AdopterController {
     @Post('review')
     @ApiEndpoint({
         summary: '브리더 후기 작성',
-        description: '입양 완료 후 브리더에 대한 후기를 작성합니다.',
+        description: `입양 완료 후 브리더에 대한 후기를 작성합니다.
+
+**작성 가능 조건:**
+- 입양 신청 상태가 '상담 완료(consultation_completed)' 이상이어야 함
+- 한 번의 입양 신청당 하나의 후기만 작성 가능
+- 이미 후기를 작성한 신청에는 재작성 불가
+
+**후기 정보:**
+- applicationId: 후기를 작성할 입양 신청 ID (필수)
+- reviewType: 후기 유형 (adoption_completed 등)
+- rating: 평점 (1-5점)
+- content: 후기 내용
+- photos: 후기 사진 URL 배열 (선택)
+
+**자동 처리:**
+- 입양자의 후기 목록에 추가
+- 브리더의 후기 캐시에 추가
+- 브리더 평균 평점 및 후기 수 실시간 업데이트`,
         responseType: ReviewCreateResponseDto,
         isPublic: false,
     })
@@ -96,6 +133,7 @@ export class AdopterController {
         description:
             '입양자가 즐겨찾기에 추가한 브리더 목록을 페이지네이션과 함께 조회합니다. 브리더의 최신 정보(평점, 후기 수, 분양 가능 개체 수 등)가 함께 제공됩니다.',
         responseType: FavoriteListResponseDto,
+        itemType: FavoriteBreederDataDto,
         isPublic: false,
     })
     async getFavorites(
@@ -138,13 +176,13 @@ export class AdopterController {
     @ApiEndpoint({
         summary: '입양자 프로필 수정',
         description: '입양자의 프로필 정보를 수정합니다.',
-        responseType: ProfileUpdateResponseDto,
+        responseType: AdopterProfileUpdateResponseDto,
         isPublic: false,
     })
     async updateProfile(
         @CurrentUser() user: any,
         @Body() updateData: { name?: string; phone?: string; profileImage?: string },
-    ): Promise<ApiResponseDto<ProfileUpdateResponseDto>> {
+    ): Promise<ApiResponseDto<AdopterProfileUpdateResponseDto>> {
         const result = await this.adopterService.updateProfile(user.userId, updateData);
         return ApiResponseDto.success(result, '프로필이 성공적으로 수정되었습니다.');
     }
