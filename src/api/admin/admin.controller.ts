@@ -2,30 +2,30 @@ import { Controller, Get, Put, Delete, Body, Param, Query, UseGuards } from '@ne
 
 import { Roles } from '../../common/decorator/roles.decorator';
 import { CurrentUser } from '../../common/decorator/user.decorator';
+import { ApiController, ApiEndpoint } from '../../common/decorator/swagger.decorator';
 import { RolesGuard } from '../../common/guard/roles.guard';
 import { JwtAuthGuard } from '../../common/guard/jwt-auth.guard';
-import { ApiResponseDto } from '../../common/dto/response/api-response.dto';
-import { ApiController, ApiEndpoint } from '../../common/decorator/swagger.decorator';
 
 import { AdminService } from './admin.service';
 
-import { BreederVerificationRequestDto } from './dto/request/breederVerification-request.dto';
-import { UserManagementRequestDto } from './dto/request/userManagement-request.dto';
-import { ReportActionRequestDto } from './dto/request/reportAction-request.dto';
-import { BreederSearchRequestDto } from './dto/request/breederSearch-request.dto';
-import { UserSearchRequestDto } from './dto/request/userSearch-request.dto';
-import { StatsFilterRequestDto } from './dto/request/statsFilter-request.dto';
-import { AdminStatsResponseDto } from './dto/response/adminStats-response.dto';
-import { ApplicationMonitoringRequestDto } from './dto/request/applicationMonitoring-request.dto';
-import { BreederVerificationResponseDto } from './dto/response/breederVerification-response.dto';
-import { UserManagementResponseDto } from './dto/response/userManagement-response.dto';
-import { ReportManagementResponseDto } from './dto/response/reportManagement-response.dto';
+import { UserSearchRequestDto } from './dto/request/user-search-request.dto';
+import { StatsFilterRequestDto } from './dto/request/stats-filter-request.dto';
+import { AdminStatsResponseDto } from './dto/response/admin-stats-response.dto';
+import { ReportActionRequestDto } from './dto/request/report-action-request.dto';
+import { BreederSearchRequestDto } from './dto/request/breeder-search-request.dto';
+import { UserManagementRequestDto } from './dto/request/user-management-request.dto';
+import { BreederVerificationRequestDto } from './dto/request/breeder-verification-request.dto';
+import { ApplicationMonitoringRequestDto } from './dto/request/application-monitoring-request.dto';
+import { ApiResponseDto } from '../../common/dto/response/api-response.dto';
 import { AdminProfileResponseDto } from './dto/response/admin-profile-response.dto';
-import { BreederVerificationActionResponseDto } from './dto/response/breeder-verification-action-response.dto';
-import { UserStatusUpdateResponseDto } from './dto/response/user-status-update-response.dto';
-import { ApplicationMonitoringResponseDto } from './dto/response/application-monitoring-response.dto';
 import { ReportActionResponseDto } from './dto/response/report-action-response.dto';
 import { ReviewDeleteResponseDto } from './dto/response/review-delete-response.dto';
+import { UserManagementResponseDto } from './dto/response/user-management-response.dto';
+import { ReportManagementResponseDto } from './dto/response/report-management-response.dto';
+import { UserStatusUpdateResponseDto } from './dto/response/user-status-update-response.dto';
+import { BreederVerificationResponseDto } from './dto/response/breeder-verification-response.dto';
+import { ApplicationMonitoringResponseDto } from './dto/response/application-monitoring-response.dto';
+import { BreederVerificationActionResponseDto } from './dto/response/breeder-verification-action-response.dto';
 
 @ApiController('관리자')
 @Controller('admin')
@@ -53,7 +53,10 @@ export class AdminController {
         responseType: BreederVerificationResponseDto,
         isPublic: false,
     })
-    async getPendingBreederVerifications(@CurrentUser() user: any, @Query() filter: BreederSearchRequestDto): Promise<ApiResponseDto<BreederVerificationResponseDto[]>> {
+    async getPendingBreederVerifications(
+        @CurrentUser() user: any,
+        @Query() filter: BreederSearchRequestDto,
+    ): Promise<ApiResponseDto<BreederVerificationResponseDto[]>> {
         const result = await this.adminService.getPendingBreederVerifications(user.userId, filter);
         return ApiResponseDto.success(result, '승인 대기 브리더 목록이 조회되었습니다.');
     }
@@ -81,7 +84,10 @@ export class AdminController {
         responseType: UserManagementResponseDto,
         isPublic: false,
     })
-    async getUsers(@CurrentUser() user: any, @Query() filter: UserSearchRequestDto): Promise<ApiResponseDto<UserManagementResponseDto[]>> {
+    async getUsers(
+        @CurrentUser() user: any,
+        @Query() filter: UserSearchRequestDto,
+    ): Promise<ApiResponseDto<UserManagementResponseDto[]>> {
         const result = await this.adminService.getUsers(user.userId, filter);
         return ApiResponseDto.success(result, '사용자 목록이 조회되었습니다.');
     }
@@ -110,7 +116,10 @@ export class AdminController {
         responseType: ApplicationMonitoringResponseDto,
         isPublic: false,
     })
-    async getApplications(@CurrentUser() user: any, @Query() filter: ApplicationMonitoringRequestDto): Promise<ApiResponseDto<ApplicationMonitoringResponseDto>> {
+    async getApplications(
+        @CurrentUser() user: any,
+        @Query() filter: ApplicationMonitoringRequestDto,
+    ): Promise<ApiResponseDto<ApplicationMonitoringResponseDto>> {
         const result = await this.adminService.getApplications(user.userId, filter);
         return ApiResponseDto.success(result, '입양 신청 현황이 조회되었습니다.');
     }
@@ -171,7 +180,10 @@ export class AdminController {
         responseType: AdminStatsResponseDto,
         isPublic: false,
     })
-    async getStats(@CurrentUser() user: any, @Query() filter: StatsFilterRequestDto): Promise<ApiResponseDto<AdminStatsResponseDto>> {
+    async getStats(
+        @CurrentUser() user: any,
+        @Query() filter: StatsFilterRequestDto,
+    ): Promise<ApiResponseDto<AdminStatsResponseDto>> {
         const result = await this.adminService.getStats(user.userId, filter);
         return ApiResponseDto.success(result, '시스템 통계가 조회되었습니다.');
     }

@@ -7,10 +7,10 @@ import { ApiController, ApiEndpoint, ApiPaginatedEndpoint } from '../../common/d
 import { BreederService } from './breeder.service';
 import { BreederExploreService } from './breeder-explore.service';
 
-import { BreederSearchRequestDto } from './dto/request/breederSearch-request.dto';
-import { BreederSearchResponseDto } from './dto/response/breeder-search-response.dto';
-import { BreederProfileResponseDto } from './dto/response/breeder-profileresponse.dto';
+import { BreederSearchRequestDto } from './dto/request/breeder-search-request.dto';
 import { SearchBreederRequestDto } from './dto/request/search-breeder-request.dto';
+import { BreederSearchResponseDto } from './dto/response/breeder-search-response.dto';
+import { BreederProfileResponseDto } from './dto/response/breeder-profile-response.dto';
 import { BreederCardResponseDto } from './dto/response/breeder-card-response.dto';
 import { PaginationResponseDto } from '../../common/dto/pagination/pagination-response.dto';
 import { BreederReviewsResponseDto, BreederReviewItemDto } from './dto/response/breeder-reviews-response.dto';
@@ -32,7 +32,9 @@ export class BreederController {
         responseType: BreederSearchResponseDto,
         isPublic: true,
     })
-    async searchBreeders(@Query() searchDto: BreederSearchRequestDto): Promise<ApiResponseDto<BreederSearchResponseDto>> {
+    async searchBreeders(
+        @Query() searchDto: BreederSearchRequestDto,
+    ): Promise<ApiResponseDto<BreederSearchResponseDto>> {
         const result = await this.breederService.searchBreeders(searchDto);
         return ApiResponseDto.success(result, '브리더 검색이 완료되었습니다.');
     }
@@ -55,7 +57,8 @@ export class BreederController {
     @Get('popular')
     @ApiEndpoint({
         summary: '인기 브리더 조회',
-        description: '찜이 많고 평점이 높은 인기 브리더 Top 10을 조회합니다. 로그인 없이도 이용 가능하며, 가격 정보는 제외됩니다.',
+        description:
+            '찜이 많고 평점이 높은 인기 브리더 Top 10을 조회합니다. 로그인 없이도 이용 가능하며, 가격 정보는 제외됩니다.',
         responseType: BreederCardResponseDto,
         isPublic: true,
     })
@@ -99,7 +102,8 @@ export class BreederController {
     @Get(':id/pets')
     @ApiPaginatedEndpoint({
         summary: '브리더 개체 목록 조회',
-        description: '특정 브리더의 개체(반려동물) 목록을 조회합니다. status 파라미터로 분양 가능, 예약, 입양 완료 상태별 필터링이 가능합니다.',
+        description:
+            '특정 브리더의 개체(반려동물) 목록을 조회합니다. status 파라미터로 분양 가능, 예약, 입양 완료 상태별 필터링이 가능합니다.',
         responseType: PetsListResponseDto,
         isPublic: true,
     })
@@ -109,19 +113,15 @@ export class BreederController {
         @Query('page') page: number = 1,
         @Query('limit') limit: number = 20,
     ): Promise<ApiResponseDto<PaginationResponseDto<PetItemDto>>> {
-        const result = await this.breederService.getBreederPets(
-            breederId,
-            status,
-            Number(page),
-            Number(limit),
-        );
+        const result = await this.breederService.getBreederPets(breederId, status, Number(page), Number(limit));
         return ApiResponseDto.success(result, '개체 목록이 조회되었습니다.');
     }
 
     @Get(':id/pet/:petId')
     @ApiEndpoint({
         summary: '개체 상세 정보 조회',
-        description: '특정 개체(반려동물)의 상세 정보를 조회합니다. 백신 접종 기록, 건강 기록, 부모 정보 등이 포함됩니다.',
+        description:
+            '특정 개체(반려동물)의 상세 정보를 조회합니다. 백신 접종 기록, 건강 기록, 부모 정보 등이 포함됩니다.',
         responseType: PetDetailResponseDto,
         isPublic: true,
     })

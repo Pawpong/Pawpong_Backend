@@ -12,17 +12,17 @@ import {
     ApplicationStatus,
 } from '../../common/enum/user.enum';
 
-import { BreederVerificationRequestDto } from './dto/request/breederVerification-request.dto';
-import { UserManagementRequestDto } from './dto/request/userManagement-request.dto';
-import { ReportActionRequestDto } from './dto/request/reportAction-request.dto';
-import { BreederSearchRequestDto } from './dto/request/breederSearch-request.dto';
-import { UserSearchRequestDto } from './dto/request/userSearch-request.dto';
-import { ApplicationMonitoringRequestDto } from './dto/request/applicationMonitoring-request.dto';
-import { StatsFilterRequestDto } from './dto/request/statsFilter-request.dto';
-import { AdminStatsResponseDto } from './dto/response/adminStats-response.dto';
-import { BreederVerificationResponseDto } from './dto/response/breederVerification-response.dto';
-import { UserManagementResponseDto } from './dto/response/userManagement-response.dto';
-import { ReportManagementResponseDto } from './dto/response/reportManagement-response.dto';
+import { UserSearchRequestDto } from './dto/request/user-search-request.dto';
+import { StatsFilterRequestDto } from './dto/request/stats-filter-request.dto';
+import { AdminStatsResponseDto } from './dto/response/admin-stats-response.dto';
+import { ReportActionRequestDto } from './dto/request/report-action-request.dto';
+import { BreederSearchRequestDto } from './dto/request/breeder-search-request.dto';
+import { UserManagementRequestDto } from './dto/request/user-management-request.dto';
+import { BreederVerificationRequestDto } from './dto/request/breeder-verification-request.dto';
+import { ApplicationMonitoringRequestDto } from './dto/request/application-monitoring-request.dto';
+import { UserManagementResponseDto } from './dto/response/user-management-response.dto';
+import { ReportManagementResponseDto } from './dto/response/report-management-response.dto';
+import { BreederVerificationResponseDto } from './dto/response/breeder-verification-response.dto';
 
 import { Admin, AdminDocument } from '../../schema/admin.schema';
 import { Breeder, BreederDocument } from '../../schema/breeder.schema';

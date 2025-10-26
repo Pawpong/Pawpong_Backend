@@ -6,7 +6,7 @@ import { randomUUID } from 'crypto';
 import { BreederRepository } from './breeder.repository';
 import { AdopterRepository } from '../adopter/adopter.repository';
 import { ProfileUpdateRequestDto } from './dto/request/profile-update-request.dto';
-import { ApplicationStatusUpdateRequestDto } from './dto/request/applicationStatusUpdate-request.dto';
+import { ApplicationStatusUpdateRequestDto } from './dto/request/application-status-update-request.dto';
 import { VerificationSubmitRequestDto } from './dto/request/verification-submit-request.dto';
 import { ParentPetAddDto } from './dto/request/parent-pet-add-request.dto';
 import { AvailablePetAddDto } from './dto/request/available-pet-add-request.dto';
@@ -133,27 +133,33 @@ export class BreederManagementService {
         }
 
         // 각 필드별 업데이트 데이터 구성 (MongoDB 중첩 객체 업데이트)
-        if (updateData.description) {
-            profileUpdateData['profile.description'] = updateData.description;
+        if (updateData.profileDescription) {
+            profileUpdateData['profile.description'] = updateData.profileDescription;
         }
-        if (updateData.location) {
+        if (updateData.locationInfo) {
             profileUpdateData['profile.location'] = {
-                city: updateData.location,
-                district: '',
-                address: '',
+                city: updateData.locationInfo.cityName,
+                district: updateData.locationInfo.districtName,
+                address: updateData.locationInfo.detailAddress || '',
             };
         }
-        if (updateData.photos) {
-            if (updateData.photos.length > 3) {
+        if (updateData.profilePhotos) {
+            if (updateData.profilePhotos.length > 3) {
                 throw new BadRequestException('프로필 사진은 최대 3장까지만 업로드할 수 있습니다.');
             }
-            profileUpdateData['profile.photos'] = updateData.photos;
+            profileUpdateData['profile.representativePhotos'] = updateData.profilePhotos;
         }
-        if (updateData.specialization) {
-            profileUpdateData['profile.specialization'] = [updateData.specialization];
+        if (updateData.specializationTypes) {
+            profileUpdateData['profile.specialization'] = updateData.specializationTypes;
         }
         if (updateData.experienceYears !== undefined) {
             profileUpdateData['profile.experienceYears'] = updateData.experienceYears;
+        }
+        if (updateData.priceRangeInfo) {
+            profileUpdateData['profile.priceRange'] = {
+                min: updateData.priceRangeInfo.minimumPrice,
+                max: updateData.priceRangeInfo.maximumPrice,
+            };
         }
 
         await this.breederRepository.updateProfile(userId, profileUpdateData);
@@ -273,15 +279,20 @@ export class BreederManagementService {
             status: 'available',
             photos: [],
             description: availablePetDto.description || '',
-            parentInfo: availablePetDto.parentInfo ? {
-                mother: availablePetDto.parentInfo.mother,
-                father: availablePetDto.parentInfo.father,
-            } : undefined,
+            parentInfo: availablePetDto.parentInfo
+                ? {
+                      mother: availablePetDto.parentInfo.mother,
+                      father: availablePetDto.parentInfo.father,
+                  }
+                : undefined,
         });
 
         const savedPet = await availablePet.save();
 
-        return { petId: (savedPet._id as any).toString(), message: '분양 가능한 반려동물이 성공적으로 등록되었습니다.' };
+        return {
+            petId: (savedPet._id as any).toString(),
+            message: '분양 가능한 반려동물이 성공적으로 등록되었습니다.',
+        };
     }
 
     /**
@@ -570,12 +581,7 @@ export class BreederManagementService {
 
         // 페이지네이션
         const skip = (page - 1) * limit;
-        const pets = await this.availablePetModel
-            .find(filter)
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit)
-            .lean();
+        const pets = await this.availablePetModel.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean();
 
         // 각 개체별 입양 신청 수 조회
         const petIds = pets.map((pet: any) => pet.petId);
@@ -640,12 +646,7 @@ export class BreederManagementService {
      * @param limit 페이지당 항목 수
      * @returns 페이지네이션된 후기 목록과 통계
      */
-    async getMyReviews(
-        userId: string,
-        visibility: string = 'all',
-        page: number = 1,
-        limit: number = 10,
-    ): Promise<any> {
+    async getMyReviews(userId: string, visibility: string = 'all', page: number = 1, limit: number = 10): Promise<any> {
         const breeder = await this.breederRepository.findById(userId);
         if (!breeder) {
             throw new BadRequestException('브리더 정보를 찾을 수 없습니다.');

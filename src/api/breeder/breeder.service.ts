@@ -7,9 +7,9 @@ import { VerificationStatus, PetStatus } from '../../common/enum/user.enum';
 import { Breeder, BreederDocument } from '../../schema/breeder.schema';
 import { Adopter, AdopterDocument } from '../../schema/adopter.schema';
 
-import { BreederSearchRequestDto } from './dto/request/breederSearch-request.dto';
+import { BreederSearchRequestDto } from './dto/request/breeder-search-request.dto';
 import { BreederSearchResponseDto } from './dto/response/breeder-search-response.dto';
-import { BreederProfileResponseDto } from './dto/response/breeder-profileresponse.dto';
+import { BreederProfileResponseDto } from './dto/response/breeder-profile-response.dto';
 import { PaginationBuilder } from '../../common/dto/pagination/pagination-builder.dto';
 
 @Injectable()
@@ -140,15 +140,10 @@ export class BreederService {
         // Check if user has favorited this breeder
         let isFavorited = false;
         if (userId) {
-            const adopter = await this.adopterModel
-                .findById(userId)
-                .select('favorite_breeder_list')
-                .lean();
+            const adopter = await this.adopterModel.findById(userId).select('favorite_breeder_list').lean();
 
             if (adopter && adopter.favoriteBreederList) {
-                isFavorited = adopter.favoriteBreederList.some(
-                    (fav: any) => fav.favoriteBreederId === breederId
-                );
+                isFavorited = adopter.favoriteBreederList.some((fav: any) => fav.favoriteBreederId === breederId);
             }
 
             // Increment profile view count if user is logged in
@@ -164,8 +159,9 @@ export class BreederService {
             breederName: breeder.name,
             breederLevel: breeder.verification?.level || 'new',
             detailBreed: breeder.detailBreed,
-            location: breeder.profile?.location ?
-                `${breeder.profile.location.city} ${breeder.profile.location.district}` : '',
+            location: breeder.profile?.location
+                ? `${breeder.profile.location.city} ${breeder.profile.location.district}`
+                : '',
             priceRange: breeder.priceDisplay === 'range' ? breeder.priceRange : undefined,
             profileImage: breeder.profileImage,
             favoriteCount: breeder.stats?.totalFavorites || 0,
@@ -222,10 +218,7 @@ export class BreederService {
      * @returns 페이지네이션된 후기 목록
      */
     async getBreederReviews(breederId: string, page: number = 1, limit: number = 10): Promise<any> {
-        const breeder = await this.breederModel
-            .findById(breederId)
-            .select('reviews stats')
-            .lean();
+        const breeder = await this.breederModel.findById(breederId).select('reviews stats').lean();
 
         if (!breeder) {
             throw new NotFoundException('Breeder not found');
@@ -277,9 +270,7 @@ export class BreederService {
      * @returns 개체 상세 정보
      */
     async getPetDetail(breederId: string, petId: string): Promise<any> {
-        const breeder = await this.breederModel
-            .findById(breederId)
-            .lean();
+        const breeder = await this.breederModel.findById(breederId).lean();
 
         if (!breeder) {
             throw new NotFoundException('Breeder not found');
@@ -308,18 +299,22 @@ export class BreederService {
             photos: pet.photos || [],
             vaccinations: pet.vaccinations || [],
             healthRecords: pet.healthRecords || [],
-            father: father ? {
-                petId: father.petId,
-                name: father.name,
-                breed: father.breed,
-                photo: father.photos?.[0] || '',
-            } : undefined,
-            mother: mother ? {
-                petId: mother.petId,
-                name: mother.name,
-                breed: mother.breed,
-                photo: mother.photos?.[0] || '',
-            } : undefined,
+            father: father
+                ? {
+                      petId: father.petId,
+                      name: father.name,
+                      breed: father.breed,
+                      photo: father.photos?.[0] || '',
+                  }
+                : undefined,
+            mother: mother
+                ? {
+                      petId: mother.petId,
+                      name: mother.name,
+                      breed: mother.breed,
+                      photo: mother.photos?.[0] || '',
+                  }
+                : undefined,
             availableFrom: pet.availableFrom,
             microchipNumber: pet.microchipNumber,
             specialNotes: pet.specialNotes,
@@ -336,16 +331,8 @@ export class BreederService {
      * @param limit 페이지당 항목 수
      * @returns 페이지네이션된 개체 목록
      */
-    async getBreederPets(
-        breederId: string,
-        status?: string,
-        page: number = 1,
-        limit: number = 20,
-    ): Promise<any> {
-        const breeder = await this.breederModel
-            .findById(breederId)
-            .select('availablePets')
-            .lean();
+    async getBreederPets(breederId: string, status?: string, page: number = 1, limit: number = 20): Promise<any> {
+        const breeder = await this.breederModel.findById(breederId).select('availablePets').lean();
 
         if (!breeder) {
             throw new NotFoundException('Breeder not found');
