@@ -7,6 +7,7 @@ import { CustomLoggerService } from './common/logger/custom-logger.service';
 
 import { DatabaseModule } from './common/database/database.module';
 import { AuthModule } from './api/auth/auth.module';
+import { HomeModule } from './api/home/home.module';
 import { BreederModule } from './api/breeder/breeder.module';
 import { AdopterModule } from './api/adopter/adopter.module';
 import { BreederManagementModule } from './api/breeder-management/breeder-management.module';
@@ -25,6 +26,7 @@ import { BreedModule } from './api/breed/breed.module';
         WinstonModule.forRoot(winstonConfig),
         DatabaseModule,
         AuthModule,
+        HomeModule,
         BreederModule,
         AdopterModule,
         BreederManagementModule,
