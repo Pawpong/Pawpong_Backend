@@ -1,61 +1,77 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Schema as MongooseSchema } from 'mongoose';
-
-export type ParentPetDocument = ParentPet & Document;
+import { Document, Types } from 'mongoose';
 
 /**
- * 부모견/부모묘 정보 스키마
- * 프로필 페이지 표시: 사진 / 이름 / 품종 / 소개
+ * 부모견/부모묘 스키마
  */
-@Schema({
-    timestamps: true,
-    collection: 'parent_pets',
-})
+@Schema({ collection: 'parent_pets', timestamps: true })
 export class ParentPet {
     /**
-     * 브리더 ID (참조)
+     * 소속 브리더 ID
+     * @example "507f1f77bcf86cd799439011"
      */
-    @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Breeder', required: true, index: true })
-    breederId: MongooseSchema.Types.ObjectId;
+    @Prop({ required: true, type: Types.ObjectId, ref: 'Breeder', index: true })
+    breederId: Types.ObjectId;
 
     /**
-     * 부모견/부모묘 이름
+     * 이름
+     * @example "엄마초코"
      */
     @Prop({ required: true })
     name: string;
 
     /**
-     * 품종명
+     * 품종
+     * @example "포메라니안"
      */
     @Prop({ required: true })
     breed: string;
 
     /**
-     * 성별 (male: 수컷, female: 암컷)
+     * 성별
+     * @example "female"
      */
     @Prop({ required: true, enum: ['male', 'female'] })
     gender: string;
 
     /**
-     * 부모견/부모묘 사진 파일명 배열 (버킷에서 조회)
+     * 생년월일
+     * @example "2020-05-15"
      */
-    @Prop({ type: [String], default: [] })
-    photos: string[];
+    @Prop({ required: true, type: Date })
+    birthDate: Date;
 
     /**
-     * 부모묘 소개
+     * 부모견/부모묘 사진 파일명
+     * @example "parents/uuid.jpg"
      */
-    @Prop({ maxlength: 500 })
+    @Prop({ required: true })
+    photoFileName: string;
+
+    /**
+     * 건강 기록
+     * @example ["정기 건강검진 완료 (2024-12-01)", "유전질환 없음"]
+     */
+    @Prop({ type: [String], default: [] })
+    healthRecords?: string[];
+
+    /**
+     * 소개 내용
+     * @example "건강하고 온순한 성격의 엄마 포메라니안입니다"
+     */
+    @Prop()
     description?: string;
 
     /**
-     * 활성 상태 여부 (삭제된 항목은 false)
+     * 활성화 여부 (소프트 삭제)
+     * @example true
      */
     @Prop({ default: true })
     isActive: boolean;
 }
 
+export type ParentPetDocument = ParentPet & Document;
 export const ParentPetSchema = SchemaFactory.createForClass(ParentPet);
 
-// 인덱스 설정
+// 인덱스 생성
 ParentPetSchema.index({ breederId: 1, isActive: 1 });

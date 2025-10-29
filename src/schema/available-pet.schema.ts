@@ -1,7 +1,12 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Schema as MongooseSchema } from 'mongoose';
+import { Document, Schema as MongooseSchema, Types } from 'mongoose';
 
-export type AvailablePetDocument = AvailablePet & Document;
+export type AvailablePetDocument = AvailablePet &
+    Document & {
+        _id: Types.ObjectId;
+        createdAt: Date;
+        updatedAt: Date;
+    };
 
 /**
  * 분양 가능한 반려동물 정보 스키마
