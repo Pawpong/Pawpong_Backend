@@ -186,4 +186,47 @@ Figma 상담 신청 폼 기반으로 재설계된 API입니다.
         const result = await this.adopterService.updateProfile(user.userId, updateData);
         return ApiResponseDto.success(result, '프로필이 성공적으로 수정되었습니다.');
     }
+
+    @Get('reviews')
+    @ApiPaginatedEndpoint({
+        summary: '내가 작성한 후기 목록 조회',
+        description: `입양자가 작성한 후기 목록을 페이지네이션과 함께 조회합니다.
+
+**반환 정보:**
+- 브리더 닉네임, 프로필 사진 URL, 레벨, 브리딩 동물 종류
+- 후기 내용, 후기 종류, 작성 일자
+- 최신순 정렬, 기본 10개씩
+
+**페이지네이션:**
+- page: 페이지 번호 (기본값 1)
+- limit: 페이지당 항목 수 (기본값 10)`,
+        responseType: Object,
+        itemType: Object,
+        isPublic: false,
+    })
+    async getMyReviews(
+        @CurrentUser() user: any,
+        @Query('page') page: number = 1,
+        @Query('limit') limit: number = 10,
+    ): Promise<ApiResponseDto<any>> {
+        const result = await this.adopterService.getMyReviews(user.userId, Number(page), Number(limit));
+        return ApiResponseDto.success(result, '내가 작성한 후기 목록이 조회되었습니다.');
+    }
+
+    @Get('reviews/:id')
+    @ApiEndpoint({
+        summary: '후기 세부 조회',
+        description: `후기 ID로 특정 후기의 세부 정보를 조회합니다.
+
+**반환 정보:**
+- 브리더 닉네임, 프로필 사진 URL, 레벨, 브리딩 동물 종류
+- 후기 내용, 후기 종류, 작성 일자
+- 공개 여부 (isVisible)`,
+        responseType: Object,
+        isPublic: false,
+    })
+    async getReviewDetail(@CurrentUser() user: any, @Param('id') reviewId: string): Promise<ApiResponseDto<any>> {
+        const result = await this.adopterService.getReviewDetail(user.userId, reviewId);
+        return ApiResponseDto.success(result, '후기 세부 정보가 조회되었습니다.');
+    }
 }

@@ -386,9 +386,9 @@ export class AuthService {
                 favoriteBreederNotifications: true,
             },
             favoriteBreederList: [],
-            adoptionApplicationList: [],
-            writtenReviewList: [],
             submittedReportList: [],
+            // ✅ 제거: adoptionApplicationList (별도 컬렉션에서 관리)
+            // ✅ 제거: writtenReviewList (별도 컬렉션에서 관리)
         });
 
         // 토큰 생성
@@ -466,9 +466,9 @@ export class AuthService {
                     favoriteBreederNotifications: true,
                 },
                 favoriteBreederList: [],
-                adoptionApplicationList: [],
-                writtenReviewList: [],
                 submittedReportList: [],
+                // ✅ 제거: adoptionApplicationList (별도 컬렉션에서 관리)
+                // ✅ 제거: writtenReviewList (별도 컬렉션에서 관리)
             });
 
             // 토큰 생성

@@ -6,6 +6,7 @@ import { VerificationStatus, PetStatus } from '../../common/enum/user.enum';
 
 import { Breeder, BreederDocument } from '../../schema/breeder.schema';
 import { Adopter, AdopterDocument } from '../../schema/adopter.schema';
+import { BreederReview, BreederReviewDocument } from '../../schema/breeder-review.schema';
 
 import { BreederSearchRequestDto } from './dto/request/breeder-search-request.dto';
 import { BreederSearchResponseDto } from './dto/response/breeder-search-response.dto';
@@ -17,6 +18,7 @@ export class BreederService {
     constructor(
         @InjectModel(Breeder.name) private breederModel: Model<BreederDocument>,
         @InjectModel(Adopter.name) private adopterModel: Model<AdopterDocument>,
+        @InjectModel(BreederReview.name) private breederReviewModel: Model<BreederReviewDocument>,
     ) {}
 
     async searchBreeders(searchDto: BreederSearchRequestDto): Promise<BreederSearchResponseDto> {
@@ -217,38 +219,54 @@ export class BreederService {
      * @param limit 페이지당 항목 수
      * @returns 페이지네이션된 후기 목록
      */
+    /**
+     * 브리더 후기 목록 조회 (참조 방식으로 재설계)
+     *
+     * 변경사항:
+     * - BreederReview 컬렉션에서 직접 조회 (임베디드 제거)
+     * - populate로 입양자 정보 자동 조회
+     * - 페이지네이션 및 최신순 정렬
+     *
+     * @param breederId 브리더 ID
+     * @param page 페이지 번호
+     * @param limit 페이지당 항목 수
+     * @returns 후기 목록과 페이지네이션 정보
+     */
     async getBreederReviews(breederId: string, page: number = 1, limit: number = 10): Promise<any> {
-        const breeder = await this.breederModel.findById(breederId).select('reviews stats').lean();
-
+        // 1. 브리더 존재 확인
+        const breeder = await this.breederModel.findById(breederId).select('stats').lean();
         if (!breeder) {
-            throw new NotFoundException('Breeder not found');
+            throw new NotFoundException('브리더를 찾을 수 없습니다.');
         }
 
-        const allReviews = (breeder as any).reviews?.filter((review: any) => review.isVisible) || [];
-        const total = allReviews.length;
-
-        // 최신순 정렬 및 페이지네이션
+        // 2. BreederReview 컬렉션에서 조회 (참조 방식)
         const skip = (page - 1) * limit;
-        const reviews = allReviews
-            .sort((a: any, b: any) => new Date(b.writtenAt).getTime() - new Date(a.writtenAt).getTime())
-            .slice(skip, skip + limit)
-            .map((review: any) => ({
-                reviewId: review.reviewId,
-                adopterName: review.adopterName,
-                petName: review.petName || '',
-                rating: review.rating || 0,
-                petHealthRating: review.petHealthRating,
-                communicationRating: review.communicationRating,
-                content: review.content,
-                photos: review.photos || [],
-                writtenAt: review.writtenAt,
-                type: review.type || 'adoption',
-            }));
+
+        const [reviews, total] = await Promise.all([
+            this.breederReviewModel
+                .find({ breederId, isVisible: true })
+                .sort({ writtenAt: -1 }) // 최신순 정렬
+                .skip(skip)
+                .limit(limit)
+                .populate('adopterId', 'nickname') // 입양자 닉네임 조회
+                .lean()
+                .exec(),
+            this.breederReviewModel.countDocuments({ breederId, isVisible: true }).exec(),
+        ]);
+
+        // 3. 응답 데이터 포맷팅
+        const formattedReviews = reviews.map((review: any) => ({
+            reviewId: review._id.toString(),
+            adopterName: review.adopterId?.nickname || '알 수 없음',
+            content: review.content,
+            writtenAt: review.writtenAt,
+            type: review.type,
+        }));
 
         const totalPages = Math.ceil(total / limit);
 
         return {
-            items: reviews,
+            items: formattedReviews,
             pagination: {
                 currentPage: page,
                 pageSize: limit,
@@ -257,7 +275,6 @@ export class BreederService {
                 hasNextPage: page < totalPages,
                 hasPrevPage: page > 1,
             },
-            averageRating: (breeder as any).stats?.averageRating || 0,
             totalReviews: total,
         };
     }

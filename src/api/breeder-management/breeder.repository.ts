@@ -422,39 +422,42 @@ export class BreederRepository {
     }
 
     /**
-     * 받은 후기 추가
-     * 후기 캐싱 및 통계 업데이트는 별도 처리
+     * ❌ 제거됨: addReview
+     * 이유: BreederReview 컬렉션에서 직접 관리 (임베디드 제거)
+     * 대체: new BreederReviewModel().save()
+     */
+
+    /**
+     * 후기 수 증가 (참조 방식)
+     * BreederReview 컬렉션에 후기가 추가될 때 통계 업데이트
      *
      * @param breederId 브리더 ID
-     * @param reviewData 후기 데이터
      */
-    async addReview(breederId: string, reviewData: any): Promise<void> {
+    async incrementReviewCount(breederId: string): Promise<void> {
         try {
             await this.breederModel
                 .findByIdAndUpdate(breederId, {
-                    $push: { reviews: reviewData },
+                    $inc: { 'stats.totalReviews': 1 },
                     $set: { updatedAt: new Date() },
                 })
                 .exec();
         } catch (error) {
-            throw new Error(`후기 추가 실패: ${error.message}`);
+            throw new Error(`후기 수 증가 실패: ${error.message}`);
         }
     }
 
     /**
-     * 후기 통계 업데이트
-     * 평균 평점 및 후기 수 재계산
+     * 후기 통계 업데이트 (선택사항)
+     * 평균 평점이 필요한 경우 사용 (현재는 평점 제거됨)
      *
      * @param breederId 브리더 ID
-     * @param averageRating 평균 평점
      * @param totalReviews 총 후기 수
      */
-    async updateReviewStats(breederId: string, averageRating: number, totalReviews: number): Promise<void> {
+    async updateReviewStats(breederId: string, totalReviews: number): Promise<void> {
         try {
             await this.breederModel
                 .findByIdAndUpdate(breederId, {
                     $set: {
-                        'stats.averageRating': Math.round(averageRating * 10) / 10,
                         'stats.totalReviews': totalReviews,
                         updatedAt: new Date(),
                     },

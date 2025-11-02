@@ -480,15 +480,8 @@ export class AdminService {
         review.isVisible = false;
         await review.save();
 
-        // Also update in adopter's reviews
-        const adopter = await this.adopterModel.findById(review.adopterId);
-        if (adopter) {
-            const adopterReviewIndex = adopter.writtenReviewList.findIndex((r) => r.reviewId === reviewId);
-            if (adopterReviewIndex !== -1) {
-                adopter.writtenReviewList[adopterReviewIndex].isVisible = false;
-                await adopter.save();
-            }
-        }
+        // ✅ 참조 방식: 임베디드 업데이트 제거
+        // BreederReview 컬렉션만 업데이트하면 됨 (입양자 문서에 후기 없음)
 
         // 브리더 정보 조회
         const breeder = await this.breederModel.findById(breederId);

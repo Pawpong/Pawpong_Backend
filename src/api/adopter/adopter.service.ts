@@ -136,88 +136,60 @@ export class AdopterService {
     }
 
     /**
-     * 입양 후기 작성 처리
-     * 입양자와 브리더 양쪽에 후기 데이터 동기화 저장
+     * 입양 후기 작성 처리 (단순화)
      *
-     * 비즈니스 규칙:
-     * - 완료된 입양 신청에 대해서만 후기 작성 가능
-     * - 한 번의 입양 신청당 하나의 후기만 작성 가능
-     * - 브리더 평균 평점 실시간 업데이트
-     * - 후기 작성 완료 상태 마킹
+     * 변경사항:
+     * - applicationId 검증 제거 (자유롭게 작성 가능)
+     * - 브리더 존재 여부만 확인
+     * - 중복 후기 방지
      *
-     * @param userId 입양자 고유 ID
+     * @param userId 입양자 고유 ID (JWT에서 추출)
      * @param createReviewDto 후기 작성 데이터
      * @returns 생성된 후기 ID 및 성공 메시지
-     * @throws BadRequestException 잘못된 요청 또는 비즈니스 규칙 위반
+     * @throws BadRequestException 잘못된 요청
      */
     async createReview(userId: string, createReviewDto: ReviewCreateRequestDto): Promise<any> {
-        const { applicationId, reviewType, rating, content, photos = [] } = createReviewDto;
+        const { breederId, reviewType, content } = createReviewDto;
 
+        // 1. 입양자 존재 확인
         const adopter = await this.adopterRepository.findById(userId);
         if (!adopter) {
             throw new BadRequestException('입양자 정보를 찾을 수 없습니다.');
         }
 
-        // 해당 입양 신청 내역 조회
-        const application = await this.adopterRepository.findApplicationById(userId, applicationId);
-        if (!application) {
-            throw new BadRequestException('해당 입양 신청 내역을 찾을 수 없습니다.');
+        // 2. 브리더 존재 확인
+        const breeder = await this.breederRepository.findById(breederId);
+        if (!breeder) {
+            throw new BadRequestException('해당 브리더를 찾을 수 없습니다.');
         }
 
-        if (application.isReviewWritten) {
-            throw new BadRequestException('이미 해당 입양 신청에 대한 후기를 작성하셨습니다.');
+        // 3. 중복 후기 작성 방지 (같은 브리더에게 이미 작성한 후기가 있는지 확인)
+        const existingReview = await this.breederReviewModel.findOne({
+            adopterId: userId,
+            breederId: breederId,
+        });
+
+        if (existingReview) {
+            throw new ConflictException('이미 해당 브리더에 대한 후기를 작성하셨습니다.');
         }
 
-        if (application.applicationStatus === ApplicationStatus.CONSULTATION_PENDING) {
-            throw new BadRequestException('상담이 완료된 후에 후기를 작성하실 수 있습니다.');
-        }
+        // 4. BreederReview 컬렉션에 후기 저장
+        const newReview = new this.breederReviewModel({
+            breederId: breederId,
+            adopterId: userId,
+            type: reviewType,
+            content: content,
+            writtenAt: new Date(),
+            isVisible: true,
+        });
 
-        const reviewId = randomUUID();
+        const savedReview = await newReview.save();
 
-        // 입양자 후기 목록에 저장할 데이터 구성 (Mapper 패턴 사용)
-        const newReview = AdopterMapper.toAdopterReview(reviewId, application, reviewType, rating, content, photos);
-
-        await this.adopterRepository.addReview(userId, newReview);
-        await this.adopterRepository.markReviewWritten(userId, applicationId);
-
-        // 브리더 후기 캐시에 저장 및 통계 업데이트
-        const breeder = await this.breederRepository.findById(application.targetBreederId);
-        if (breeder) {
-            // 브리더 후기 데이터 구성 (Mapper 패턴 사용)
-            const breederReview = AdopterMapper.toBreederReview(
-                reviewId,
-                userId,
-                adopter.nickname,
-                applicationId,
-                reviewType,
-                rating,
-                content,
-                photos,
-            );
-
-            await this.breederRepository.addReview(application.targetBreederId, breederReview);
-
-            // 브리더 평점 통계 실시간 재계산 및 업데이트 (BreederReview 컬렉션에서 조회)
-            const reviews = await this.breederReviewModel.find({
-                breederId: application.targetBreederId,
-                isVisible: true,
-            });
-
-            if (reviews.length > 0) {
-                const totalReviews = reviews.length;
-                const totalRating = reviews.reduce((sum, r) => sum + (r.rating || 0), 0);
-                const averageRating = totalRating / totalReviews;
-
-                await this.breederRepository.updateReviewStats(
-                    application.targetBreederId,
-                    averageRating,
-                    totalReviews,
-                );
-            }
-        }
+        // 5. 브리더 통계 업데이트
+        await this.breederRepository.incrementReviewCount(breederId);
 
         return {
-            reviewId,
+            reviewId: (savedReview._id as any).toString(),
             message: '후기가 성공적으로 등록되었습니다.',
         };
     }
@@ -430,5 +402,104 @@ export class AdopterService {
         }
 
         return { message: '프로필이 성공적으로 수정되었습니다.' };
+    }
+
+    /**
+     * 입양자가 작성한 후기 목록 조회 (브리더 상세 정보 포함)
+     *
+     * 반환 정보:
+     * - 브리더 닉네임, 프로필 사진, 레벨, 브리딩 동물 종류
+     * - 후기 내용, 후기 종류, 작성 일자
+     * - 최신순 정렬, 페이지당 10개
+     *
+     * @param userId 입양자 고유 ID
+     * @param page 페이지 번호
+     * @param limit 페이지당 항목 수
+     * @returns 후기 목록과 페이지네이션 정보
+     */
+    async getMyReviews(userId: string, page: number = 1, limit: number = 10): Promise<any> {
+        const adopter = await this.adopterRepository.findById(userId);
+        if (!adopter) {
+            throw new BadRequestException('입양자 정보를 찾을 수 없습니다.');
+        }
+
+        const skip = (page - 1) * limit;
+
+        const [reviews, total] = await Promise.all([
+            this.breederReviewModel
+                .find({ adopterId: userId })
+                .sort({ writtenAt: -1 }) // 최신순 정렬
+                .skip(skip)
+                .limit(limit)
+                .populate('breederId', 'nickname profileImageFileName verification.level petType') // 브리더 상세 정보
+                .lean()
+                .exec(),
+            this.breederReviewModel.countDocuments({ adopterId: userId }).exec(),
+        ]);
+
+        const formattedReviews = reviews.map((review: any) => {
+            const breeder = review.breederId;
+            return {
+                reviewId: review._id.toString(),
+                breederNickname: breeder?.nickname || '알 수 없음',
+                breederProfileImage: breeder?.profileImageFileName
+                    ? this.storageService.generateSignedUrlSafe(breeder.profileImageFileName, 60)
+                    : null,
+                breederLevel: breeder?.verification?.level || 'new',
+                breedingPetType: breeder?.petType || 'unknown',
+                content: review.content,
+                reviewType: review.type,
+                writtenAt: review.writtenAt,
+            };
+        });
+
+        const totalPages = Math.ceil(total / limit);
+
+        return {
+            items: formattedReviews,
+            pagination: {
+                currentPage: page,
+                pageSize: limit,
+                totalItems: total,
+                totalPages,
+                hasNextPage: page < totalPages,
+                hasPrevPage: page > 1,
+            },
+        };
+    }
+
+    /**
+     * 후기 세부 조회
+     *
+     * @param userId 입양자 고유 ID
+     * @param reviewId 후기 ID
+     * @returns 후기 세부 정보
+     */
+    async getReviewDetail(userId: string, reviewId: string): Promise<any> {
+        const review = await this.breederReviewModel
+            .findOne({ _id: reviewId, adopterId: userId })
+            .populate('breederId', 'nickname profileImageFileName verification.level petType')
+            .lean()
+            .exec();
+
+        if (!review) {
+            throw new BadRequestException('후기를 찾을 수 없습니다.');
+        }
+
+        const breeder = review.breederId as any;
+
+        return {
+            reviewId: review._id.toString(),
+            breederNickname: breeder?.nickname || '알 수 없음',
+            breederProfileImage: breeder?.profileImageFileName
+                ? this.storageService.generateSignedUrlSafe(breeder.profileImageFileName, 60)
+                : null,
+            breederLevel: breeder?.verification?.level || 'new',
+            breedingPetType: breeder?.petType || 'unknown',
+            content: review.content,
+            reviewType: review.type,
+            writtenAt: review.writtenAt,
+            isVisible: review.isVisible,
+        };
     }
 }

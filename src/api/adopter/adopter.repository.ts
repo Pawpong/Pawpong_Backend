@@ -166,152 +166,40 @@ export class AdopterRepository {
     }
 
     /**
-     * 입양 신청 내역 추가
-     * 신청 일시 자동 설정
-     *
-     * @param adopterId 입양자 ID
-     * @param applicationData 입양 신청 데이터
+     * ❌ 제거됨: addApplication
+     * 이유: AdoptionApplication 컬렉션에서 직접 생성
+     * 대체: new AdoptionApplicationModel().save()
      */
-    async addApplication(adopterId: string, applicationData: any): Promise<void> {
-        try {
-            await this.adopterModel
-                .findByIdAndUpdate(adopterId, {
-                    $push: { adoption_application_list: applicationData },
-                    $set: {
-                        updated_at: new Date(),
-                        last_activity_at: new Date(),
-                    },
-                })
-                .exec();
-        } catch (error) {
-            throw new Error(`입양 신청 추가 실패: ${error.message}`);
-        }
-    }
 
     /**
-     * 입양 신청 상태 업데이트
-     * MongoDB 배열 내 특정 요소 수정
-     *
-     * @param adopterId 입양자 ID
-     * @param applicationId 입양 신청 ID
-     * @param status 변경할 상태
+     * ❌ 제거됨: updateApplicationStatus
+     * 이유: AdoptionApplication 컬렉션에서 직접 업데이트
+     * 대체: AdoptionApplicationModel.findByIdAndUpdate()
      */
-    async updateApplicationStatus(adopterId: string, applicationId: string, status: string): Promise<void> {
-        try {
-            await this.adopterModel
-                .findOneAndUpdate(
-                    {
-                        _id: adopterId,
-                        'adoption_application_list.application_id': applicationId,
-                    },
-                    {
-                        $set: {
-                            'adoption_application_list.$.application_status': status,
-                            'adoption_application_list.$.updated_at': new Date(),
-                            updated_at: new Date(),
-                            last_activity_at: new Date(),
-                        },
-                    },
-                )
-                .exec();
-        } catch (error) {
-            throw new Error(`입양 신청 상태 업데이트 실패: ${error.message}`);
-        }
-    }
 
     /**
-     * 작성한 후기 추가
-     * 후기 작성 일시 자동 설정
-     *
-     * @param adopterId 입양자 ID
-     * @param reviewData 후기 데이터
+     * ❌ 제거됨: addReview
+     * 이유: BreederReview 컬렉션에서 직접 생성
+     * 대체: new BreederReviewModel().save()
      */
-    async addReview(adopterId: string, reviewData: any): Promise<void> {
-        try {
-            await this.adopterModel
-                .findByIdAndUpdate(adopterId, {
-                    $push: { written_review_list: reviewData },
-                    $set: {
-                        updated_at: new Date(),
-                        last_activity_at: new Date(),
-                    },
-                })
-                .exec();
-        } catch (error) {
-            throw new Error(`후기 추가 실패: ${error.message}`);
-        }
-    }
 
     /**
-     * 입양 신청에 대한 후기 작성 완료 표시
-     *
-     * @param adopterId 입양자 ID
-     * @param applicationId 입양 신청 ID
+     * ❌ 제거됨: markReviewWritten
+     * 이유: 후기 작성 여부는 AdoptionApplication 컬렉션에서 관리
+     * 대체: AdoptionApplicationModel.findByIdAndUpdate({ isReviewWritten: true })
      */
-    async markReviewWritten(adopterId: string, applicationId: string): Promise<void> {
-        try {
-            await this.adopterModel
-                .findOneAndUpdate(
-                    {
-                        _id: adopterId,
-                        'adoption_application_list.application_id': applicationId,
-                    },
-                    {
-                        $set: {
-                            'adoption_application_list.$.is_review_written': true,
-                            updated_at: new Date(),
-                            last_activity_at: new Date(),
-                        },
-                    },
-                )
-                .exec();
-        } catch (error) {
-            throw new Error(`후기 작성 완료 표시 실패: ${error.message}`);
-        }
-    }
 
     /**
-     * 특정 입양 신청 내역 조회
-     * 임베디드 배열에서 특정 요소 검색
-     *
-     * @param adopterId 입양자 ID
-     * @param applicationId 입양 신청 ID
-     * @returns 입양 신청 정보 또는 null
+     * ❌ 제거됨: findApplicationById
+     * 이유: AdoptionApplication 컬렉션에서 직접 조회
+     * 대체: AdoptionApplicationModel.findOne({ _id, adopterId })
      */
-    async findApplicationById(adopterId: string, applicationId: string): Promise<any | null> {
-        try {
-            const adopter = await this.adopterModel.findById(adopterId).lean().exec();
-            if (!adopter) return null;
-
-            return adopter.adoptionApplicationList?.find((app: any) => app.applicationId === applicationId) || null;
-        } catch (error) {
-            throw new Error(`입양 신청 조회 실패: ${error.message}`);
-        }
-    }
 
     /**
-     * 기존 입양 신청 존재 확인
-     * 중복 신청 방지를 위한 검증용
-     *
-     * @param adopterId 입양자 ID
-     * @param breederId 브리더 ID
-     * @param petId 반려동물 ID
-     * @returns 기존 신청 정보 또는 null
+     * ❌ 제거됨: findExistingApplication
+     * 이유: AdoptionApplication 컬렉션에서 직접 조회
+     * 대체: AdoptionApplicationModel.findOne({ adopterId, breederId, status })
      */
-    async findExistingApplication(adopterId: string, breederId: string, petId: string): Promise<any | null> {
-        try {
-            const adopter = await this.adopterModel.findById(adopterId).lean().exec();
-            if (!adopter) return null;
-
-            return (
-                adopter.adoptionApplicationList?.find(
-                    (app: any) => app.targetBreederId === breederId && app.targetPetId === petId,
-                ) || null
-            );
-        } catch (error) {
-            throw new Error(`기존 입양 신청 확인 실패: ${error.message}`);
-        }
-    }
 
     /**
      * 기존 즐겨찾기 브리더 확인

@@ -449,12 +449,8 @@ export class BreederManagementService {
             await this.breederRepository.incrementCompletedAdoptions(userId);
         }
 
-        // 입양자 쪽 신청 상태도 동시 업데이트 (데이터 일관성 보장)
-        await this.adopterRepository.updateApplicationStatus(
-            application.adopterId.toString(),
-            applicationId,
-            updateData.status as any,
-        );
+        // ✅ 참조 방식: AdoptionApplication 컬렉션만 업데이트하면 됨
+        // (입양자 문서에 신청 내역 없음)
 
         return { message: '입양 신청 상태가 성공적으로 업데이트되었습니다.' };
     }
