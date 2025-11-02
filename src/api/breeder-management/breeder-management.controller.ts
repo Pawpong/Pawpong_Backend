@@ -15,6 +15,7 @@ import { PetStatusUpdateRequestDto } from './dto/request/pet-status-update-reque
 import { ApplicationsGetRequestDto } from './dto/request/applications-fetch-request.dto';
 import { VerificationSubmitRequestDto } from './dto/request/verification-submit-request.dto';
 import { ApplicationStatusUpdateRequestDto } from './dto/request/application-status-update-request.dto';
+import { ApplicationFormUpdateRequestDto } from './dto/request/application-form-update-request.dto';
 import { ApiResponseDto } from '../../common/dto/response/api-response.dto';
 import { PaginationResponseDto } from '../../common/dto/pagination/pagination-response.dto';
 import { PetAddResponseDto } from './dto/response/pet-add-response.dto';
@@ -24,11 +25,14 @@ import { BreederProfileResponseDto } from '../breeder/dto/response/breeder-profi
 import { PetStatusUpdateResponseDto } from './dto/response/pet-status-update-response.dto';
 import { BreederDashboardResponseDto } from '../breeder/dto/response/breeder-dashboard-response.dto';
 import { VerificationSubmitResponseDto } from './dto/response/verification-submit-response.dto';
+import { VerificationStatusResponseDto } from './dto/response/verification-status-response.dto';
 import { BreederProfileUpdateResponseDto } from './dto/response/profile-update-response.dto';
 import { ReceivedApplicationListResponseDto } from '../breeder/dto/response/received-application-list-response.dto';
+import { ReceivedApplicationResponseDto } from '../breeder/dto/response/received-application-response.dto';
 import { ApplicationStatusUpdateResponseDto } from './dto/response/application-status-update-response.dto';
 import { MyPetsListResponseDto, MyPetItemDto } from './dto/response/my-pets-list-response.dto';
 import { MyReviewsListResponseDto, MyReviewItemDto } from './dto/response/my-reviews-list-response.dto';
+import { ApplicationFormResponseDto } from './dto/response/application-form-response.dto';
 
 @ApiController('브리더 관리')
 @Controller('breeder-management')
@@ -74,6 +78,18 @@ export class BreederManagementController {
     ): Promise<ApiResponseDto<BreederProfileUpdateResponseDto>> {
         const result = await this.breederManagementService.updateProfile(user.userId, updateData);
         return ApiResponseDto.success(result, '프로필이 성공적으로 수정되었습니다.');
+    }
+
+    @Get('verification')
+    @ApiEndpoint({
+        summary: '브리더 인증 상태 조회',
+        description: '로그인한 브리더의 인증 상태 및 관련 정보를 조회합니다. 인증 문서 URL은 1시간 유효한 Signed URL로 제공됩니다.',
+        responseType: VerificationStatusResponseDto,
+        isPublic: false,
+    })
+    async getVerificationStatus(@CurrentUser() user: any): Promise<ApiResponseDto<VerificationStatusResponseDto>> {
+        const result = await this.breederManagementService.getVerificationStatus(user.userId);
+        return ApiResponseDto.success(result, '인증 상태가 조회되었습니다.');
     }
 
     @Post('verification')
@@ -218,6 +234,31 @@ export class BreederManagementController {
         return ApiResponseDto.success(result, '입양 신청 목록이 조회되었습니다.');
     }
 
+    @Get('applications/:applicationId')
+    @ApiEndpoint({
+        summary: '받은 입양 신청 상세 조회',
+        description: `브리더가 받은 특정 입양 신청의 상세 정보를 조회합니다.
+
+**응답 데이터:**
+- 신청 ID, 입양자 정보 (이름, 이메일, 연락처)
+- 반려동물 정보 (있는 경우)
+- 신청서 전체 내용 (8가지 필수 정보 포함)
+- 신청 상태, 신청 일시, 처리 일시
+- 브리더 메모
+
+**권한:**
+- 본인이 받은 신청만 조회 가능`,
+        responseType: ReceivedApplicationResponseDto,
+        isPublic: false,
+    })
+    async getApplicationDetail(
+        @CurrentUser() user: any,
+        @Param('applicationId') applicationId: string,
+    ): Promise<ApiResponseDto<ReceivedApplicationResponseDto>> {
+        const result = await this.breederManagementService.getApplicationDetail(user.userId, applicationId);
+        return ApiResponseDto.success(result, '입양 신청 상세 정보가 조회되었습니다.');
+    }
+
     @Patch('applications/:applicationId')
     @ApiEndpoint({
         summary: '입양 신청 상태 업데이트',
@@ -284,5 +325,90 @@ export class BreederManagementController {
             Number(limit),
         );
         return ApiResponseDto.success(result, '후기 목록이 조회되었습니다.');
+    }
+
+    @Get('application-form')
+    @ApiEndpoint({
+        summary: '입양 신청 폼 조회',
+        description: `브리더가 설정한 입양 신청 폼 전체 구조를 조회합니다.
+
+**응답 데이터:**
+- **표준 질문** (14개): 모든 브리더 공통, 수정 불가능
+- **커스텀 질문**: 브리더가 추가한 질문들
+
+**표준 질문 목록:**
+1. 개인정보 수집 동의
+2. 자기소개
+3. 가족 구성원 정보
+4. 가족 입양 동의
+5. 알러지 검사
+6. 집 비우는 시간
+7. 거주 공간 소개
+8. 반려동물 경험
+9. 기본 케어 책임
+10. 치료비 감당
+11. 중성화 동의
+12. 선호하는 아이
+13. 입양 시기
+14. 추가 문의사항
+
+**커스텀 질문:**
+- 브리더가 자유롭게 추가/삭제 가능`,
+        responseType: ApplicationFormResponseDto,
+        isPublic: false,
+    })
+    async getApplicationForm(@CurrentUser() user: any): Promise<ApiResponseDto<ApplicationFormResponseDto>> {
+        const result = await this.breederManagementService.getApplicationForm(user.userId);
+        return ApiResponseDto.success(result, '입양 신청 폼이 조회되었습니다.');
+    }
+
+    @Put('application-form')
+    @ApiEndpoint({
+        summary: '입양 신청 폼 수정',
+        description: `브리더가 커스텀 질문을 추가/수정/삭제합니다.
+
+**중요 사항:**
+- 표준 14개 질문은 자동으로 포함되며 수정 불가능
+- 이 API는 커스텀 질문만 관리합니다
+- 전체 커스텀 질문 배열을 전송 (부분 수정 불가)
+
+**Validation 규칙:**
+- 질문 ID는 영문, 숫자, 언더스코어만 사용
+- 질문 ID는 중복 불가
+- 표준 질문 ID와 중복 불가
+- select/radio/checkbox 타입은 options 필수
+
+**예시:**
+\`\`\`json
+{
+  "customQuestions": [
+    {
+      "id": "custom_visit_time",
+      "type": "select",
+      "label": "방문 가능한 시간대를 선택해주세요",
+      "required": true,
+      "options": ["오전", "오후", "저녁"],
+      "order": 1
+    },
+    {
+      "id": "custom_pet_preference",
+      "type": "textarea",
+      "label": "선호하는 반려동물의 성격을 알려주세요",
+      "required": false,
+      "placeholder": "예: 활발하고 사람을 좋아하는 성격",
+      "order": 2
+    }
+  ]
+}
+\`\`\``,
+        responseType: Object,
+        isPublic: false,
+    })
+    async updateApplicationForm(
+        @CurrentUser() user: any,
+        @Body() updateDto: ApplicationFormUpdateRequestDto,
+    ): Promise<ApiResponseDto<any>> {
+        const result = await this.breederManagementService.updateApplicationForm(user.userId, updateDto);
+        return ApiResponseDto.success(result, '입양 신청 폼이 업데이트되었습니다.');
     }
 }

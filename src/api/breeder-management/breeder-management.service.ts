@@ -412,6 +412,46 @@ export class BreederManagementService {
     }
 
     /**
+     * 받은 입양 신청 상세 조회
+     * 브리더가 받은 특정 입양 신청의 상세 정보 조회
+     *
+     * @param userId 브리더 고유 ID
+     * @param applicationId 신청 ID
+     * @returns 신청 상세 정보
+     * @throws BadRequestException 존재하지 않는 신청 또는 권한 없음
+     */
+    async getApplicationDetail(userId: string, applicationId: string): Promise<any> {
+        // 신청 조회 (본인이 받은 신청만 조회 가능)
+        const application = await this.adoptionApplicationModel.findOne({
+            _id: applicationId,
+            breederId: userId,
+        });
+
+        if (!application) {
+            throw new BadRequestException('해당 입양 신청을 찾을 수 없거나 조회 권한이 없습니다.');
+        }
+
+        // 입양자 정보 조회
+        const adopter = await this.adopterRepository.findById(application.adopterId.toString());
+
+        return {
+            applicationId: (application as any)._id.toString(),
+            adopterId: application.adopterId.toString(),
+            adopterName: application.adopterName,
+            adopterEmail: application.adopterEmail,
+            adopterPhone: application.adopterPhone,
+            petId: application.petId?.toString(),
+            petName: application.petName,
+            status: application.status,
+            standardResponses: application.standardResponses,
+            customResponses: application.customResponses || [],
+            appliedAt: application.appliedAt.toISOString(),
+            processedAt: application.processedAt?.toISOString(),
+            breederNotes: application.breederNotes,
+        };
+    }
+
+    /**
      * 입양 신청 상태 업데이트
      * 브리더가 받은 입양 신청에 대한 승인, 거절, 상담 처리
      *
@@ -491,6 +531,48 @@ export class BreederManagementService {
         await this.breederRepository.updateVerification(userId, verification);
 
         return { message: '브리더 인증 신청이 성공적으로 제출되었습니다. 관리자 검토 후 결과를 알려드립니다.' };
+    }
+
+    /**
+     * 브리더 인증 상태 조회
+     * 인증된 브리더가 자신의 인증 상태와 관련 정보를 확인
+     *
+     * 반환 정보:
+     * - 인증 상태 (pending, reviewing, approved, rejected)
+     * - 구독 플랜 및 브리더 레벨
+     * - 제출/검토 일시
+     * - 인증 문서 URL (Signed URL, 1시간 유효)
+     * - 거절 사유 (거절된 경우)
+     *
+     * @param userId 브리더 고유 ID
+     * @returns 인증 상태 정보
+     * @throws BadRequestException 존재하지 않는 브리더
+     */
+    async getVerificationStatus(userId: string): Promise<any> {
+        const breeder = await this.breederRepository.findById(userId);
+        if (!breeder) {
+            throw new BadRequestException('브리더 정보를 찾을 수 없습니다.');
+        }
+
+        const verification = breeder.verification;
+
+        // 문서 URL을 Signed URL로 변환 (1시간 유효)
+        const documents = verification?.documents?.map((doc: any) => ({
+            type: doc.type,
+            url: this.storageService.generateSignedUrl(doc.fileName, 60),
+            uploadedAt: doc.uploadedAt,
+        })) || [];
+
+        return {
+            status: verification?.status || 'pending',
+            plan: verification?.plan,
+            level: verification?.level,
+            submittedAt: verification?.submittedAt,
+            reviewedAt: verification?.reviewedAt,
+            documents,
+            rejectionReason: verification?.rejectionReason,
+            submittedByEmail: verification?.submittedByEmail || false,
+        };
     }
 
     /**
@@ -714,6 +796,115 @@ export class BreederManagementService {
             totalReviews: total,
             visibleReviews: visibleCount,
             hiddenReviews: hiddenCount,
+        };
+    }
+
+    /**
+     * 표준 입양 신청 폼 질문 17개 (Figma 디자인 기반 - 수정 불가)
+     *
+     * 모든 브리더에게 자동으로 포함되는 필수 질문들입니다.
+     */
+    private getStandardQuestions() {
+        return [
+            { id: 'privacyConsent', type: 'checkbox', label: '개인정보 수집 및 이용에 동의하시나요?', required: true, order: 1, isStandard: true },
+            { id: 'selfIntroduction', type: 'textarea', label: '간단하게 자기소개 부탁드려요 (성별, 연령대, 거주지, 생활 패턴 등)', required: true, order: 2, isStandard: true },
+            { id: 'familyMembers', type: 'text', label: '함께 거주하는 가족 구성원을 알려주세요', required: true, order: 3, isStandard: true },
+            { id: 'allFamilyConsent', type: 'checkbox', label: '모든 가족 구성원들이 입양에 동의하셨나요?', required: true, order: 4, isStandard: true },
+            { id: 'allergyTestInfo', type: 'text', label: '본인을 포함한 모든 가족 구성원분들께서 알러지 검사를 마치셨나요?', required: true, order: 5, isStandard: true },
+            { id: 'timeAwayFromHome', type: 'text', label: '평균적으로 집을 비우는 시간은 얼마나 되나요?', required: true, order: 6, isStandard: true },
+            { id: 'livingSpaceDescription', type: 'textarea', label: '아이와 함께 지내게 될 공간을 소개해 주세요', required: true, order: 7, isStandard: true },
+            { id: 'previousPetExperience', type: 'textarea', label: '현재 함께하는, 또는 이전에 함께했던 반려동물에 대해 알려주세요', required: true, order: 8, isStandard: true },
+            { id: 'canProvideBasicCare', type: 'checkbox', label: '정기 예방접종·건강검진·훈련 등 기본 케어를 책임지고 해주실 수 있나요?', required: true, order: 9, isStandard: true },
+            { id: 'canAffordMedicalExpenses', type: 'checkbox', label: '예상치 못한 질병이나 사고 등으로 치료비가 발생할 경우 감당 가능하신가요?', required: true, order: 10, isStandard: true },
+            { id: 'neuteringConsent', type: 'checkbox', label: '모든 아이들은 중성화 후 분양되거나, 입양 후 중성화를 진행해야 합니다. 동의하십니까?', required: true, order: 11, isStandard: true },
+            { id: 'preferredPetDescription', type: 'textarea', label: '마음에 두신 아이가 있으신가요? (특징: 성별, 타입, 외모, 컬러패턴, 성격 등)', required: false, order: 12, isStandard: true },
+            { id: 'desiredAdoptionTiming', type: 'text', label: '원하시는 입양 시기가 있나요?', required: false, order: 13, isStandard: true },
+            { id: 'additionalNotes', type: 'textarea', label: '마지막으로 궁금하신 점이나 남기시고 싶으신 말씀이 있나요?', required: false, order: 14, isStandard: true },
+        ]; // 총 14개 표준 질문
+    }
+
+    /**
+     * 입양 신청 폼 조회 (표준 + 커스텀 질문)
+     *
+     * 브리더가 설정한 전체 폼 구조를 조회합니다.
+     * 표준 17개 질문은 자동으로 포함되며, 브리더가 추가한 커스텀 질문도 함께 반환합니다.
+     *
+     * @param breederId 브리더 ID
+     * @returns 전체 폼 구조 (표준 + 커스텀 질문)
+     */
+    async getApplicationForm(breederId: string): Promise<any> {
+        const breeder = await this.breederRepository.findById(breederId);
+        if (!breeder) {
+            throw new BadRequestException('브리더 정보를 찾을 수 없습니다.');
+        }
+
+        const standardQuestions = this.getStandardQuestions();
+
+        // 브리더의 커스텀 질문 가져오기
+        const customQuestions = (breeder.applicationForm || []).map((q, index) => ({
+            id: q.id,
+            type: q.type,
+            label: q.label,
+            required: q.required,
+            options: q.options,
+            placeholder: q.placeholder,
+            order: standardQuestions.length + index + 1, // 표준 질문 다음에 순서 배치
+            isStandard: false,
+        }));
+
+        return {
+            standardQuestions,
+            customQuestions,
+            totalQuestions: standardQuestions.length + customQuestions.length,
+        };
+    }
+
+    /**
+     * 입양 신청 폼 수정 (커스텀 질문만)
+     *
+     * 브리더가 커스텀 질문을 추가/수정/삭제합니다.
+     * 표준 17개 질문은 수정할 수 없습니다.
+     *
+     * @param breederId 브리더 ID
+     * @param updateDto 커스텀 질문 목록
+     * @returns 성공 메시지
+     */
+    async updateApplicationForm(breederId: string, updateDto: any): Promise<any> {
+        const breeder = await this.breederRepository.findById(breederId);
+        if (!breeder) {
+            throw new BadRequestException('브리더 정보를 찾을 수 없습니다.');
+        }
+
+        // 커스텀 질문 ID 중복 검증
+        const ids = updateDto.customQuestions.map((q: any) => q.id);
+        const uniqueIds = new Set(ids);
+        if (ids.length !== uniqueIds.size) {
+            throw new BadRequestException('질문 ID가 중복되었습니다.');
+        }
+
+        // 표준 질문 ID와 충돌 방지
+        const standardIds = this.getStandardQuestions().map(q => q.id);
+        const conflicts = ids.filter((id: string) => standardIds.includes(id));
+        if (conflicts.length > 0) {
+            throw new BadRequestException(`다음 ID는 표준 질문과 중복되어 사용할 수 없습니다: ${conflicts.join(', ')}`);
+        }
+
+        // 브리더 문서 업데이트
+        breeder.applicationForm = updateDto.customQuestions.map((q: any) => ({
+            id: q.id,
+            type: q.type,
+            label: q.label,
+            required: q.required,
+            options: q.options,
+            placeholder: q.placeholder,
+            order: q.order,
+        }));
+
+        await breeder.save();
+
+        return {
+            message: '입양 신청 폼이 성공적으로 업데이트되었습니다.',
+            customQuestions: breeder.applicationForm,
         };
     }
 }
