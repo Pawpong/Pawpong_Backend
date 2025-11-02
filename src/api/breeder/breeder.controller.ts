@@ -132,4 +132,42 @@ export class BreederController {
         const result = await this.breederService.getPetDetail(breederId, petId);
         return ApiResponseDto.success(result, '개체 상세 정보가 조회되었습니다.');
     }
+
+    @Get(':id/parent-pets')
+    @ApiEndpoint({
+        summary: '브리더 부모견/부모묘 목록 조회',
+        description:
+            '특정 브리더의 부모견/부모묘 목록을 조회합니다. 활성화된 부모견/부모묘만 반환되며, 사진 URL은 1시간 유효한 Signed URL로 제공됩니다.',
+        responseType: Object,
+        isPublic: true,
+    })
+    async getParentPets(@Param('id') breederId: string): Promise<ApiResponseDto<any>> {
+        const result = await this.breederService.getParentPets(breederId);
+        return ApiResponseDto.success(result, '부모견/부모묘 목록이 조회되었습니다.');
+    }
+
+    @Get(':id/application-form')
+    @ApiEndpoint({
+        summary: '입양 신청 폼 구조 조회 (공개)',
+        description: `입양자가 입양 신청하기 전에 브리더의 입양 신청 폼 구조를 조회합니다.
+
+**응답 데이터:**
+- **표준 질문** (14개): 모든 브리더 공통 - 개인정보 동의, 자기소개, 가족 구성원, 가족 동의, 알러지 검사, 집 비우는 시간, 거주 공간, 반려동물 경험, 기본 케어 책임, 치료비 감당, 중성화 동의, 선호하는 아이, 입양 시기, 추가 문의사항
+- **커스텀 질문**: 해당 브리더가 추가로 요청하는 질문들
+
+**사용 시나리오:**
+1. 입양자가 브리더 프로필 페이지에서 "입양 신청하기" 버튼 클릭
+2. 이 API를 호출하여 폼 구조 조회
+3. 폼 구조에 맞춰 동적으로 입력 폼 렌더링
+4. 입양자가 모든 질문에 답변 작성
+5. POST /api/adopter/application으로 입양 신청 제출
+
+**인증 불필요** (공개 API)`,
+        responseType: Object,
+        isPublic: true,
+    })
+    async getApplicationForm(@Param('id') breederId: string): Promise<ApiResponseDto<any>> {
+        const result = await this.breederService.getApplicationForm(breederId);
+        return ApiResponseDto.success(result, '입양 신청 폼 구조가 조회되었습니다.');
+    }
 }

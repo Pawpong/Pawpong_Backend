@@ -7,6 +7,7 @@ import { VerificationStatus, PetStatus } from '../../common/enum/user.enum';
 import { Breeder, BreederDocument } from '../../schema/breeder.schema';
 import { Adopter, AdopterDocument } from '../../schema/adopter.schema';
 import { BreederReview, BreederReviewDocument } from '../../schema/breeder-review.schema';
+import { ParentPet, ParentPetDocument } from '../../schema/parent-pet.schema';
 
 import { BreederSearchRequestDto } from './dto/request/breeder-search-request.dto';
 import { BreederSearchResponseDto } from './dto/response/breeder-search-response.dto';
@@ -19,6 +20,7 @@ export class BreederService {
         @InjectModel(Breeder.name) private breederModel: Model<BreederDocument>,
         @InjectModel(Adopter.name) private adopterModel: Model<AdopterDocument>,
         @InjectModel(BreederReview.name) private breederReviewModel: Model<BreederReviewDocument>,
+        @InjectModel(ParentPet.name) private parentPetModel: Model<ParentPetDocument>,
     ) {}
 
     async searchBreeders(searchDto: BreederSearchRequestDto): Promise<BreederSearchResponseDto> {
@@ -340,6 +342,43 @@ export class BreederService {
     }
 
     /**
+     * 부모견/부모묘 목록 조회
+     *
+     * 특정 브리더의 활성화된 부모견/부모묘 목록을 조회합니다.
+     * ParentPet은 별도 컬렉션으로 관리되며, 사진은 Signed URL로 변환합니다.
+     *
+     * @param breederId 브리더 ID
+     * @returns 부모견/부모묘 목록
+     * @throws NotFoundException 존재하지 않는 브리더
+     */
+    async getParentPets(breederId: string): Promise<any> {
+        // 브리더 존재 확인
+        const breeder = await this.breederModel.findById(breederId).select('_id').lean();
+        if (!breeder) {
+            throw new NotFoundException('브리더를 찾을 수 없습니다.');
+        }
+
+        // ParentPet 컬렉션에서 활성화된 부모견/부모묘 조회
+        const parentPets = await this.parentPetModel
+            .find({ breederId, isActive: true })
+            .lean();
+
+        // 데이터 변환 (사진 URL은 fileName 그대로 반환, 필요시 Signed URL 생성은 클라이언트에서 처리)
+        const items = parentPets.map((pet: any) => ({
+            petId: pet._id.toString(),
+            name: pet.name,
+            breed: pet.breed,
+            gender: pet.gender,
+            birthDate: pet.birthDate,
+            photoUrl: pet.photoFileName || '', // 파일명 반환
+            healthRecords: pet.healthRecords || [],
+            description: pet.description || '',
+        }));
+
+        return { items };
+    }
+
+    /**
      * 브리더 개체 목록 조회 (필터링)
      *
      * @param breederId 브리더 ID
@@ -408,6 +447,66 @@ export class BreederService {
             availableCount,
             reservedCount,
             adoptedCount,
+        };
+    }
+
+    /**
+     * 표준 입양 신청 폼 질문 14개 (Figma 디자인 기반 - 수정 불가)
+     *
+     * 모든 브리더에게 자동으로 포함되는 필수 질문들입니다.
+     */
+    private getStandardQuestions() {
+        return [
+            { id: 'privacyConsent', type: 'checkbox', label: '개인정보 수집 및 이용에 동의하시나요?', required: true, order: 1, isStandard: true },
+            { id: 'selfIntroduction', type: 'textarea', label: '간단하게 자기소개 부탁드려요 (성별, 연령대, 거주지, 생활 패턴 등)', required: true, order: 2, isStandard: true },
+            { id: 'familyMembers', type: 'text', label: '함께 거주하는 가족 구성원을 알려주세요', required: true, order: 3, isStandard: true },
+            { id: 'allFamilyConsent', type: 'checkbox', label: '모든 가족 구성원들이 입양에 동의하셨나요?', required: true, order: 4, isStandard: true },
+            { id: 'allergyTestInfo', type: 'text', label: '본인을 포함한 모든 가족 구성원분들께서 알러지 검사를 마치셨나요?', required: true, order: 5, isStandard: true },
+            { id: 'timeAwayFromHome', type: 'text', label: '평균적으로 집을 비우는 시간은 얼마나 되나요?', required: true, order: 6, isStandard: true },
+            { id: 'livingSpaceDescription', type: 'textarea', label: '아이와 함께 지내게 될 공간을 소개해 주세요', required: true, order: 7, isStandard: true },
+            { id: 'previousPetExperience', type: 'textarea', label: '현재 함께하는, 또는 이전에 함께했던 반려동물에 대해 알려주세요', required: true, order: 8, isStandard: true },
+            { id: 'canProvideBasicCare', type: 'checkbox', label: '정기 예방접종·건강검진·훈련 등 기본 케어를 책임지고 해주실 수 있나요?', required: true, order: 9, isStandard: true },
+            { id: 'canAffordMedicalExpenses', type: 'checkbox', label: '예상치 못한 질병이나 사고 등으로 치료비가 발생할 경우 감당 가능하신가요?', required: true, order: 10, isStandard: true },
+            { id: 'neuteringConsent', type: 'checkbox', label: '모든 아이들은 중성화 후 분양되거나, 입양 후 중성화를 진행해야 합니다. 동의하십니까?', required: true, order: 11, isStandard: true },
+            { id: 'preferredPetDescription', type: 'textarea', label: '마음에 두신 아이가 있으신가요? (특징: 성별, 타입, 외모, 컬러패턴, 성격 등)', required: false, order: 12, isStandard: true },
+            { id: 'desiredAdoptionTiming', type: 'text', label: '원하시는 입양 시기가 있나요?', required: false, order: 13, isStandard: true },
+            { id: 'additionalNotes', type: 'textarea', label: '마지막으로 궁금하신 점이나 남기시고 싶으신 말씀이 있나요?', required: false, order: 14, isStandard: true },
+        ];
+    }
+
+    /**
+     * 입양 신청 폼 조회 (표준 + 커스텀 질문) - 공개 API
+     *
+     * 입양자가 특정 브리더의 입양 신청 폼 구조를 조회합니다.
+     * 표준 14개 질문은 자동으로 포함되며, 브리더가 추가한 커스텀 질문도 함께 반환합니다.
+     *
+     * @param breederId 브리더 ID
+     * @returns 전체 폼 구조 (표준 + 커스텀 질문)
+     */
+    async getApplicationForm(breederId: string): Promise<any> {
+        const breeder = await this.breederModel.findById(breederId).select('applicationForm').lean();
+        if (!breeder) {
+            throw new NotFoundException('브리더를 찾을 수 없습니다.');
+        }
+
+        const standardQuestions = this.getStandardQuestions();
+
+        // 브리더의 커스텀 질문 가져오기
+        const customQuestions = ((breeder as any).applicationForm || []).map((q: any, index: number) => ({
+            id: q.id,
+            type: q.type,
+            label: q.label,
+            required: q.required,
+            options: q.options,
+            placeholder: q.placeholder,
+            order: standardQuestions.length + index + 1,
+            isStandard: false,
+        }));
+
+        return {
+            standardQuestions,
+            customQuestions,
+            totalQuestions: standardQuestions.length + customQuestions.length,
         };
     }
 }
