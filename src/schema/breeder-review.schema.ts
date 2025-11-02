@@ -53,6 +53,36 @@ export class BreederReview {
      */
     @Prop({ default: true })
     isVisible: boolean;
+
+    /**
+     * 신고 여부
+     */
+    @Prop({ default: false })
+    isReported: boolean;
+
+    /**
+     * 신고자 ID
+     */
+    @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Adopter' })
+    reportedBy?: MongooseSchema.Types.ObjectId;
+
+    /**
+     * 신고 사유
+     */
+    @Prop()
+    reportReason?: string;
+
+    /**
+     * 신고 상세 설명
+     */
+    @Prop()
+    reportDescription?: string;
+
+    /**
+     * 신고 일시
+     */
+    @Prop()
+    reportedAt?: Date;
 }
 
 export const BreederReviewSchema = SchemaFactory.createForClass(BreederReview);
