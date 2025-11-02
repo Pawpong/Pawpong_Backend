@@ -11,17 +11,22 @@ import { AdopterService } from './adopter.service';
 import { FavoriteAddRequestDto } from './dto/request/favorite-add-request.dto';
 import { ReviewCreateRequestDto } from './dto/request/review-create-request.dto';
 import { ReportCreateRequestDto } from './dto/request/report-create-request.dto';
+import { ReviewReportRequestDto } from './dto/request/review-report-request.dto';
 import { ApplicationCreateRequestDto } from './dto/request/application-create-request.dto';
 import { ApiResponseDto } from '../../common/dto/response/api-response.dto';
 import { PaginationResponseDto } from '../../common/dto/pagination/pagination-response.dto';
 import { FavoriteAddResponseDto } from './dto/response/favorite-add-response.dto';
 import { ReportCreateResponseDto } from './dto/response/report-create-response.dto';
 import { ReviewCreateResponseDto } from './dto/response/review-create-response.dto';
+import { ReviewReportResponseDto } from './dto/response/review-report-response.dto';
 import { AdopterProfileUpdateResponseDto } from './dto/response/profile-update-response.dto';
 import { AdopterProfileResponseDto } from './dto/response/adopter-profile-response.dto';
 import { FavoriteRemoveResponseDto } from './dto/response/favorite-remove-response.dto';
 import { ApplicationCreateResponseDto } from './dto/response/application-create-response.dto';
 import { FavoriteListResponseDto, FavoriteBreederDataDto } from './dto/response/favorite-list-response.dto';
+import { ApplicationListResponseDto } from './dto/response/application-list-response.dto';
+import { ApplicationDetailResponseDto } from './dto/response/application-detail-response.dto';
+import { ApplicationListItemResponseDto } from './dto/response/application-list-item-response.dto';
 
 @ApiController('입양자')
 @Controller('adopter')
@@ -63,6 +68,59 @@ Figma 상담 신청 폼 기반으로 재설계된 API입니다.
     ): Promise<ApiResponseDto<ApplicationCreateResponseDto>> {
         const result = await this.adopterService.createApplication(user.userId, createApplicationDto);
         return ApiResponseDto.success(result, '입양 신청이 성공적으로 제출되었습니다.');
+    }
+
+    @Get('applications')
+    @ApiPaginatedEndpoint({
+        summary: '내가 보낸 입양 신청 목록 조회',
+        description: `입양자가 자신이 제출한 모든 입양 신청 내역을 페이지네이션으로 조회합니다.
+
+**응답 데이터:**
+- 신청 ID, 브리더 정보, 반려동물 정보 (있는 경우)
+- 신청 상태 (consultation_pending, consultation_completed, adoption_approved, adoption_rejected)
+- 신청 일시, 처리 일시
+
+**정렬:**
+- 최신 신청순으로 정렬
+
+**Query Parameters:**
+- \`page\`: 페이지 번호 (기본: 1)
+- \`limit\`: 페이지당 아이템 수 (기본: 10)`,
+        responseType: ApplicationListResponseDto,
+        itemType: ApplicationListItemResponseDto,
+        isPublic: false,
+    })
+    async getMyApplications(
+        @CurrentUser() user: any,
+        @Query('page') page: number = 1,
+        @Query('limit') limit: number = 10,
+    ): Promise<ApiResponseDto<PaginationResponseDto<ApplicationListItemResponseDto>>> {
+        const result = await this.adopterService.getMyApplications(user.userId, Number(page), Number(limit));
+        return ApiResponseDto.success(result, '입양 신청 목록이 조회되었습니다.');
+    }
+
+    @Get('applications/:id')
+    @ApiEndpoint({
+        summary: '내가 보낸 입양 신청 상세 조회',
+        description: `입양자가 자신이 제출한 특정 입양 신청의 상세 정보를 조회합니다.
+
+**응답 데이터:**
+- 신청 ID, 브리더 정보, 반려동물 정보 (있는 경우)
+- 신청서 전체 내용 (8가지 필수 정보 포함)
+- 신청 상태, 신청 일시, 처리 일시
+- 브리더 메모 (처리 완료 후 확인 가능)
+
+**권한:**
+- 본인이 제출한 신청만 조회 가능`,
+        responseType: ApplicationDetailResponseDto,
+        isPublic: false,
+    })
+    async getApplicationDetail(
+        @CurrentUser() user: any,
+        @Param('id') applicationId: string,
+    ): Promise<ApiResponseDto<ApplicationDetailResponseDto>> {
+        const result = await this.adopterService.getApplicationDetail(user.userId, applicationId);
+        return ApiResponseDto.success(result, '입양 신청 상세 정보가 조회되었습니다.');
     }
 
     @Post('review')
@@ -158,6 +216,26 @@ Figma 상담 신청 폼 기반으로 재설계된 API입니다.
     ): Promise<ApiResponseDto<ReportCreateResponseDto>> {
         const result = await this.adopterService.createReport(user.userId, createReportDto);
         return ApiResponseDto.success(result, '신고가 성공적으로 제출되었습니다.');
+    }
+
+    @Post('report/review')
+    @ApiEndpoint({
+        summary: '후기 신고',
+        description: '부적절한 내용이 포함된 후기를 신고합니다. 관리자가 검토 후 조치합니다.',
+        responseType: ReviewReportResponseDto,
+        isPublic: false,
+    })
+    async reportReview(
+        @CurrentUser() user: any,
+        @Body() reportDto: ReviewReportRequestDto,
+    ): Promise<ApiResponseDto<ReviewReportResponseDto>> {
+        const result = await this.adopterService.reportReview(
+            user.userId,
+            reportDto.reviewId,
+            reportDto.reason,
+            reportDto.description,
+        );
+        return ApiResponseDto.success(result, '후기가 신고되었습니다.');
     }
 
     @Get('profile')

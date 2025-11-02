@@ -76,10 +76,23 @@ export class AdopterService {
             throw new BadRequestException('개인정보 수집 및 이용에 동의해야 신청이 가능합니다.');
         }
 
-        // 3. 브리더 계정 존재 검증
+        // 3. 브리더 계정 존재 검증 및 커스텀 폼 가져오기
         const breeder = await this.breederRepository.findById(dto.breederId);
         if (!breeder) {
             throw new BadRequestException('해당 브리더를 찾을 수 없습니다.');
+        }
+
+        // 3-1. 커스텀 질문 validation (브리더가 설정한 필수 질문 체크)
+        const customQuestions = breeder.applicationForm || [];
+        const customResponsesMap = new Map((dto.customResponses || []).map(r => [r.questionId, r.answer]));
+
+        for (const question of customQuestions) {
+            if (question.required) {
+                const answer = customResponsesMap.get(question.id);
+                if (!answer || (typeof answer === 'string' && answer.trim() === '')) {
+                    throw new BadRequestException(`필수 질문에 답변해주세요: ${question.label}`);
+                }
+            }
         }
 
         // 4. 반려동물 검증 (petId가 있는 경우에만)
@@ -106,7 +119,21 @@ export class AdopterService {
             throw new ConflictException('해당 브리더에게 이미 대기 중인 상담 신청이 있습니다.');
         }
 
-        // 6. AdoptionApplication 컬렉션에 저장할 데이터 구성
+        // 6. 커스텀 응답 스냅샷 생성 (브리더가 나중에 질문을 수정/삭제해도 기록 유지)
+        const customResponsesSnapshot = (dto.customResponses || []).map(response => {
+            const question = customQuestions.find(q => q.id === response.questionId);
+            if (!question) {
+                throw new BadRequestException(`존재하지 않는 질문 ID입니다: ${response.questionId}`);
+            }
+            return {
+                questionId: response.questionId,
+                questionLabel: question.label,
+                questionType: question.type,
+                answer: response.answer,
+            };
+        });
+
+        // 7. AdoptionApplication 컬렉션에 저장할 데이터 구성
         const newApplication = new this.adoptionApplicationModel({
             breederId: dto.breederId,
             adopterId: userId,
@@ -116,7 +143,7 @@ export class AdopterService {
             petId: pet ? dto.petId : undefined,
             petName: pet ? pet.name : undefined,
             status: ApplicationStatus.CONSULTATION_PENDING,
-            applicationData: {
+            standardResponses: {
                 privacyConsent: dto.privacyConsent,
                 selfIntroduction: dto.selfIntroduction,
                 familyMembers: dto.familyMembers,
@@ -125,13 +152,21 @@ export class AdopterService {
                 timeAwayFromHome: dto.timeAwayFromHome,
                 livingSpaceDescription: dto.livingSpaceDescription,
                 previousPetExperience: dto.previousPetExperience,
+                // 추가된 Figma 디자인 기반 필드들
+                canProvideBasicCare: dto.canProvideBasicCare,
+                canAffordMedicalExpenses: dto.canAffordMedicalExpenses,
+                neuteringConsent: dto.neuteringConsent,
+                preferredPetDescription: dto.preferredPetDescription,
+                desiredAdoptionTiming: dto.desiredAdoptionTiming,
+                additionalNotes: dto.additionalNotes,
             },
+            customResponses: customResponsesSnapshot,
             appliedAt: new Date(),
         });
 
         const savedApplication = await newApplication.save();
 
-        // 7. 응답 데이터 구성 (Mapper 패턴 사용)
+        // 8. 응답 데이터 구성 (Mapper 패턴 사용)
         return AdopterMapper.toApplicationCreateResponse(savedApplication, breeder.name, pet?.name);
     }
 
@@ -500,6 +535,150 @@ export class AdopterService {
             reviewType: review.type,
             writtenAt: review.writtenAt,
             isVisible: review.isVisible,
+        };
+    }
+
+    /**
+     * 후기 신고 처리
+     *
+     * 부적절한 후기를 신고하여 관리자 검토를 요청합니다.
+     * 신고된 후기는 isReported 필드가 true로 변경되며,
+     * 관리자가 검토 후 공개 여부를 결정합니다.
+     *
+     * @param userId 신고자 (입양자) 고유 ID
+     * @param reviewId 신고할 후기 ID
+     * @param reason 신고 사유
+     * @param description 신고 상세 설명
+     * @returns 성공 메시지
+     * @throws BadRequestException 존재하지 않는 후기
+     */
+    async reportReview(userId: string, reviewId: string, reason: string, description: string): Promise<any> {
+        // 입양자 존재 확인
+        const adopter = await this.adopterRepository.findById(userId);
+        if (!adopter) {
+            throw new BadRequestException('입양자 정보를 찾을 수 없습니다.');
+        }
+
+        // 후기 존재 확인
+        const review = await this.breederReviewModel.findById(reviewId);
+        if (!review) {
+            throw new BadRequestException('신고할 후기를 찾을 수 없습니다.');
+        }
+
+        // 후기 신고 정보 업데이트
+        review.isReported = true;
+        review.reportedBy = userId as any;
+        review.reportReason = reason;
+        review.reportDescription = description;
+        review.reportedAt = new Date();
+
+        await review.save();
+
+        return {
+            message: '후기가 신고되었습니다. 관리자가 검토 후 처리합니다.',
+        };
+    }
+
+    /**
+     * 입양자가 제출한 모든 입양 신청 내역을 페이지네이션으로 조회
+     *
+     * @param userId 입양자 고유 ID
+     * @param page 페이지 번호 (기본값: 1)
+     * @param limit 페이지당 아이템 수 (기본값: 10)
+     * @returns 입양 신청 목록과 페이지네이션 정보
+     * @throws BadRequestException 존재하지 않는 입양자
+     */
+    async getMyApplications(userId: string, page: number = 1, limit: number = 10): Promise<any> {
+        // 입양자 존재 확인
+        const adopter = await this.adopterRepository.findById(userId);
+        if (!adopter) {
+            throw new BadRequestException('입양자 정보를 찾을 수 없습니다.');
+        }
+
+        // 전체 신청 수 조회
+        const totalItems = await this.adoptionApplicationModel.countDocuments({ adopterId: userId });
+
+        // 페이지네이션된 신청 목록 조회
+        const applications = await this.adoptionApplicationModel
+            .find({ adopterId: userId })
+            .sort({ appliedAt: -1 }) // 최신순 정렬
+            .skip((page - 1) * limit)
+            .limit(limit)
+            .exec();
+
+        // 응답 데이터 매핑
+        const items = await Promise.all(
+            applications.map(async (app: any) => {
+                const breeder = await this.breederRepository.findById(app.breederId.toString());
+                return {
+                    applicationId: app._id.toString(),
+                    breederId: app.breederId.toString(),
+                    breederName: breeder?.name || '알 수 없음',
+                    petId: app.petId?.toString(),
+                    petName: app.petName,
+                    status: app.status,
+                    appliedAt: app.appliedAt.toISOString(),
+                    processedAt: app.processedAt?.toISOString(),
+                };
+            }),
+        );
+
+        // 페이지네이션 정보 계산
+        const totalPages = Math.ceil(totalItems / limit);
+
+        return {
+            items,
+            pagination: {
+                currentPage: page,
+                pageSize: limit,
+                totalItems,
+                totalPages,
+                hasNextPage: page < totalPages,
+                hasPrevPage: page > 1,
+            },
+        };
+    }
+
+    /**
+     * 입양자가 자신이 제출한 특정 입양 신청의 상세 정보 조회
+     *
+     * @param userId 입양자 고유 ID
+     * @param applicationId 신청 ID
+     * @returns 신청 상세 정보
+     * @throws BadRequestException 존재하지 않는 신청 또는 권한 없음
+     */
+    async getApplicationDetail(userId: string, applicationId: string): Promise<any> {
+        // 입양자 존재 확인
+        const adopter = await this.adopterRepository.findById(userId);
+        if (!adopter) {
+            throw new BadRequestException('입양자 정보를 찾을 수 없습니다.');
+        }
+
+        // 신청 조회 (본인 신청만 조회 가능)
+        const application = await this.adoptionApplicationModel.findOne({
+            _id: applicationId,
+            adopterId: userId,
+        });
+
+        if (!application) {
+            throw new BadRequestException('해당 입양 신청을 찾을 수 없거나 조회 권한이 없습니다.');
+        }
+
+        // 브리더 정보 조회
+        const breeder = await this.breederRepository.findById(application.breederId.toString());
+
+        return {
+            applicationId: (application as any)._id.toString(),
+            breederId: application.breederId.toString(),
+            breederName: breeder?.name || '알 수 없음',
+            petId: application.petId?.toString(),
+            petName: application.petName,
+            status: application.status,
+            standardResponses: application.standardResponses,
+            customResponses: application.customResponses || [],
+            appliedAt: application.appliedAt.toISOString(),
+            processedAt: application.processedAt?.toISOString(),
+            breederNotes: application.breederNotes,
         };
     }
 }

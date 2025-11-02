@@ -1,11 +1,45 @@
-import { IsString, IsNotEmpty, IsBoolean, MaxLength } from 'class-validator';
+import { IsString, IsNotEmpty, IsBoolean, MaxLength, IsArray, ValidateNested, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 
 /**
- * 입양 신청 생성 요청 DTO (Figma 디자인 기반)
+ * 커스텀 질문 응답 DTO
+ */
+export class CustomQuestionAnswerDto {
+    /**
+     * 질문 ID (브리더가 설정한 커스텀 질문의 ID)
+     * @example "custom_visit_time"
+     */
+    @ApiProperty({
+        description: '브리더가 설정한 커스텀 질문 ID',
+        example: 'custom_visit_time',
+    })
+    @IsString()
+    @IsNotEmpty()
+    questionId: string;
+
+    /**
+     * 응답 값
+     * - text/textarea: string
+     * - select/radio: string
+     * - checkbox: string[] (배열)
+     * - file: string (파일명)
+     *
+     * @example "오후 (13:00-17:00)"
+     */
+    @ApiProperty({
+        description: '질문에 대한 응답 (타입에 따라 string 또는 string[])',
+        example: '오후 (13:00-17:00)',
+    })
+    answer: any;
+}
+
+/**
+ * 입양 신청 생성 요청 DTO (Figma 디자인 기반 + 커스텀 질문)
  *
- * Figma 상담 신청 폼 구조에 맞춰 재설계된 DTO입니다.
- * 모든 필드는 DB에 저장되며, 브리더가 상세하게 확인할 수 있습니다.
+ * **구조:**
+ * - 표준 14개 필드: 모든 브리더 공통 (필수)
+ * - 커스텀 응답: 해당 브리더가 추가한 질문들 (선택/필수 혼합)
  *
  * 입양자의 기본 정보(이름, 휴대폰, 이메일)는 JWT 토큰에서 자동으로 추출됩니다.
  */
@@ -151,15 +185,135 @@ export class ApplicationCreateRequestDto {
      *
      * 포함 내용: 반려동물의 품종, 성격, 함께한 기간, 이별 사유 등
      *
-     * @example "5년 전 고양이 한 마리를 키웠습니다. 러시안블루 품종이었으며, 매우 온순한 성격이었습니다. 수명을 다해 무지개다리를 건넜습니다."
+     * @example "5년 전 고양이 한 마리를 키웠습니다. 러시안블루 품종이었으며, 매우 온순한 성격이었습니다. 수명을 다해 무지개다리를 건넸습니다."
      */
     @ApiProperty({
         description: '현재/이전 반려동물 정보 (품종, 성격, 함께한 기간, 이별 사유 등)',
-        example: '5년 전 고양이 한 마리를 키웠습니다. 러시안블루 품종이었으며, 매우 온순한 성격이었습니다. 수명을 다해 무지개다리를 건넜습니다.',
+        example: '5년 전 고양이 한 마리를 키웠습니다. 러시안블루 품종이었으며, 매우 온순한 성격이었습니다. 수명을 다해 무지개다리를 건넸습니다.',
         maxLength: 1500,
     })
     @IsString()
     @IsNotEmpty()
     @MaxLength(1500, { message: '반려동물 경험은 최대 1500자까지 입력 가능합니다.' })
     previousPetExperience: string;
+
+    /**
+     * 기본 케어 책임 가능 여부
+     *
+     * 정기 예방접종·건강검진·훈련 등 기본 케어를 책임지고 제공할 수 있는지 확인
+     *
+     * @example true
+     */
+    @ApiProperty({
+        description: '정기 예방접종·건강검진·훈련 등 기본 케어를 책임지고 해주실 수 있나요?',
+        example: true,
+    })
+    @IsBoolean()
+    @IsNotEmpty()
+    canProvideBasicCare: boolean;
+
+    /**
+     * 치료비 감당 가능 여부
+     *
+     * 예상치 못한 질병이나 사고로 인한 치료비 발생 시 감당 가능한지 확인
+     *
+     * @example true
+     */
+    @ApiProperty({
+        description: '예상치 못한 질병이나 사고 등으로 치료비가 발생할 경우 감당 가능하신가요?',
+        example: true,
+    })
+    @IsBoolean()
+    @IsNotEmpty()
+    canAffordMedicalExpenses: boolean;
+
+    /**
+     * 중성화 동의 여부
+     *
+     * 모든 아이들은 중성화 후 분양되거나, 입양 후 중성화를 진행해야 합니다
+     *
+     * @example true
+     */
+    @ApiProperty({
+        description: '모든 아이들은 중성화 후 분양되거나, 입양 후 중성화를 진행해야 합니다. 동의하십니까?',
+        example: true,
+    })
+    @IsBoolean()
+    @IsNotEmpty()
+    neuteringConsent: boolean;
+
+    /**
+     * 마음에 두신 아이 또는 원하는 특징 (선택사항, 최대 1500자)
+     *
+     * 특정 아이가 있거나, 원하는 특징(성별, 타입, 외모, 컬러패턴, 성격 등)을 자유롭게 기술
+     *
+     * @example "활발하고 사람을 좋아하는 포메라니안을 찾고 있습니다. 크림색 털을 가진 아이면 좋겠습니다."
+     */
+    @ApiProperty({
+        description: '마음에 두신 아이가 있으신가요? (특징: 성별, 타입, 외모, 컬러패턴, 성격 등)',
+        example: '활발하고 사람을 좋아하는 포메라니안을 찾고 있습니다.',
+        maxLength: 1500,
+        required: false,
+    })
+    @IsString()
+    @MaxLength(1500, { message: '선호 반려동물 설명은 최대 1500자까지 입력 가능합니다.' })
+    preferredPetDescription?: string;
+
+    /**
+     * 원하는 입양 시기 (선택사항)
+     *
+     * 입양 희망 시기를 자유롭게 기술
+     *
+     * @example "2개월 후 (2025년 3월 예정)"
+     */
+    @ApiProperty({
+        description: '원하시는 입양 시기가 있나요?',
+        example: '2개월 후 (2025년 3월 예정)',
+        required: false,
+    })
+    @IsString()
+    desiredAdoptionTiming?: string;
+
+    /**
+     * 추가 문의사항 또는 남기고 싶은 말씀 (선택사항, 최대 1500자)
+     *
+     * 마지막으로 궁금한 점이나 브리더에게 전하고 싶은 메시지
+     *
+     * @example "첫 입양이라 많이 긴장되지만, 좋은 가족이 되도록 최선을 다하겠습니다."
+     */
+    @ApiProperty({
+        description: '마지막으로 궁금하신 점이나 남기시고 싶으신 말씀이 있나요?',
+        example: '첫 입양이라 많이 긴장되지만, 좋은 가족이 되도록 최선을 다하겠습니다.',
+        maxLength: 1500,
+        required: false,
+    })
+    @IsString()
+    @MaxLength(1500, { message: '추가 문의사항은 최대 1500자까지 입력 가능합니다.' })
+    additionalNotes?: string;
+
+    /**
+     * 커스텀 질문 응답 배열 (브리더가 추가한 질문들)
+     *
+     * 브리더가 설정한 추가 질문에 대한 응답입니다.
+     * 각 브리더마다 다른 질문을 설정할 수 있습니다.
+     *
+     * @example [
+     *   { questionId: "custom_visit_time", answer: "오후 (13:00-17:00)" },
+     *   { questionId: "custom_pet_preference", answer: "활발하고 사람을 좋아하는 성격" }
+     * ]
+     */
+    @ApiProperty({
+        description: '브리더가 추가한 커스텀 질문에 대한 응답 배열',
+        type: [CustomQuestionAnswerDto],
+        required: false,
+        example: [
+            { questionId: 'custom_visit_time', answer: '오후 (13:00-17:00)' },
+            { questionId: 'custom_pet_preference', answer: '활발하고 사람을 좋아하는 성격' },
+        ],
+    })
+    @IsArray()
+    @ValidateNested({ each: true })
+    @Type(() => CustomQuestionAnswerDto)
+    @IsOptional()
+    customResponses?: CustomQuestionAnswerDto[];
 }
