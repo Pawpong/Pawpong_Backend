@@ -1,8 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+
 import { AvailablePetRepository } from './repository/available-pet.repository';
 import { StorageService } from '../../common/storage/storage.service';
+
 import { AvailablePetResponseDto } from './dto/response/available-pet-response.dto';
+import { BannerResponseDto } from './dto/response/banner-response.dto';
+import { FaqResponseDto } from './dto/response/faq-response.dto';
+
 import { AvailablePetDocument } from '../../schema/available-pet.schema';
+import { Banner, BannerDocument } from '../../schema/banner.schema';
+import { Faq, FaqDocument } from '../../schema/faq.schema';
 
 /**
  * Home Service
@@ -15,6 +24,8 @@ export class HomeService {
     constructor(
         private readonly availablePetRepository: AvailablePetRepository,
         private readonly storageService: StorageService,
+        @InjectModel(Banner.name) private readonly bannerModel: Model<BannerDocument>,
+        @InjectModel(Faq.name) private readonly faqModel: Model<FaqDocument>,
     ) {}
 
     /**
@@ -62,5 +73,58 @@ export class HomeService {
             status: pet.status,
             createdAt: (pet as any).createdAt?.toISOString() || new Date().toISOString(),
         };
+    }
+
+    /**
+     * 메인 배너 목록 조회
+     * @returns BannerResponseDto 배열
+     */
+    async getBanners(): Promise<BannerResponseDto[]> {
+        this.logger.log('[getBanners] 메인 배너 목록 조회 시작');
+
+        // 활성화된 배너를 정렬 순서대로 조회
+        const banners = await this.bannerModel.find({ isActive: true }).sort({ order: 1 }).lean().exec();
+
+        this.logger.log(`[getBanners] ${banners.length}개의 배너 조회 완료`);
+
+        // DTO로 변환 (Signed URL 동적 생성)
+        const bannerDtos = banners.map((banner) => ({
+            id: banner._id.toString(),
+            imageUrl: this.storageService.generateSignedUrl(banner.imageFileName, 60), // 1시간 유효
+            linkType: banner.linkType,
+            linkUrl: banner.linkUrl,
+            order: banner.order,
+            title: banner.title,
+        }));
+
+        return bannerDtos;
+    }
+
+    /**
+     * 자주 묻는 질문 목록 조회
+     * @param userType 사용자 타입 (adopter, breeder, both)
+     * @param limit 조회할 개수
+     * @returns FaqResponseDto 배열
+     */
+    async getFaqs(userType: string = 'both', limit: number = 10): Promise<FaqResponseDto[]> {
+        this.logger.log(`[getFaqs] FAQ 조회 시작: userType=${userType}, limit=${limit}`);
+
+        // userType에 맞는 FAQ 조회 (both 포함)
+        const query = userType === 'both' ? { isActive: true } : { isActive: true, userType: { $in: [userType, 'both'] } };
+
+        const faqs = await this.faqModel.find(query).sort({ order: 1 }).limit(limit).lean().exec();
+
+        this.logger.log(`[getFaqs] ${faqs.length}개의 FAQ 조회 완료`);
+
+        // DTO로 변환
+        const faqDtos = faqs.map((faq) => ({
+            id: faq._id.toString(),
+            question: faq.question,
+            answer: faq.answer,
+            category: faq.category,
+            order: faq.order,
+        }));
+
+        return faqDtos;
     }
 }

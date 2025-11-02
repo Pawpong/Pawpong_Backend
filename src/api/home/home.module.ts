@@ -8,6 +8,8 @@ import { HomeService } from './home.service';
 import { AvailablePetRepository } from './repository/available-pet.repository';
 
 import { AvailablePet, AvailablePetSchema } from '../../schema/available-pet.schema';
+import { Banner, BannerSchema } from '../../schema/banner.schema';
+import { Faq, FaqSchema } from '../../schema/faq.schema';
 
 import { StorageModule } from '../../common/storage/storage.module';
 
@@ -17,7 +19,11 @@ import { StorageModule } from '../../common/storage/storage.module';
  */
 @Module({
     imports: [
-        MongooseModule.forFeature([{ name: AvailablePet.name, schema: AvailablePetSchema }]),
+        MongooseModule.forFeature([
+            { name: AvailablePet.name, schema: AvailablePetSchema },
+            { name: Banner.name, schema: BannerSchema },
+            { name: Faq.name, schema: FaqSchema },
+        ]),
         StorageModule, // Signed URL 생성을 위한 StorageService 주입
     ],
     controllers: [HomeController],
