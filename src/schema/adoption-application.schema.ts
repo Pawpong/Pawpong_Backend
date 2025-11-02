@@ -4,12 +4,49 @@ import { Document, Schema as MongooseSchema } from 'mongoose';
 export type AdoptionApplicationDocument = AdoptionApplication & Document;
 
 /**
- * 입양 신청 상세 정보 (Figma 디자인 기반)
+ * 커스텀 질문 응답
  *
- * 신청 폼의 모든 필드를 명시적으로 정의합니다.
+ * 브리더가 추가한 질문에 대한 입양자의 응답
  */
 @Schema({ _id: false })
-export class ApplicationFormData {
+export class CustomQuestionResponse {
+    /**
+     * 질문 ID (브리더의 applicationForm[].id와 매칭)
+     */
+    @Prop({ required: true })
+    questionId: string;
+
+    /**
+     * 질문 라벨 (스냅샷 - 나중에 브리더가 질문을 수정/삭제해도 기록 유지)
+     */
+    @Prop({ required: true })
+    questionLabel: string;
+
+    /**
+     * 질문 타입 (스냅샷)
+     */
+    @Prop({ required: true })
+    questionType: string;
+
+    /**
+     * 응답 값 (타입에 따라 다양한 형태 가능)
+     * - text/textarea: string
+     * - select/radio: string
+     * - checkbox: string[]
+     * - file: string (파일명)
+     */
+    @Prop({ type: MongooseSchema.Types.Mixed, required: true })
+    answer: any;
+}
+
+/**
+ * 표준 입양 신청 정보 (Figma 디자인 기반 - 모든 브리더 공통 필수)
+ *
+ * 이 17개 필드는 모든 브리더에게 필수로 적용됩니다.
+ * 데이터 분석과 표준화를 위해 정적으로 관리합니다.
+ */
+@Schema({ _id: false })
+export class StandardApplicationData {
     /**
      * 개인정보 수집 및 이용 동의 여부
      */
@@ -63,6 +100,48 @@ export class ApplicationFormData {
      */
     @Prop({ required: true, maxlength: 1500 })
     previousPetExperience: string;
+
+    /**
+     * 기본 케어 책임 가능 여부
+     * 정기 예방접종·건강검진·훈련 등 기본 케어를 책임질 수 있는지
+     */
+    @Prop({ required: true })
+    canProvideBasicCare: boolean;
+
+    /**
+     * 치료비 감당 가능 여부
+     * 예상치 못한 질병이나 사고로 인한 치료비 발생 시 감당 가능한지
+     */
+    @Prop({ required: true })
+    canAffordMedicalExpenses: boolean;
+
+    /**
+     * 중성화 동의 여부
+     * 중성화 후 분양 또는 입양 후 중성화 진행에 동의
+     */
+    @Prop({ required: true })
+    neuteringConsent: boolean;
+
+    /**
+     * 마음에 두신 아이 또는 원하는 특징 (선택사항, 최대 1500자)
+     * 특정 아이 또는 성별, 타입, 외모, 컬러패턴, 성격 등 원하는 특징
+     */
+    @Prop({ required: false, maxlength: 1500 })
+    preferredPetDescription?: string;
+
+    /**
+     * 원하는 입양 시기 (선택사항)
+     * 입양 희망 시기
+     */
+    @Prop({ required: false })
+    desiredAdoptionTiming?: string;
+
+    /**
+     * 추가 문의사항 또는 남기고 싶은 말씀 (선택사항, 최대 1500자)
+     * 마지막으로 궁금한 점이나 브리더에게 전하고 싶은 메시지
+     */
+    @Prop({ required: false, maxlength: 1500 })
+    additionalNotes?: string;
 }
 
 /**
@@ -134,10 +213,16 @@ export class AdoptionApplication {
     status: string;
 
     /**
-     * 입양 신청 폼 응답 데이터 (Figma 디자인 기반 명시적 필드)
+     * 표준 입양 신청 폼 응답 데이터 (Figma 디자인 기반 17개 필수 필드)
      */
-    @Prop({ required: true, type: ApplicationFormData })
-    applicationData: ApplicationFormData;
+    @Prop({ required: true, type: StandardApplicationData })
+    standardResponses: StandardApplicationData;
+
+    /**
+     * 커스텀 질문 응답 데이터 (브리더가 추가한 질문들)
+     */
+    @Prop({ type: [CustomQuestionResponse], default: [] })
+    customResponses: CustomQuestionResponse[];
 
     /**
      * 신청 접수 일시
