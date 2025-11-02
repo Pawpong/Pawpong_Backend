@@ -140,6 +140,38 @@ export class AdminController {
         return ApiResponseDto.success(result, '신고 목록이 조회되었습니다.');
     }
 
+    @Get('reports/reviews')
+    @ApiEndpoint({
+        summary: '후기 신고 목록 조회',
+        description: '신고된 후기 목록을 조회합니다. 입양자가 신고한 부적절한 후기들을 관리자가 검토할 수 있습니다.',
+        responseType: Object,
+        isPublic: false,
+    })
+    async getReviewReports(
+        @CurrentUser() user: any,
+        @Query('page') page: string = '1',
+        @Query('limit') limit: string = '10',
+    ): Promise<ApiResponseDto<any>> {
+        const result = await this.adminService.getReviewReports(user.userId, parseInt(page), parseInt(limit));
+        return ApiResponseDto.success(result, '후기 신고 목록이 조회되었습니다.');
+    }
+
+    @Get('reports/breeders')
+    @ApiEndpoint({
+        summary: '브리더 신고 목록 조회',
+        description: '브리더에 대한 신고 목록을 조회합니다. 입양자가 제출한 브리더 신고들을 관리자가 검토할 수 있습니다.',
+        responseType: Object,
+        isPublic: false,
+    })
+    async getBreederReports(
+        @CurrentUser() user: any,
+        @Query('page') page: string = '1',
+        @Query('limit') limit: string = '10',
+    ): Promise<ApiResponseDto<any>> {
+        const result = await this.adminService.getBreederReports(user.userId, parseInt(page), parseInt(limit));
+        return ApiResponseDto.success(result, '브리더 신고 목록이 조회되었습니다.');
+    }
+
     @Put('reports/:breederId/:reportId')
     @ApiEndpoint({
         summary: '신고 처리',

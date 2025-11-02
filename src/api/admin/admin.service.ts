@@ -368,6 +368,82 @@ export class AdminService {
         };
     }
 
+    /**
+     * 후기 신고 목록 조회
+     *
+     * 신고된 후기 목록을 페이지네이션과 함께 조회합니다.
+     * BreederReview 컬렉션에서 isReported가 true인 후기들을 조회합니다.
+     *
+     * @param adminId 관리자 고유 ID
+     * @param page 페이지 번호
+     * @param limit 페이지당 항목 수
+     * @returns 신고된 후기 목록과 페이지네이션 정보
+     * @throws ForbiddenException 권한 없음
+     */
+    async getReviewReports(adminId: string, page: number = 1, limit: number = 10): Promise<any> {
+        const admin = await this.adminModel.findById(adminId);
+        if (!admin || !admin.permissions.canManageReports) {
+            throw new ForbiddenException('Access denied');
+        }
+
+        const skip = (page - 1) * limit;
+
+        // BreederReview 컬렉션에서 신고된 후기 조회
+        const [reviews, total] = await Promise.all([
+            this.breederReviewModel
+                .find({ isReported: true })
+                .sort({ reportedAt: -1 })
+                .skip(skip)
+                .limit(limit)
+                .populate('breederId', 'name')
+                .populate('reportedBy', 'nickname')
+                .lean(),
+            this.breederReviewModel.countDocuments({ isReported: true }),
+        ]);
+
+        const formattedReviews = reviews.map((review: any) => ({
+            reviewId: review._id.toString(),
+            breederId: review.breederId?._id?.toString(),
+            breederName: review.breederId?.name || 'Unknown',
+            reportedBy: review.reportedBy?._id?.toString(),
+            reporterName: review.reportedBy?.nickname || 'Unknown',
+            reportReason: review.reportReason,
+            reportDescription: review.reportDescription,
+            reportedAt: review.reportedAt,
+            content: review.content,
+            writtenAt: review.writtenAt,
+            isVisible: review.isVisible,
+        }));
+
+        return {
+            items: formattedReviews,
+            pagination: {
+                currentPage: page,
+                pageSize: limit,
+                totalItems: total,
+                totalPages: Math.ceil(total / limit),
+                hasNextPage: page < Math.ceil(total / limit),
+                hasPrevPage: page > 1,
+            },
+        };
+    }
+
+    /**
+     * 브리더 신고 목록 조회
+     *
+     * 브리더에 대한 신고 목록을 페이지네이션과 함께 조회합니다.
+     * Breeder 스키마의 reports 배열에서 신고들을 조회합니다.
+     *
+     * @param adminId 관리자 고유 ID
+     * @param page 페이지 번호
+     * @param limit 페이지당 항목 수
+     * @returns 브리더 신고 목록과 페이지네이션 정보
+     * @throws ForbiddenException 권한 없음
+     */
+    async getBreederReports(adminId: string, page: number = 1, limit: number = 10): Promise<any> {
+        return this.getReports(adminId, page, limit);
+    }
+
     async getReports(adminId: string, page: number = 1, limit: number = 10): Promise<any> {
         const admin = await this.adminModel.findById(adminId);
         if (!admin || !admin.permissions.canManageReports) {
@@ -403,18 +479,29 @@ export class AdminService {
 
         const total = totalCount[0]?.total || 0;
 
+        const formattedReports = reports.map((item) => ({
+            reportId: item.report.reportId,
+            reporterId: item.report.reporterId,
+            reporterName: item.report.reporterName,
+            type: item.report.type,
+            description: item.report.description,
+            status: item.report.status,
+            reportedAt: item.report.reportedAt,
+            targetType: 'breeder',
+            targetId: item.breederId.toString(),
+            targetName: item.breederName,
+        }));
+
         return {
-            reports: reports.map((item) => ({
-                ...item.report,
-                targetType: 'breeder',
-                targetId: item.breederId.toString(),
-                targetName: item.breederName,
-            })),
-            total,
-            page,
-            totalPages: Math.ceil(total / limit),
-            hasNext: page < Math.ceil(total / limit),
-            hasPrev: page > 1,
+            items: formattedReports,
+            pagination: {
+                currentPage: page,
+                pageSize: limit,
+                totalItems: total,
+                totalPages: Math.ceil(total / limit),
+                hasNextPage: page < Math.ceil(total / limit),
+                hasPrevPage: page > 1,
+            },
         };
     }
 
