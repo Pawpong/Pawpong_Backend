@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 
@@ -134,11 +134,11 @@ export class BreederService {
             .lean();
 
         if (!breeder) {
-            throw new NotFoundException('Breeder not found');
+            throw new BadRequestException('브리더를 찾을 수 없습니다.');
         }
 
         if (breeder.verification?.status !== VerificationStatus.APPROVED) {
-            throw new NotFoundException('Breeder profile not available');
+            throw new BadRequestException('브리더 프로필을 찾을 수 없습니다.');
         }
 
         // Check if user has favorited this breeder
@@ -238,7 +238,7 @@ export class BreederService {
         // 1. 브리더 존재 확인
         const breeder = await this.breederModel.findById(breederId).select('stats').lean();
         if (!breeder) {
-            throw new NotFoundException('브리더를 찾을 수 없습니다.');
+            throw new BadRequestException('브리더를 찾을 수 없습니다.');
         }
 
         // 2. BreederReview 컬렉션에서 조회 (참조 방식)
@@ -292,13 +292,13 @@ export class BreederService {
         const breeder = await this.breederModel.findById(breederId).lean();
 
         if (!breeder) {
-            throw new NotFoundException('Breeder not found');
+            throw new BadRequestException('브리더를 찾을 수 없습니다.');
         }
 
         const pet = (breeder as any).availablePets?.find((p: any) => p.petId === petId && p.isActive);
 
         if (!pet) {
-            throw new NotFoundException('Pet not found');
+            throw new BadRequestException('반려동물을 찾을 수 없습니다.');
         }
 
         // 부모견/부모묘 정보 찾기
@@ -349,13 +349,13 @@ export class BreederService {
      *
      * @param breederId 브리더 ID
      * @returns 부모견/부모묘 목록
-     * @throws NotFoundException 존재하지 않는 브리더
+     * @throws BadRequestException 존재하지 않는 브리더
      */
     async getParentPets(breederId: string): Promise<any> {
         // 브리더 존재 확인
         const breeder = await this.breederModel.findById(breederId).select('_id').lean();
         if (!breeder) {
-            throw new NotFoundException('브리더를 찾을 수 없습니다.');
+            throw new BadRequestException('브리더를 찾을 수 없습니다.');
         }
 
         // ParentPet 컬렉션에서 활성화된 부모견/부모묘 조회
@@ -391,7 +391,7 @@ export class BreederService {
         const breeder = await this.breederModel.findById(breederId).select('availablePets').lean();
 
         if (!breeder) {
-            throw new NotFoundException('Breeder not found');
+            throw new BadRequestException('브리더를 찾을 수 없습니다.');
         }
 
         let allPets = (breeder as any).availablePets?.filter((pet: any) => pet.isActive) || [];
@@ -486,7 +486,7 @@ export class BreederService {
     async getApplicationForm(breederId: string): Promise<any> {
         const breeder = await this.breederModel.findById(breederId).select('applicationForm').lean();
         if (!breeder) {
-            throw new NotFoundException('브리더를 찾을 수 없습니다.');
+            throw new BadRequestException('브리더를 찾을 수 없습니다.');
         }
 
         const standardQuestions = this.getStandardQuestions();

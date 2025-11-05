@@ -9,7 +9,6 @@ import {
     Body,
     Param,
     BadRequestException,
-    NotFoundException,
     ForbiddenException,
 } from '@nestjs/common';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
@@ -120,7 +119,7 @@ export class UploadController {
         // 해당 petId가 본인 소유인지 확인
         const pet = await this.availablePetModel.findOne({ _id: petId, breederId: user.userId });
         if (!pet) {
-            throw new NotFoundException('해당 분양 개체를 찾을 수 없습니다.');
+            throw new BadRequestException('해당 분양 개체를 찾을 수 없습니다.');
         }
 
         const result = await this.storageService.uploadFile(file, 'pets/available');
@@ -159,7 +158,7 @@ export class UploadController {
         // 해당 petId가 본인 소유인지 확인
         const pet = await this.parentPetModel.findOne({ _id: petId, breederId: user.userId });
         if (!pet) {
-            throw new NotFoundException('해당 부모견/묘를 찾을 수 없습니다.');
+            throw new BadRequestException('해당 부모견/묘를 찾을 수 없습니다.');
         }
 
         const result = await this.storageService.uploadFile(file, 'pets/parent');

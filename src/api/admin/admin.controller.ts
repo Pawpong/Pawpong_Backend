@@ -26,6 +26,9 @@ import { UserStatusUpdateResponseDto } from './dto/response/user-status-update-r
 import { BreederVerificationResponseDto } from './dto/response/breeder-verification-response.dto';
 import { ApplicationMonitoringResponseDto } from './dto/response/application-monitoring-response.dto';
 import { BreederVerificationActionResponseDto } from './dto/response/breeder-verification-action-response.dto';
+import { ReviewReportItemDto } from './dto/response/review-report-list.dto';
+import { BreederReportItemDto } from './dto/response/breeder-report-list.dto';
+import { PaginationResponseDto } from '../../common/dto/pagination/pagination-response.dto';
 
 @ApiController('관리자')
 @Controller('admin')
@@ -144,14 +147,14 @@ export class AdminController {
     @ApiEndpoint({
         summary: '후기 신고 목록 조회',
         description: '신고된 후기 목록을 조회합니다. 입양자가 신고한 부적절한 후기들을 관리자가 검토할 수 있습니다.',
-        responseType: Object,
+        responseType: PaginationResponseDto,
         isPublic: false,
     })
     async getReviewReports(
         @CurrentUser() user: any,
         @Query('page') page: string = '1',
         @Query('limit') limit: string = '10',
-    ): Promise<ApiResponseDto<any>> {
+    ): Promise<ApiResponseDto<PaginationResponseDto<ReviewReportItemDto>>> {
         const result = await this.adminService.getReviewReports(user.userId, parseInt(page), parseInt(limit));
         return ApiResponseDto.success(result, '후기 신고 목록이 조회되었습니다.');
     }
@@ -160,14 +163,14 @@ export class AdminController {
     @ApiEndpoint({
         summary: '브리더 신고 목록 조회',
         description: '브리더에 대한 신고 목록을 조회합니다. 입양자가 제출한 브리더 신고들을 관리자가 검토할 수 있습니다.',
-        responseType: Object,
+        responseType: PaginationResponseDto,
         isPublic: false,
     })
     async getBreederReports(
         @CurrentUser() user: any,
         @Query('page') page: string = '1',
         @Query('limit') limit: string = '10',
-    ): Promise<ApiResponseDto<any>> {
+    ): Promise<ApiResponseDto<PaginationResponseDto<BreederReportItemDto>>> {
         const result = await this.adminService.getBreederReports(user.userId, parseInt(page), parseInt(limit));
         return ApiResponseDto.success(result, '브리더 신고 목록이 조회되었습니다.');
     }

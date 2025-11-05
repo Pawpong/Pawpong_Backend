@@ -27,6 +27,8 @@ import { FavoriteListResponseDto, FavoriteBreederDataDto } from './dto/response/
 import { ApplicationListResponseDto } from './dto/response/application-list-response.dto';
 import { ApplicationDetailResponseDto } from './dto/response/application-detail-response.dto';
 import { ApplicationListItemResponseDto } from './dto/response/application-list-item-response.dto';
+import { MyReviewItemDto } from './dto/response/my-review-item.dto';
+import { MyReviewDetailDto } from './dto/response/my-review-detail.dto';
 
 @ApiController('입양자')
 @Controller('adopter')
@@ -278,15 +280,15 @@ Figma 상담 신청 폼 기반으로 재설계된 API입니다.
 **페이지네이션:**
 - page: 페이지 번호 (기본값 1)
 - limit: 페이지당 항목 수 (기본값 10)`,
-        responseType: Object,
-        itemType: Object,
+        responseType: PaginationResponseDto,
+        itemType: MyReviewItemDto,
         isPublic: false,
     })
     async getMyReviews(
         @CurrentUser() user: any,
         @Query('page') page: number = 1,
         @Query('limit') limit: number = 10,
-    ): Promise<ApiResponseDto<any>> {
+    ): Promise<ApiResponseDto<PaginationResponseDto<MyReviewItemDto>>> {
         const result = await this.adopterService.getMyReviews(user.userId, Number(page), Number(limit));
         return ApiResponseDto.success(result, '내가 작성한 후기 목록이 조회되었습니다.');
     }
@@ -300,10 +302,13 @@ Figma 상담 신청 폼 기반으로 재설계된 API입니다.
 - 브리더 닉네임, 프로필 사진 URL, 레벨, 브리딩 동물 종류
 - 후기 내용, 후기 종류, 작성 일자
 - 공개 여부 (isVisible)`,
-        responseType: Object,
+        responseType: MyReviewDetailDto,
         isPublic: false,
     })
-    async getReviewDetail(@CurrentUser() user: any, @Param('id') reviewId: string): Promise<ApiResponseDto<any>> {
+    async getReviewDetail(
+        @CurrentUser() user: any,
+        @Param('id') reviewId: string,
+    ): Promise<ApiResponseDto<MyReviewDetailDto>> {
         const result = await this.adopterService.getReviewDetail(user.userId, reviewId);
         return ApiResponseDto.success(result, '후기 세부 정보가 조회되었습니다.');
     }

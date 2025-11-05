@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import * as request from 'supertest';
+import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { ValidationPipe } from '@nestjs/common';
 
@@ -44,20 +44,22 @@ export class AuthHelper {
    * 입양자 회원가입 및 토큰 획득
    */
   async getAdopterToken(): Promise<{ accessToken: string; userId: string }> {
-    const uniqueEmail = `adopter_${Date.now()}@test.com`;
+    const timestamp = Date.now();
+    const uniqueEmail = `adopter_${timestamp}@test.com`;
+    const providerId = Math.random().toString().substr(2, 10);
 
     const response = await request(this.app.getHttpServer())
       .post('/api/auth/register/adopter')
       .send({
+        tempId: `temp_kakao_${providerId}_${timestamp}`,
         email: uniqueEmail,
-        password: 'Test1234!@',
-        name: '테스트 입양자',
+        nickname: `테스트입양자${timestamp}`,
         phone: '010-1234-5678',
       });
 
     return {
-      accessToken: response.body.item.accessToken,
-      userId: response.body.item.userInfo.userId,
+      accessToken: response.body.data.accessToken,
+      userId: response.body.data.userId,
     };
   }
 
@@ -71,15 +73,26 @@ export class AuthHelper {
       .post('/api/auth/register/breeder')
       .send({
         email: uniqueEmail,
-        password: 'Test1234!@',
-        name: '테스트 브리더',
-        phone: '010-9876-5432',
-        businessNumber: '123-45-67890',
+        phoneNumber: '010-9876-5432',
+        breederName: '테스트 브리더',
+        breederLocation: {
+          city: '서울특별시',
+          district: '강남구',
+        },
+        animal: 'dog',
+        breeds: ['포메라니안', '말티즈'],
+        plan: 'basic',
+        level: 'new',
+        agreements: {
+          termsOfService: true,
+          privacyPolicy: true,
+          marketingConsent: false,
+        },
       });
 
     return {
-      accessToken: response.body.item.accessToken,
-      userId: response.body.item.userInfo.userId,
+      accessToken: response.body.data.accessToken,
+      userId: response.body.data.userId,
     };
   }
 
@@ -102,8 +115,8 @@ export class AuthHelper {
     }
 
     return {
-      accessToken: response.body.item.accessToken,
-      userId: response.body.item.userInfo.userId,
+      accessToken: response.body.data.accessToken,
+      userId: response.body.data.userId,
     };
   }
 }
@@ -200,7 +213,7 @@ export class ResponseValidator {
     expect(response.body).toHaveProperty('timestamp');
 
     if (response.body.success) {
-      expect(response.body).toHaveProperty('item');
+      expect(response.body).toHaveProperty('data');
       expect(response.body).toHaveProperty('message');
     } else {
       expect(response.body).toHaveProperty('error');
@@ -213,16 +226,16 @@ export class ResponseValidator {
   static validatePaginationResponse(response: any) {
     this.validateApiResponse(response);
 
-    expect(response.body.item).toHaveProperty('item');
-    expect(response.body.item).toHaveProperty('pageInfo');
+    expect(response.body.data).toHaveProperty('items');
+    expect(response.body.data).toHaveProperty('pagination');
 
-    const pageInfo = response.body.item.pageInfo;
-    expect(pageInfo).toHaveProperty('currentPage');
-    expect(pageInfo).toHaveProperty('pageSize');
-    expect(pageInfo).toHaveProperty('totalItems');
-    expect(pageInfo).toHaveProperty('totalPages');
-    expect(pageInfo).toHaveProperty('hasNextPage');
-    expect(pageInfo).toHaveProperty('hasPrevPage');
+    const pagination = response.body.data.pagination;
+    expect(pagination).toHaveProperty('currentPage');
+    expect(pagination).toHaveProperty('pageSize');
+    expect(pagination).toHaveProperty('totalItems');
+    expect(pagination).toHaveProperty('totalPages');
+    expect(pagination).toHaveProperty('hasNextPage');
+    expect(pagination).toHaveProperty('hasPrevPage');
   }
 
   /**
@@ -231,18 +244,14 @@ export class ResponseValidator {
   static validateAuthResponse(response: any) {
     this.validateApiResponse(response);
 
-    expect(response.body.item).toHaveProperty('accessToken');
-    expect(response.body.item).toHaveProperty('refreshToken');
-    expect(response.body.item).toHaveProperty('accessTokenExpiresIn');
-    expect(response.body.item).toHaveProperty('refreshTokenExpiresIn');
-    expect(response.body.item).toHaveProperty('userInfo');
-
-    const userInfo = response.body.item.userInfo;
-    expect(userInfo).toHaveProperty('userId');
-    expect(userInfo).toHaveProperty('emailAddress');
-    expect(userInfo).toHaveProperty('nickname');
-    expect(userInfo).toHaveProperty('userRole');
-    expect(userInfo).toHaveProperty('accountStatus');
+    expect(response.body.data).toHaveProperty('accessToken');
+    expect(response.body.data).toHaveProperty('refreshToken');
+    // Note: API returns nested user info directly in data, not in userInfo object
+    expect(response.body.data).toHaveProperty('userId');
+    expect(response.body.data).toHaveProperty('email');
+    expect(response.body.data).toHaveProperty('nickname');
+    expect(response.body.data).toHaveProperty('userRole');
+    expect(response.body.data).toHaveProperty('accountStatus');
   }
 }
 

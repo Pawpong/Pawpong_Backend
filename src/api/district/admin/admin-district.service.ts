@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, BadRequestException, ConflictException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 
@@ -46,7 +46,7 @@ export class AdminDistrictService {
         const district = await this.districtModel.findById(id).exec();
 
         if (!district) {
-            throw new NotFoundException(`ID ${id}에 해당하는 지역을 찾을 수 없습니다.`);
+            throw new BadRequestException(`ID ${id}에 해당하는 지역을 찾을 수 없습니다.`);
         }
 
         return this.toResponseDto(district);
@@ -59,7 +59,7 @@ export class AdminDistrictService {
         const district = await this.districtModel.findById(id).exec();
 
         if (!district) {
-            throw new NotFoundException(`ID ${id}에 해당하는 지역을 찾을 수 없습니다.`);
+            throw new BadRequestException(`ID ${id}에 해당하는 지역을 찾을 수 없습니다.`);
         }
 
         // city가 변경되는 경우 중복 체크
@@ -89,7 +89,7 @@ export class AdminDistrictService {
         const result = await this.districtModel.findByIdAndDelete(id).exec();
 
         if (!result) {
-            throw new NotFoundException(`ID ${id}에 해당하는 지역을 찾을 수 없습니다.`);
+            throw new BadRequestException(`ID ${id}에 해당하는 지역을 찾을 수 없습니다.`);
         }
     }
 

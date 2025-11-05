@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, BadRequestException, ConflictException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 
@@ -47,7 +47,7 @@ export class AdminBreedService {
         const breed = await this.breedModel.findById(id).exec();
 
         if (!breed) {
-            throw new NotFoundException(`ID ${id}에 해당하는 품종 카테고리를 찾을 수 없습니다.`);
+            throw new BadRequestException(`ID ${id}에 해당하는 품종 카테고리를 찾을 수 없습니다.`);
         }
 
         return this.toResponseDto(breed);
@@ -60,7 +60,7 @@ export class AdminBreedService {
         const breed = await this.breedModel.findById(id).exec();
 
         if (!breed) {
-            throw new NotFoundException(`ID ${id}에 해당하는 품종 카테고리를 찾을 수 없습니다.`);
+            throw new BadRequestException(`ID ${id}에 해당하는 품종 카테고리를 찾을 수 없습니다.`);
         }
 
         // category가 변경되는 경우 중복 체크
@@ -91,7 +91,7 @@ export class AdminBreedService {
         const result = await this.breedModel.findByIdAndDelete(id).exec();
 
         if (!result) {
-            throw new NotFoundException(`ID ${id}에 해당하는 품종 카테고리를 찾을 수 없습니다.`);
+            throw new BadRequestException(`ID ${id}에 해당하는 품종 카테고리를 찾을 수 없습니다.`);
         }
     }
 

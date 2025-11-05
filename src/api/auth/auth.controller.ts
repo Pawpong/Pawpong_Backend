@@ -42,6 +42,7 @@ import { RegisterAdopterResponseDto } from './dto/response/register-adopter-resp
 import { RegisterBreederResponseDto } from './dto/response/register-breeder-response.dto';
 import { PhoneVerificationResponseDto } from './dto/response/phone-verification-response.dto';
 import { VerificationDocumentsResponseDto } from './dto/response/verification-documents-response.dto';
+import { SocialCheckUserResponseDto } from './dto/response/social-check-user-response.dto';
 
 @ApiController('인증')
 @Controller('auth')
@@ -250,14 +251,14 @@ export class AuthController {
         summary: '소셜 로그인 사용자 존재 여부 확인',
         description:
             '소셜 로그인 제공자와 사용자 ID로 기존 가입 여부를 확인합니다. 존재하면 로그인, 없으면 회원가입 플로우로 진행합니다.',
-        responseType: Object,
+        responseType: SocialCheckUserResponseDto,
         isPublic: true,
     })
     async checkSocialUser(
         @Body('provider') provider: string,
         @Body('providerId') providerId: string,
         @Body('email') email?: string,
-    ): Promise<ApiResponseDto<any>> {
+    ): Promise<ApiResponseDto<SocialCheckUserResponseDto>> {
         const result = await this.authService.checkSocialUser(provider, providerId, email);
         return ApiResponseDto.success(result, result.exists ? '가입된 사용자입니다.' : '미가입 사용자입니다.');
     }
