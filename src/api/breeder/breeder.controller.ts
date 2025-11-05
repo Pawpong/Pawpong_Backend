@@ -16,6 +16,8 @@ import { PaginationResponseDto } from '../../common/dto/pagination/pagination-re
 import { BreederReviewsResponseDto, BreederReviewItemDto } from './dto/response/breeder-reviews-response.dto';
 import { PetDetailResponseDto } from './dto/response/pet-detail-response.dto';
 import { PetsListResponseDto, PetItemDto } from './dto/response/pets-list-response.dto';
+import { ParentPetListResponseDto } from './dto/response/parent-pet-list.dto';
+import { PublicApplicationFormResponseDto } from './dto/response/public-application-form.dto';
 
 @ApiController('브리더')
 @Controller('breeder')
@@ -138,10 +140,10 @@ export class BreederController {
         summary: '브리더 부모견/부모묘 목록 조회',
         description:
             '특정 브리더의 부모견/부모묘 목록을 조회합니다. 활성화된 부모견/부모묘만 반환되며, 사진 URL은 1시간 유효한 Signed URL로 제공됩니다.',
-        responseType: Object,
+        responseType: ParentPetListResponseDto,
         isPublic: true,
     })
-    async getParentPets(@Param('id') breederId: string): Promise<ApiResponseDto<any>> {
+    async getParentPets(@Param('id') breederId: string): Promise<ApiResponseDto<ParentPetListResponseDto>> {
         const result = await this.breederService.getParentPets(breederId);
         return ApiResponseDto.success(result, '부모견/부모묘 목록이 조회되었습니다.');
     }
@@ -163,10 +165,10 @@ export class BreederController {
 5. POST /api/adopter/application으로 입양 신청 제출
 
 **인증 불필요** (공개 API)`,
-        responseType: Object,
+        responseType: PublicApplicationFormResponseDto,
         isPublic: true,
     })
-    async getApplicationForm(@Param('id') breederId: string): Promise<ApiResponseDto<any>> {
+    async getApplicationForm(@Param('id') breederId: string): Promise<ApiResponseDto<PublicApplicationFormResponseDto>> {
         const result = await this.breederService.getApplicationForm(breederId);
         return ApiResponseDto.success(result, '입양 신청 폼 구조가 조회되었습니다.');
     }

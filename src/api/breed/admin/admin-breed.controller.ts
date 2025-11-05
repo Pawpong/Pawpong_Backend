@@ -62,12 +62,12 @@ export class AdminBreedController {
     }
 
     @Delete(':id')
-    @HttpCode(HttpStatus.NO_CONTENT)
     @ApiEndpoint({
         summary: '품종 카테고리 삭제',
         description: '기존 품종 카테고리를 삭제합니다. (관리자 전용)',
     })
-    async deleteBreed(@Param('id') id: string): Promise<void> {
+    async deleteBreed(@Param('id') id: string): Promise<ApiResponseDto<null>> {
         await this.adminBreedService.deleteBreed(id);
+        return ApiResponseDto.success(null, '품종 카테고리가 삭제되었습니다.');
     }
 }

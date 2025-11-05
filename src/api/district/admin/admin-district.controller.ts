@@ -64,12 +64,12 @@ export class AdminDistrictController {
     }
 
     @Delete(':id')
-    @HttpCode(HttpStatus.NO_CONTENT)
     @ApiEndpoint({
         summary: '지역 삭제',
         description: '기존 지역을 삭제합니다. (관리자 전용)',
     })
-    async deleteDistrict(@Param('id') id: string): Promise<void> {
+    async deleteDistrict(@Param('id') id: string): Promise<ApiResponseDto<null>> {
         await this.adminDistrictService.deleteDistrict(id);
+        return ApiResponseDto.success(null, '지역이 삭제되었습니다.');
     }
 }

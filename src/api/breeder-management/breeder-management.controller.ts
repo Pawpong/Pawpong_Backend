@@ -33,6 +33,7 @@ import { ApplicationStatusUpdateResponseDto } from './dto/response/application-s
 import { MyPetsListResponseDto, MyPetItemDto } from './dto/response/my-pets-list-response.dto';
 import { MyReviewsListResponseDto, MyReviewItemDto } from './dto/response/my-reviews-list-response.dto';
 import { ApplicationFormResponseDto } from './dto/response/application-form-response.dto';
+import { ApplicationFormUpdateResponseDto } from './dto/response/application-form-update-response.dto';
 
 @ApiController('브리더 관리')
 @Controller('breeder-management')
@@ -401,13 +402,13 @@ export class BreederManagementController {
   ]
 }
 \`\`\``,
-        responseType: Object,
+        responseType: ApplicationFormUpdateResponseDto,
         isPublic: false,
     })
     async updateApplicationForm(
         @CurrentUser() user: any,
         @Body() updateDto: ApplicationFormUpdateRequestDto,
-    ): Promise<ApiResponseDto<any>> {
+    ): Promise<ApiResponseDto<ApplicationFormUpdateResponseDto>> {
         const result = await this.breederManagementService.updateApplicationForm(user.userId, updateDto);
         return ApiResponseDto.success(result, '입양 신청 폼이 업데이트되었습니다.');
     }

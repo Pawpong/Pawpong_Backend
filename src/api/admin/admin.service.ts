@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { randomUUID } from 'crypto';
@@ -146,7 +146,7 @@ export class AdminService {
 
         const breeder = await this.breederModel.findById(breederId);
         if (!breeder) {
-            throw new NotFoundException('Breeder not found');
+            throw new BadRequestException('브리더를 찾을 수 없습니다.');
         }
 
         if (!breeder.verification) {
@@ -282,7 +282,7 @@ export class AdminService {
         }
 
         if (!user) {
-            throw new NotFoundException(`${role} not found`);
+            throw new BadRequestException(`${role === 'adopter' ? '입양자를' : '브리더를'} 찾을 수 없습니다.`);
         }
 
         if (role === 'adopter') {
@@ -522,7 +522,7 @@ export class AdminService {
         });
 
         if (!report) {
-            throw new NotFoundException('Report not found');
+            throw new BadRequestException('신고 내역을 찾을 수 없습니다.');
         }
 
         report.status = reportAction.reportStatus;
@@ -561,7 +561,7 @@ export class AdminService {
         });
 
         if (!review) {
-            throw new NotFoundException('Review not found');
+            throw new BadRequestException('후기를 찾을 수 없습니다.');
         }
 
         review.isVisible = false;
@@ -736,7 +736,7 @@ export class AdminService {
     async getAdminProfile(adminId: string): Promise<any> {
         const admin = await this.adminModel.findById(adminId).select('-password').lean();
         if (!admin) {
-            throw new NotFoundException('Admin not found');
+            throw new BadRequestException('관리자를 찾을 수 없습니다.');
         }
 
         return {
