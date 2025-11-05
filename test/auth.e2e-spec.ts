@@ -1,5 +1,5 @@
 import { INestApplication } from '@nestjs/common';
-import * as request from 'supertest';
+import request from 'supertest';
 import { createTestingApp, AuthHelper, TestDataHelper, ResponseValidator } from './test-utils';
 
 describe('Auth API E2E Tests', () => {
@@ -17,10 +17,12 @@ describe('Auth API E2E Tests', () => {
 
     describe('POST /api/auth/register/adopter', () => {
         it('입양자 회원가입 성공', async () => {
+            const timestamp = Date.now();
+            const providerId = Math.random().toString().substr(2, 10);
             const registerData = {
+                tempId: `temp_kakao_${providerId}_${timestamp}`,
                 email: TestDataHelper.generateEmail('adopter'),
-                password: 'Test1234!@',
-                name: '테스트 입양자',
+                nickname: `테스트입양자${timestamp}`,
                 phone: '010-1234-5678',
             };
 
@@ -30,16 +32,18 @@ describe('Auth API E2E Tests', () => {
                 .expect(200);
 
             ResponseValidator.validateAuthResponse(response);
-            expect(response.body.item.userInfo.userRole).toBe('adopter');
+            expect(response.body.data.userRole).toBe('adopter');
             expect(response.body.message).toBe('입양자 회원가입이 완료되었습니다.');
         });
 
         it('중복 이메일로 회원가입 실패', async () => {
             const email = TestDataHelper.generateEmail('duplicate');
+            const timestamp = Date.now();
+            const providerId = Math.random().toString().substr(2, 10);
             const registerData = {
+                tempId: `temp_kakao_${providerId}_${timestamp}`,
                 email,
-                password: 'Test1234!@',
-                name: '테스트 입양자',
+                nickname: `테스트입양자${timestamp}`,
                 phone: '010-1234-5678',
             };
 
@@ -50,9 +54,11 @@ describe('Auth API E2E Tests', () => {
                 .expect(200);
 
             // 중복 회원가입 시도
+            const timestamp2 = Date.now();
+            const providerId2 = Math.random().toString().substr(2, 10);
             const response = await request(app.getHttpServer())
                 .post('/api/auth/register/adopter')
-                .send(registerData)
+                .send({ ...registerData, tempId: `temp_kakao_${providerId2}_${timestamp2}`, nickname: `테스트입양자${timestamp2}` })
                 .expect(400);
 
             expect(response.body.success).toBe(false);
@@ -60,10 +66,12 @@ describe('Auth API E2E Tests', () => {
         });
 
         it('유효하지 않은 이메일 형식으로 회원가입 실패', async () => {
+            const timestamp = Date.now();
+            const providerId = Math.random().toString().substr(2, 10);
             const registerData = {
+                tempId: `temp_kakao_${providerId}_${timestamp}`,
                 email: 'invalid-email',
-                password: 'Test1234!@',
-                name: '테스트 입양자',
+                nickname: `테스트입양자${timestamp}`,
                 phone: '010-1234-5678',
             };
 
@@ -75,27 +83,27 @@ describe('Auth API E2E Tests', () => {
             expect(response.body.success).toBe(false);
         });
 
-        it('약한 비밀번호로 회원가입 실패', async () => {
-            const registerData = {
-                email: TestDataHelper.generateEmail('weak'),
-                password: '1234',
-                name: '테스트 입양자',
-                phone: '010-1234-5678',
-            };
-
-            const response = await request(app.getHttpServer())
-                .post('/api/auth/register/adopter')
-                .send(registerData)
-                .expect(400);
-
-            expect(response.body.success).toBe(false);
-        });
-
-        it('필수 필드 누락으로 회원가입 실패', async () => {
+        it('필수 필드 누락으로 회원가입 실패 - tempId', async () => {
             const registerData = {
                 email: TestDataHelper.generateEmail('missing'),
-                password: 'Test1234!@',
-                // name 누락
+                nickname: '테스트 입양자',
+                phone: '010-1234-5678',
+            };
+
+            const response = await request(app.getHttpServer())
+                .post('/api/auth/register/adopter')
+                .send(registerData)
+                .expect(400);
+
+            expect(response.body.success).toBe(false);
+        });
+
+        it('필수 필드 누락으로 회원가입 실패 - nickname', async () => {
+            const timestamp = Date.now();
+            const providerId = Math.random().toString().substr(2, 10);
+            const registerData = {
+                tempId: `temp_kakao_${providerId}_${timestamp}`,
+                email: TestDataHelper.generateEmail('missing'),
                 phone: '010-1234-5678',
             };
 
@@ -112,10 +120,21 @@ describe('Auth API E2E Tests', () => {
         it('브리더 회원가입 성공', async () => {
             const registerData = {
                 email: TestDataHelper.generateEmail('breeder'),
-                password: 'Test1234!@',
-                name: '테스트 브리더',
-                phone: '010-9876-5432',
-                businessNumber: '123-45-67890',
+                phoneNumber: '010-9876-5432',
+                breederName: '테스트 브리더',
+                breederLocation: {
+                    city: '서울특별시',
+                    district: '강남구',
+                },
+                animal: 'dog',
+                breeds: ['포메라니안', '말티즈'],
+                plan: 'basic',
+                level: 'new',
+                agreements: {
+                    termsOfService: true,
+                    privacyPolicy: true,
+                    marketingConsent: false,
+                },
             };
 
             const response = await request(app.getHttpServer())
@@ -124,16 +143,28 @@ describe('Auth API E2E Tests', () => {
                 .expect(200);
 
             ResponseValidator.validateAuthResponse(response);
-            expect(response.body.item.userInfo.userRole).toBe('breeder');
+            expect(response.body.data.userRole).toBe('breeder');
             expect(response.body.message).toBe('브리더 회원가입이 완료되었습니다.');
         });
 
-        it('사업자번호 없이 브리더 회원가입 성공', async () => {
+        it('프로 플랜으로 브리더 회원가입 성공', async () => {
             const registerData = {
-                email: TestDataHelper.generateEmail('breeder-no-business'),
-                password: 'Test1234!@',
-                name: '개인 브리더',
-                phone: '010-9876-5432',
+                email: TestDataHelper.generateEmail('breeder-pro'),
+                phoneNumber: '010-9876-5432',
+                breederName: '프로 브리더',
+                breederLocation: {
+                    city: '경기도',
+                    district: '성남시',
+                },
+                animal: 'cat',
+                breeds: ['페르시안', '샴'],
+                plan: 'pro',
+                level: 'elite',
+                agreements: {
+                    termsOfService: true,
+                    privacyPolicy: true,
+                    marketingConsent: true,
+                },
             };
 
             const response = await request(app.getHttpServer())
@@ -142,38 +173,31 @@ describe('Auth API E2E Tests', () => {
                 .expect(200);
 
             ResponseValidator.validateAuthResponse(response);
-            expect(response.body.item.userInfo.userRole).toBe('breeder');
+            expect(response.body.data.userRole).toBe('breeder');
         });
 
-        it('중복 사업자번호로 회원가입 실패', async () => {
-            const businessNumber = '999-88-77777';
-            
-            // 첫 번째 브리더 등록
-            await request(app.getHttpServer())
-                .post('/api/auth/register/breeder')
-                .send({
-                    email: TestDataHelper.generateEmail('breeder1'),
-                    password: 'Test1234!@',
-                    name: '브리더1',
-                    phone: '010-1111-1111',
-                    businessNumber,
-                })
-                .expect(200);
+        it('필수 필드 누락으로 회원가입 실패 - agreements', async () => {
+            const registerData = {
+                email: TestDataHelper.generateEmail('breeder-missing'),
+                phoneNumber: '010-1111-1111',
+                breederName: '브리더',
+                breederLocation: {
+                    city: '서울특별시',
+                    district: '강남구',
+                },
+                animal: 'dog',
+                breeds: ['포메라니안'],
+                plan: 'basic',
+                level: 'new',
+                // agreements 누락
+            };
 
-            // 동일한 사업자번호로 두 번째 브리더 등록 시도
             const response = await request(app.getHttpServer())
                 .post('/api/auth/register/breeder')
-                .send({
-                    email: TestDataHelper.generateEmail('breeder2'),
-                    password: 'Test1234!@',
-                    name: '브리더2',
-                    phone: '010-2222-2222',
-                    businessNumber,
-                })
+                .send(registerData)
                 .expect(400);
 
             expect(response.body.success).toBe(false);
-            expect(response.body.error).toContain('사업자번호');
         });
     });
 
@@ -185,13 +209,15 @@ describe('Auth API E2E Tests', () => {
             // 로그인 테스트용 계정 생성
             testEmail = TestDataHelper.generateEmail('login-test');
             testPassword = 'Test1234!@';
+            const timestamp = Date.now();
+            const providerId = Math.random().toString().substr(2, 10);
 
             await request(app.getHttpServer())
                 .post('/api/auth/register/adopter')
                 .send({
+                    tempId: `temp_kakao_${providerId}_${timestamp}`,
                     email: testEmail,
-                    password: testPassword,
-                    name: '로그인 테스트',
+                    nickname: `로그인테스트${timestamp}`,
                     phone: '010-0000-0000',
                 })
                 .expect(200);
@@ -254,17 +280,19 @@ describe('Auth API E2E Tests', () => {
 
         beforeAll(async () => {
             // 토큰 재발급 테스트용 토큰 획득
+            const timestamp = Date.now();
+            const providerId = Math.random().toString().substr(2, 10);
             const loginResponse = await request(app.getHttpServer())
                 .post('/api/auth/register/adopter')
                 .send({
+                    tempId: `temp_kakao_${providerId}_${timestamp}`,
                     email: TestDataHelper.generateEmail('refresh-test'),
-                    password: 'Test1234!@',
-                    name: '토큰 테스트',
+                    nickname: `토큰테스트${timestamp}`,
                     phone: '010-1111-1111',
                 })
                 .expect(200);
 
-            refreshToken = loginResponse.body.item.refreshToken;
+            refreshToken = loginResponse.body.data.refreshToken;
         });
 
         it('유효한 refresh 토큰으로 토큰 재발급 성공', async () => {
@@ -276,8 +304,8 @@ describe('Auth API E2E Tests', () => {
                 .expect(200);
 
             expect(response.body.success).toBe(true);
-            expect(response.body.item).toHaveProperty('accessToken');
-            expect(response.body.item).toHaveProperty('refreshToken');
+            expect(response.body.data).toHaveProperty('accessToken');
+            expect(response.body.data).toHaveProperty('refreshToken');
             expect(response.body.message).toBe('토큰이 재발급되었습니다.');
         });
 
