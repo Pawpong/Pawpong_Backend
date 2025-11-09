@@ -1,16 +1,18 @@
 import { Injectable, BadRequestException, ConflictException } from '@nestjs/common';
-import { randomUUID } from 'crypto';
 import { InjectModel } from '@nestjs/mongoose';
+import { randomUUID } from 'crypto';
 import { Model } from 'mongoose';
 
 import { ApplicationStatus, ReportStatus } from '../../common/enum/user.enum';
+
 import { StorageService } from '../../common/storage/storage.service';
 
 import { BreederReview, BreederReviewDocument } from '../../schema/breeder-review.schema';
 import { AdoptionApplication, AdoptionApplicationDocument } from '../../schema/adoption-application.schema';
 
 import { AdopterRepository } from './adopter.repository';
-import { BreederRepository } from '../breeder-management/breeder.repository';
+import { BreederRepository } from '../breeder-management/repository/breeder.repository';
+import { AvailablePetManagementRepository } from '../breeder-management/repository/available-pet-management.repository';
 
 import { AdopterMapper } from './mapper/adopter.mapper';
 
@@ -40,6 +42,7 @@ export class AdopterService {
     constructor(
         private adopterRepository: AdopterRepository,
         private breederRepository: BreederRepository,
+        private availablePetManagementRepository: AvailablePetManagementRepository,
         private storageService: StorageService,
         @InjectModel(BreederReview.name) private breederReviewModel: Model<BreederReviewDocument>,
         @InjectModel(AdoptionApplication.name) private adoptionApplicationModel: Model<AdoptionApplicationDocument>,
@@ -84,7 +87,7 @@ export class AdopterService {
 
         // 3-1. 커스텀 질문 validation (브리더가 설정한 필수 질문 체크)
         const customQuestions = breeder.applicationForm || [];
-        const customResponsesMap = new Map((dto.customResponses || []).map(r => [r.questionId, r.answer]));
+        const customResponsesMap = new Map((dto.customResponses || []).map((r) => [r.questionId, r.answer]));
 
         for (const question of customQuestions) {
             if (question.required) {
@@ -98,7 +101,7 @@ export class AdopterService {
         // 4. 반려동물 검증 (petId가 있는 경우에만)
         let pet: any = null;
         if (dto.petId) {
-            pet = await this.breederRepository.findAvailablePetById(dto.breederId, dto.petId);
+            pet = await this.availablePetManagementRepository.findByIdAndBreeder(dto.petId, dto.breederId);
             if (!pet) {
                 throw new BadRequestException('해당 반려동물을 찾을 수 없습니다.');
             }
@@ -120,8 +123,8 @@ export class AdopterService {
         }
 
         // 6. 커스텀 응답 스냅샷 생성 (브리더가 나중에 질문을 수정/삭제해도 기록 유지)
-        const customResponsesSnapshot = (dto.customResponses || []).map(response => {
-            const question = customQuestions.find(q => q.id === response.questionId);
+        const customResponsesSnapshot = (dto.customResponses || []).map((response) => {
+            const question = customQuestions.find((q) => q.id === response.questionId);
             if (!question) {
                 throw new BadRequestException(`존재하지 않는 질문 ID입니다: ${response.questionId}`);
             }

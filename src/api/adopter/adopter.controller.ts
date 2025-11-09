@@ -14,21 +14,21 @@ import { ReportCreateRequestDto } from './dto/request/report-create-request.dto'
 import { ReviewReportRequestDto } from './dto/request/review-report-request.dto';
 import { ApplicationCreateRequestDto } from './dto/request/application-create-request.dto';
 import { ApiResponseDto } from '../../common/dto/response/api-response.dto';
+import { MyReviewItemDto } from './dto/response/my-review-item.dto';
+import { MyReviewDetailDto } from './dto/response/my-review-detail.dto';
 import { PaginationResponseDto } from '../../common/dto/pagination/pagination-response.dto';
 import { FavoriteAddResponseDto } from './dto/response/favorite-add-response.dto';
 import { ReportCreateResponseDto } from './dto/response/report-create-response.dto';
 import { ReviewCreateResponseDto } from './dto/response/review-create-response.dto';
 import { ReviewReportResponseDto } from './dto/response/review-report-response.dto';
-import { AdopterProfileUpdateResponseDto } from './dto/response/profile-update-response.dto';
 import { AdopterProfileResponseDto } from './dto/response/adopter-profile-response.dto';
 import { FavoriteRemoveResponseDto } from './dto/response/favorite-remove-response.dto';
-import { ApplicationCreateResponseDto } from './dto/response/application-create-response.dto';
-import { FavoriteListResponseDto, FavoriteBreederDataDto } from './dto/response/favorite-list-response.dto';
 import { ApplicationListResponseDto } from './dto/response/application-list-response.dto';
+import { ApplicationCreateResponseDto } from './dto/response/application-create-response.dto';
 import { ApplicationDetailResponseDto } from './dto/response/application-detail-response.dto';
 import { ApplicationListItemResponseDto } from './dto/response/application-list-item-response.dto';
-import { MyReviewItemDto } from './dto/response/my-review-item.dto';
-import { MyReviewDetailDto } from './dto/response/my-review-detail.dto';
+import { AdopterProfileUpdateResponseDto } from './dto/response/profile-update-response.dto';
+import { FavoriteListResponseDto, FavoriteBreederDataDto } from './dto/response/favorite-list-response.dto';
 
 @ApiController('입양자')
 @Controller('adopter')
