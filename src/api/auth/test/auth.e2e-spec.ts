@@ -472,36 +472,35 @@ describe('Auth API E2E Tests (Simple)', () => {
         });
 
         it('POST /api/auth/social/check-user - 기가입 사용자 확인', async () => {
-            // 먼저 사용자 생성
+            // 먼저 사용자 생성 (고유한 이메일과 닉네임 사용)
             const timestamp = Date.now();
-            const providerId = `existing_${timestamp}`;
+            const randomSuffix = Math.random().toString().substr(2, 6);
+            const providerId = `existing_${timestamp}_${randomSuffix}`;
             const registerResponse = await request(app.getHttpServer())
                 .post('/api/auth/register/adopter')
                 .send({
                     tempId: `temp_kakao_${providerId}_${timestamp}`,
-                    email: `social_existing_${timestamp}@test.com`,
-                    nickname: `소셜기${timestamp}`,
+                    email: `social_existing_${timestamp}_${randomSuffix}@test.com`,
+                    nickname: `소셜기${timestamp}_${randomSuffix}`,
                     phone: '010-3333-4444',
-                });
+                })
+                .expect(200);
 
-            // 회원가입 성공 여부 확인
-            if (registerResponse.status === 200) {
-                // 소셜 로그인 사용자 체크
-                const response = await request(app.getHttpServer())
-                    .post('/api/auth/social/check-user')
-                    .send({
-                        provider: 'kakao',
-                        providerId: providerId,
-                    })
-                    .expect(200);
+            expect(registerResponse.body.success).toBe(true);
 
-                expect(response.body.success).toBe(true);
-                expect(response.body.data.exists).toBe(true);
-                expect(response.body.message).toContain('가입된 사용자');
-                console.log('✅ 기가입 사용자 확인');
-            } else {
-                console.log('⚠️  회원가입 실패로 테스트 스킵');
-            }
+            // 소셜 로그인 사용자 체크
+            const response = await request(app.getHttpServer())
+                .post('/api/auth/social/check-user')
+                .send({
+                    provider: 'kakao',
+                    providerId: providerId,
+                })
+                .expect(200);
+
+            expect(response.body.success).toBe(true);
+            expect(response.body.data.exists).toBe(true);
+            expect(response.body.message).toContain('가입된 사용자');
+            console.log('✅ 기가입 사용자 확인');
         });
     });
 });

@@ -1,26 +1,23 @@
-import { Injectable, UnauthorizedException, ConflictException, BadRequestException, Inject } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 
-import { SocialProvider, UserStatus, VerificationStatus, BreederPlan } from '../../common/enum/user.enum';
+import { UserStatus, VerificationStatus, BreederPlan } from '../../common/enum/user.enum';
 
 import { StorageService } from '../../common/storage/storage.service';
 import { CustomLoggerService } from '../../common/logger/custom-logger.service';
 
-import { Adopter, AdopterDocument } from '../../schema/adopter.schema';
-import { Breeder, BreederDocument } from '../../schema/breeder.schema';
+import { AuthMapper } from './mapper/auth.mapper';
+
+import { AuthAdopterRepository } from './repository/auth-adopter.repository';
+import { AuthBreederRepository } from './repository/auth-breeder.repository';
 
 import { RefreshTokenRequestDto } from './dto/request/refresh-token-request.dto';
 import { RegisterAdopterRequestDto } from './dto/request/register-adopter-request.dto';
-
 import { AuthResponseDto } from './dto/response/auth-response.dto';
 import { TokenResponseDto } from './dto/response/token-response.dto';
-import { VerificationDocumentsResponseDto } from './dto/response/verification-documents-response.dto';
 import { RegisterAdopterResponseDto } from './dto/response/register-adopter-response.dto';
-
-import { AuthMapper } from './mapper/auth.mapper';
-import { AuthAdopterRepository } from './repository/auth-adopter.repository';
-import { AuthBreederRepository } from './repository/auth-breeder.repository';
+import { VerificationDocumentsResponseDto } from './dto/response/verification-documents-response.dto';
 
 /**
  * 임시 업로드 파일 정보 (tempId 기반)
@@ -101,10 +98,14 @@ export class AuthService {
                 if (pathname.startsWith('/')) {
                     pathname = pathname.substring(1);
                 }
-                this.logger.logWarning('extractFilenameFromUrl', `URL에서 파일명 추출됨 (프론트엔드가 url 대신 filename을 보내야 함)`, {
-                    원본URL: urlOrFilename,
-                    추출된파일명: pathname,
-                });
+                this.logger.logWarning(
+                    'extractFilenameFromUrl',
+                    `URL에서 파일명 추출됨 (프론트엔드가 url 대신 filename을 보내야 함)`,
+                    {
+                        원본URL: urlOrFilename,
+                        추출된파일명: pathname,
+                    },
+                );
                 return pathname;
             } catch (error) {
                 this.logger.logError('extractFilenameFromUrl', 'URL 파싱 실패', error);
@@ -312,7 +313,9 @@ export class AuthService {
 
         // 소셜 로그인 프로필 이미지는 사용하지 않음
         // 브리더 서류처럼 사용자가 회원가입 시 직접 업로드한 이미지만 사용
-        this.logger.log(`[handleSocialLogin] 신규 사용자 tempId 생성: ${tempUserId} (프로필 이미지는 사용자가 직접 업로드)`);
+        this.logger.log(
+            `[handleSocialLogin] 신규 사용자 tempId 생성: ${tempUserId} (프로필 이미지는 사용자가 직접 업로드)`,
+        );
 
         return {
             needsAdditionalInfo: true,
@@ -1043,18 +1046,20 @@ export class AuthService {
         // 프론트엔드가 보낸 값과 임시 저장된 값 병합
         const finalProfileImage = dto.profileImage || tempUploadInfo?.profileImage;
         const finalDocumentUrls = dto.documentUrls || tempUploadInfo?.documents?.map((doc) => doc.fileName);
-        const finalDocumentTypes = dto.documentTypes || tempUploadInfo?.documents?.map((doc) => {
-            // snake_case를 camelCase로 변환
-            const typeMapping: Record<string, string> = {
-                id_card: 'idCard',
-                animal_production_license: 'animalProductionLicense',
-                adoption_contract_sample: 'adoptionContractSample',
-                recent_association_document: 'recentAssociationDocument',
-                breeder_certification: 'breederCertification',
-                tica_cfa_document: 'ticaCfaDocument',
-            };
-            return typeMapping[doc.type] || doc.type;
-        });
+        const finalDocumentTypes =
+            dto.documentTypes ||
+            tempUploadInfo?.documents?.map((doc) => {
+                // snake_case를 camelCase로 변환
+                const typeMapping: Record<string, string> = {
+                    id_card: 'idCard',
+                    animal_production_license: 'animalProductionLicense',
+                    adoption_contract_sample: 'adoptionContractSample',
+                    recent_association_document: 'recentAssociationDocument',
+                    breeder_certification: 'breederCertification',
+                    tica_cfa_document: 'ticaCfaDocument',
+                };
+                return typeMapping[doc.type] || doc.type;
+            });
 
         // 프론트엔드가 보낸 값 로깅 (디버깅용)
         this.logger.log(`[registerBreeder] 프론트엔드가 보낸 profileImage: ${dto.profileImage}`);
