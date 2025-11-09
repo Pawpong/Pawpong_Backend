@@ -1,21 +1,23 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { randomUUID } from 'crypto';
+import { Types } from 'mongoose';
 
-import { BreederRepository } from './breeder.repository';
-import { AdopterRepository } from '../adopter/adopter.repository';
-import { StorageService } from '../../common/storage/storage.service';
-import { ProfileUpdateRequestDto } from './dto/request/profile-update-request.dto';
-import { ApplicationStatusUpdateRequestDto } from './dto/request/application-status-update-request.dto';
-import { VerificationSubmitRequestDto } from './dto/request/verification-submit-request.dto';
-import { ParentPetAddDto } from './dto/request/parent-pet-add-request.dto';
-import { AvailablePetAddDto } from './dto/request/available-pet-add-request.dto';
-import { BreederDashboardResponseDto } from '../breeder/dto/response/breeder-dashboard-response.dto';
 import { VerificationStatus, ApplicationStatus, PetStatus } from '../../common/enum/user.enum';
-import { AdoptionApplication, AdoptionApplicationDocument } from '../../schema/adoption-application.schema';
-import { AvailablePet, AvailablePetDocument } from '../../schema/available-pet.schema';
-import { ParentPet, ParentPetDocument } from '../../schema/parent-pet.schema';
+
+import { StorageService } from '../../common/storage/storage.service';
+
+import { ParentPetAddDto } from './dto/request/parent-pet-add-request.dto';
+import { ParentPetUpdateDto } from './dto/request/parent-pet-update-request.dto';
+import { AvailablePetAddDto } from './dto/request/available-pet-add-request.dto';
+import { ProfileUpdateRequestDto } from './dto/request/profile-update-request.dto';
+import { VerificationSubmitRequestDto } from './dto/request/verification-submit-request.dto';
+import { ApplicationStatusUpdateRequestDto } from './dto/request/application-status-update-request.dto';
+import { BreederDashboardResponseDto } from '../breeder/dto/response/breeder-dashboard-response.dto';
+
+import { BreederRepository } from './repository/breeder.repository';
+import { AdopterRepository } from '../adopter/adopter.repository';
+import { ParentPetRepository } from './repository/parent-pet.repository';
+import { AdoptionApplicationRepository } from './repository/adoption-application.repository';
+import { AvailablePetManagementRepository } from './repository/available-pet-management.repository';
 
 /**
  * 브리더 관리 비즈니스 로직 처리 Service
@@ -36,12 +38,13 @@ import { ParentPet, ParentPetDocument } from '../../schema/parent-pet.schema';
 @Injectable()
 export class BreederManagementService {
     constructor(
+        private storageService: StorageService,
+
         private breederRepository: BreederRepository,
         private adopterRepository: AdopterRepository,
-        private storageService: StorageService,
-        @InjectModel(AdoptionApplication.name) private adoptionApplicationModel: Model<AdoptionApplicationDocument>,
-        @InjectModel(AvailablePet.name) private availablePetModel: Model<AvailablePetDocument>,
-        @InjectModel(ParentPet.name) private parentPetModel: Model<ParentPetDocument>,
+        private parentPetRepository: ParentPetRepository,
+        private availablePetRepository: AvailablePetManagementRepository,
+        private adoptionApplicationRepository: AdoptionApplicationRepository,
     ) {}
 
     /**
@@ -59,24 +62,16 @@ export class BreederManagementService {
         }
 
         // 대기 중인 입양 신청 수 계산 (별도 컬렉션 조회)
-        const pendingApplications = await this.adoptionApplicationModel.countDocuments({
-            breederId: userId,
-            status: ApplicationStatus.CONSULTATION_PENDING,
-        });
+        const pendingApplications = await this.adoptionApplicationRepository.countByStatus(
+            userId,
+            ApplicationStatus.CONSULTATION_PENDING,
+        );
 
         // 최근 신청 내역 (최대 5개)
-        const recentApplicationsList = await this.adoptionApplicationModel
-            .find({ breederId: userId })
-            .sort({ appliedAt: -1 })
-            .limit(5)
-            .lean();
+        const recentApplicationsList = await this.adoptionApplicationRepository.findRecentByBreeder(userId, 5);
 
         // 분양 가능한 반려동물 수 계산 (별도 컬렉션 조회)
-        const availablePetsCount = await this.availablePetModel.countDocuments({
-            breederId: userId,
-            status: PetStatus.AVAILABLE,
-            isActive: true,
-        });
+        const availablePetsCount = await this.availablePetRepository.countByStatus(userId, PetStatus.AVAILABLE, true);
 
         return {
             profileInfo: {
@@ -190,17 +185,16 @@ export class BreederManagementService {
             throw new BadRequestException('브리더 정보를 찾을 수 없습니다.');
         }
 
-        const parentPet = new this.parentPetModel({
-            breederId: userId,
+        const savedParentPet = await this.parentPetRepository.create({
+            breederId: new Types.ObjectId(userId) as any,
             name: parentPetDto.name,
             breed: parentPetDto.breed,
             gender: parentPetDto.gender,
-            photos: [],
+            birthDate: new Date(parentPetDto.birthDate),
+            photoFileName: parentPetDto.photoFileName,
             description: parentPetDto.description || '',
             isActive: true,
         });
-
-        const savedParentPet = await parentPet.save();
 
         return { petId: (savedParentPet._id as any).toString(), message: '부모견/부모묘가 성공적으로 등록되었습니다.' };
     }
@@ -214,8 +208,8 @@ export class BreederManagementService {
      * @returns 성공 메시지
      * @throws BadRequestException 존재하지 않는 브리더 또는 부모견
      */
-    async updateParentPet(userId: string, petId: string, updateData: Partial<ParentPetAddDto>): Promise<any> {
-        const pet = await this.parentPetModel.findOne({ _id: petId, breederId: userId });
+    async updateParentPet(userId: string, petId: string, updateData: ParentPetUpdateDto): Promise<any> {
+        const pet = await this.parentPetRepository.findByIdAndBreeder(petId, userId);
         if (!pet) {
             throw new BadRequestException('해당 부모견/부모묘를 찾을 수 없습니다.');
         }
@@ -224,9 +218,11 @@ export class BreederManagementService {
         if (updateData.name) updateFields.name = updateData.name;
         if (updateData.breed) updateFields.breed = updateData.breed;
         if (updateData.gender) updateFields.gender = updateData.gender;
+        if (updateData.birthDate) updateFields.birthDate = new Date(updateData.birthDate);
+        if (updateData.photoFileName) updateFields.photoFileName = updateData.photoFileName;
         if (updateData.description !== undefined) updateFields.description = updateData.description;
 
-        await this.parentPetModel.findByIdAndUpdate(petId, { $set: updateFields });
+        await this.parentPetRepository.update(petId, updateFields);
 
         return { message: '부모견/부모묘 정보가 성공적으로 수정되었습니다.' };
     }
@@ -240,12 +236,12 @@ export class BreederManagementService {
      * @throws BadRequestException 존재하지 않는 브리더 또는 부모견
      */
     async removeParentPet(userId: string, petId: string): Promise<any> {
-        const pet = await this.parentPetModel.findOne({ _id: petId, breederId: userId });
+        const pet = await this.parentPetRepository.findByIdAndBreeder(petId, userId);
         if (!pet) {
             throw new BadRequestException('해당 부모견/부모묘를 찾을 수 없습니다.');
         }
 
-        await this.parentPetModel.findByIdAndDelete(petId);
+        await this.parentPetRepository.delete(petId);
 
         return { message: '부모견/부모묘가 성공적으로 삭제되었습니다.' };
     }
@@ -271,8 +267,8 @@ export class BreederManagementService {
             throw new BadRequestException('브리더 정보를 찾을 수 없습니다.');
         }
 
-        const availablePet = new this.availablePetModel({
-            breederId: userId,
+        const savedPet = await this.availablePetRepository.create({
+            breederId: new Types.ObjectId(userId) as any,
             name: availablePetDto.name,
             breed: availablePetDto.breed,
             gender: availablePetDto.gender,
@@ -283,13 +279,11 @@ export class BreederManagementService {
             description: availablePetDto.description || '',
             parentInfo: availablePetDto.parentInfo
                 ? {
-                      mother: availablePetDto.parentInfo.mother,
-                      father: availablePetDto.parentInfo.father,
+                      mother: availablePetDto.parentInfo.mother as any,
+                      father: availablePetDto.parentInfo.father as any,
                   }
                 : undefined,
         });
-
-        const savedPet = await availablePet.save();
 
         return {
             petId: (savedPet._id as any).toString(),
@@ -307,7 +301,7 @@ export class BreederManagementService {
      * @throws BadRequestException 존재하지 않는 브리더 또는 반려동물
      */
     async updateAvailablePet(userId: string, petId: string, updateData: Partial<AvailablePetAddDto>): Promise<any> {
-        const pet = await this.availablePetModel.findOne({ _id: petId, breederId: userId });
+        const pet = await this.availablePetRepository.findByIdAndBreeder(petId, userId);
         if (!pet) {
             throw new BadRequestException('해당 분양 개체를 찾을 수 없습니다.');
         }
@@ -326,7 +320,7 @@ export class BreederManagementService {
             };
         }
 
-        await this.availablePetModel.findByIdAndUpdate(petId, { $set: updateFields });
+        await this.availablePetRepository.update(petId, updateFields);
 
         return { message: '분양 개체 정보가 성공적으로 수정되었습니다.' };
     }
@@ -347,12 +341,12 @@ export class BreederManagementService {
      * @throws BadRequestException 존재하지 않는 브리더 또는 반려동물
      */
     async updatePetStatus(userId: string, petId: string, status: PetStatus): Promise<any> {
-        const pet = await this.availablePetModel.findOne({ _id: petId, breederId: userId });
+        const pet = await this.availablePetRepository.findByIdAndBreeder(petId, userId);
         if (!pet) {
             throw new BadRequestException('해당 분양 개체를 찾을 수 없습니다.');
         }
 
-        await this.availablePetModel.findByIdAndUpdate(petId, { $set: { status } });
+        await this.availablePetRepository.updateStatus(petId, status);
 
         return { message: '반려동물 상태가 성공적으로 업데이트되었습니다.' };
     }
@@ -366,12 +360,12 @@ export class BreederManagementService {
      * @throws BadRequestException 존재하지 않는 브리더 또는 반려동물
      */
     async removeAvailablePet(userId: string, petId: string): Promise<any> {
-        const pet = await this.availablePetModel.findOne({ _id: petId, breederId: userId });
+        const pet = await this.availablePetRepository.findByIdAndBreeder(petId, userId);
         if (!pet) {
             throw new BadRequestException('해당 분양 개체를 찾을 수 없습니다.');
         }
 
-        await this.availablePetModel.findByIdAndDelete(petId);
+        await this.availablePetRepository.delete(petId);
 
         return { message: '분양 개체가 성공적으로 삭제되었습니다.' };
     }
@@ -386,17 +380,7 @@ export class BreederManagementService {
      * @throws BadRequestException 존재하지 않는 브리더
      */
     async getReceivedApplications(userId: string, page: number = 1, limit: number = 10): Promise<any> {
-        const skip = (page - 1) * limit;
-
-        const [applications, total] = await Promise.all([
-            this.adoptionApplicationModel
-                .find({ breederId: userId })
-                .sort({ appliedAt: -1 })
-                .skip(skip)
-                .limit(limit)
-                .lean(),
-            this.adoptionApplicationModel.countDocuments({ breederId: userId }),
-        ]);
+        const { applications, total } = await this.adoptionApplicationRepository.findByBreederId(userId, page, limit);
 
         return {
             applications,
@@ -405,7 +389,7 @@ export class BreederManagementService {
                 totalPages: Math.ceil(total / limit),
                 totalItems: total,
                 itemsPerPage: limit,
-                hasNextPage: skip + limit < total,
+                hasNextPage: (page - 1) * limit + limit < total,
                 hasPrevPage: page > 1,
             },
         };
@@ -422,10 +406,7 @@ export class BreederManagementService {
      */
     async getApplicationDetail(userId: string, applicationId: string): Promise<any> {
         // 신청 조회 (본인이 받은 신청만 조회 가능)
-        const application = await this.adoptionApplicationModel.findOne({
-            _id: applicationId,
-            breederId: userId,
-        });
+        const application = await this.adoptionApplicationRepository.findByIdAndBreeder(applicationId, userId);
 
         if (!application) {
             throw new BadRequestException('해당 입양 신청을 찾을 수 없거나 조회 권한이 없습니다.');
@@ -472,17 +453,13 @@ export class BreederManagementService {
         applicationId: string,
         updateData: ApplicationStatusUpdateRequestDto,
     ): Promise<any> {
-        const application = await this.adoptionApplicationModel.findOne({
-            _id: applicationId,
-            breederId: userId,
-        });
+        const application = await this.adoptionApplicationRepository.findByIdAndBreeder(applicationId, userId);
 
         if (!application) {
             throw new BadRequestException('해당 입양 신청을 찾을 수 없습니다.');
         }
 
-        application.status = updateData.status as any;
-        await application.save();
+        await this.adoptionApplicationRepository.updateStatus(applicationId, updateData.status as ApplicationStatus);
 
         // 입양 승인 완료 시 통계 업데이트
         if (updateData.status === ApplicationStatus.ADOPTION_APPROVED) {
@@ -557,11 +534,12 @@ export class BreederManagementService {
         const verification = breeder.verification;
 
         // 문서 URL을 Signed URL로 변환 (1시간 유효)
-        const documents = verification?.documents?.map((doc: any) => ({
-            type: doc.type,
-            url: this.storageService.generateSignedUrl(doc.fileName, 60),
-            uploadedAt: doc.uploadedAt,
-        })) || [];
+        const documents =
+            verification?.documents?.map((doc: any) => ({
+                type: doc.type,
+                url: this.storageService.generateSignedUrl(doc.fileName, 60),
+                uploadedAt: doc.uploadedAt,
+            })) || [];
 
         return {
             status: verification?.status || 'pending',
@@ -598,9 +576,11 @@ export class BreederManagementService {
 
         // 별도 컬렉션에서 데이터 조회
         const [parentPets, availablePets] = await Promise.all([
-            this.parentPetModel.find({ breederId: userId, isActive: true }).lean(),
-            this.availablePetModel.find({ breederId: userId, isActive: true }).lean(),
+            this.parentPetRepository.findByBreederId(userId, true),
+            this.availablePetRepository.findByBreederIdWithFilters(userId, { includeInactive: false }),
         ]);
+
+        const availablePetsData = (availablePets as any).pets || availablePets;
 
         // 파일명을 Signed URL로 변환 (1시간 유효)
         const profileImageFileName = this.storageService.generateSignedUrlSafe(breeder.profileImageFileName, 60);
@@ -625,7 +605,7 @@ export class BreederManagementService {
             verification: verificationWithSignedUrls,
             profile: breeder.profile,
             parentPets,
-            availablePets,
+            availablePets: availablePetsData,
             applicationForm: breeder.applicationForm,
             stats: breeder.stats,
         };
@@ -654,36 +634,20 @@ export class BreederManagementService {
             throw new BadRequestException('브리더 정보를 찾을 수 없습니다.');
         }
 
-        // 필터 조건 구성
-        const filter: any = { breederId: userId };
-        if (!includeInactive) {
-            filter.isActive = true;
-        }
-        if (status) {
-            filter.status = status;
-        }
-
-        // 통계 계산
-        const [total, availableCount, reservedCount, adoptedCount, inactiveCount] = await Promise.all([
-            this.availablePetModel.countDocuments(filter),
-            this.availablePetModel.countDocuments({ breederId: userId, status: PetStatus.AVAILABLE, isActive: true }),
-            this.availablePetModel.countDocuments({ breederId: userId, status: PetStatus.RESERVED, isActive: true }),
-            this.availablePetModel.countDocuments({ breederId: userId, status: PetStatus.ADOPTED, isActive: true }),
-            this.availablePetModel.countDocuments({ breederId: userId, isActive: false }),
+        // 통계 계산 및 데이터 조회
+        const [statsResult, availableCount, reservedCount, adoptedCount, inactiveCount] = await Promise.all([
+            this.availablePetRepository.findByBreederIdWithFilters(userId, { status, includeInactive, page, limit }),
+            this.availablePetRepository.countByStatus(userId, PetStatus.AVAILABLE, true),
+            this.availablePetRepository.countByStatus(userId, PetStatus.RESERVED, true),
+            this.availablePetRepository.countByStatus(userId, PetStatus.ADOPTED, true),
+            this.availablePetRepository.countInactive(userId),
         ]);
 
-        // 페이지네이션
-        const skip = (page - 1) * limit;
-        const pets = await this.availablePetModel.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean();
+        const { pets, total } = statsResult;
 
         // 각 개체별 입양 신청 수 조회
-        const petIds = pets.map((pet: any) => pet.petId);
-        const applicationCounts = await this.adoptionApplicationModel.aggregate([
-            { $match: { petId: { $in: petIds } } },
-            { $group: { _id: '$petId', count: { $sum: 1 } } },
-        ]);
-
-        const applicationCountMap = new Map(applicationCounts.map((item: any) => [item._id, item.count]));
+        const petIds = pets.map((pet: any) => pet.petId || (pet._id as any).toString());
+        const applicationCountMap = await this.adoptionApplicationRepository.countByPetIds(petIds);
 
         // 데이터 변환
         const items = pets.map((pet: any) => {
@@ -806,20 +770,118 @@ export class BreederManagementService {
      */
     private getStandardQuestions() {
         return [
-            { id: 'privacyConsent', type: 'checkbox', label: '개인정보 수집 및 이용에 동의하시나요?', required: true, order: 1, isStandard: true },
-            { id: 'selfIntroduction', type: 'textarea', label: '간단하게 자기소개 부탁드려요 (성별, 연령대, 거주지, 생활 패턴 등)', required: true, order: 2, isStandard: true },
-            { id: 'familyMembers', type: 'text', label: '함께 거주하는 가족 구성원을 알려주세요', required: true, order: 3, isStandard: true },
-            { id: 'allFamilyConsent', type: 'checkbox', label: '모든 가족 구성원들이 입양에 동의하셨나요?', required: true, order: 4, isStandard: true },
-            { id: 'allergyTestInfo', type: 'text', label: '본인을 포함한 모든 가족 구성원분들께서 알러지 검사를 마치셨나요?', required: true, order: 5, isStandard: true },
-            { id: 'timeAwayFromHome', type: 'text', label: '평균적으로 집을 비우는 시간은 얼마나 되나요?', required: true, order: 6, isStandard: true },
-            { id: 'livingSpaceDescription', type: 'textarea', label: '아이와 함께 지내게 될 공간을 소개해 주세요', required: true, order: 7, isStandard: true },
-            { id: 'previousPetExperience', type: 'textarea', label: '현재 함께하는, 또는 이전에 함께했던 반려동물에 대해 알려주세요', required: true, order: 8, isStandard: true },
-            { id: 'canProvideBasicCare', type: 'checkbox', label: '정기 예방접종·건강검진·훈련 등 기본 케어를 책임지고 해주실 수 있나요?', required: true, order: 9, isStandard: true },
-            { id: 'canAffordMedicalExpenses', type: 'checkbox', label: '예상치 못한 질병이나 사고 등으로 치료비가 발생할 경우 감당 가능하신가요?', required: true, order: 10, isStandard: true },
-            { id: 'neuteringConsent', type: 'checkbox', label: '모든 아이들은 중성화 후 분양되거나, 입양 후 중성화를 진행해야 합니다. 동의하십니까?', required: true, order: 11, isStandard: true },
-            { id: 'preferredPetDescription', type: 'textarea', label: '마음에 두신 아이가 있으신가요? (특징: 성별, 타입, 외모, 컬러패턴, 성격 등)', required: false, order: 12, isStandard: true },
-            { id: 'desiredAdoptionTiming', type: 'text', label: '원하시는 입양 시기가 있나요?', required: false, order: 13, isStandard: true },
-            { id: 'additionalNotes', type: 'textarea', label: '마지막으로 궁금하신 점이나 남기시고 싶으신 말씀이 있나요?', required: false, order: 14, isStandard: true },
+            {
+                id: 'privacyConsent',
+                type: 'checkbox',
+                label: '개인정보 수집 및 이용에 동의하시나요?',
+                required: true,
+                order: 1,
+                isStandard: true,
+            },
+            {
+                id: 'selfIntroduction',
+                type: 'textarea',
+                label: '간단하게 자기소개 부탁드려요 (성별, 연령대, 거주지, 생활 패턴 등)',
+                required: true,
+                order: 2,
+                isStandard: true,
+            },
+            {
+                id: 'familyMembers',
+                type: 'text',
+                label: '함께 거주하는 가족 구성원을 알려주세요',
+                required: true,
+                order: 3,
+                isStandard: true,
+            },
+            {
+                id: 'allFamilyConsent',
+                type: 'checkbox',
+                label: '모든 가족 구성원들이 입양에 동의하셨나요?',
+                required: true,
+                order: 4,
+                isStandard: true,
+            },
+            {
+                id: 'allergyTestInfo',
+                type: 'text',
+                label: '본인을 포함한 모든 가족 구성원분들께서 알러지 검사를 마치셨나요?',
+                required: true,
+                order: 5,
+                isStandard: true,
+            },
+            {
+                id: 'timeAwayFromHome',
+                type: 'text',
+                label: '평균적으로 집을 비우는 시간은 얼마나 되나요?',
+                required: true,
+                order: 6,
+                isStandard: true,
+            },
+            {
+                id: 'livingSpaceDescription',
+                type: 'textarea',
+                label: '아이와 함께 지내게 될 공간을 소개해 주세요',
+                required: true,
+                order: 7,
+                isStandard: true,
+            },
+            {
+                id: 'previousPetExperience',
+                type: 'textarea',
+                label: '현재 함께하는, 또는 이전에 함께했던 반려동물에 대해 알려주세요',
+                required: true,
+                order: 8,
+                isStandard: true,
+            },
+            {
+                id: 'canProvideBasicCare',
+                type: 'checkbox',
+                label: '정기 예방접종·건강검진·훈련 등 기본 케어를 책임지고 해주실 수 있나요?',
+                required: true,
+                order: 9,
+                isStandard: true,
+            },
+            {
+                id: 'canAffordMedicalExpenses',
+                type: 'checkbox',
+                label: '예상치 못한 질병이나 사고 등으로 치료비가 발생할 경우 감당 가능하신가요?',
+                required: true,
+                order: 10,
+                isStandard: true,
+            },
+            {
+                id: 'neuteringConsent',
+                type: 'checkbox',
+                label: '모든 아이들은 중성화 후 분양되거나, 입양 후 중성화를 진행해야 합니다. 동의하십니까?',
+                required: true,
+                order: 11,
+                isStandard: true,
+            },
+            {
+                id: 'preferredPetDescription',
+                type: 'textarea',
+                label: '마음에 두신 아이가 있으신가요? (특징: 성별, 타입, 외모, 컬러패턴, 성격 등)',
+                required: false,
+                order: 12,
+                isStandard: true,
+            },
+            {
+                id: 'desiredAdoptionTiming',
+                type: 'text',
+                label: '원하시는 입양 시기가 있나요?',
+                required: false,
+                order: 13,
+                isStandard: true,
+            },
+            {
+                id: 'additionalNotes',
+                type: 'textarea',
+                label: '마지막으로 궁금하신 점이나 남기시고 싶으신 말씀이 있나요?',
+                required: false,
+                order: 14,
+                isStandard: true,
+            },
         ]; // 총 14개 표준 질문
     }
 
@@ -883,7 +945,7 @@ export class BreederManagementService {
         }
 
         // 표준 질문 ID와 충돌 방지
-        const standardIds = this.getStandardQuestions().map(q => q.id);
+        const standardIds = this.getStandardQuestions().map((q) => q.id);
         const conflicts = ids.filter((id: string) => standardIds.includes(id));
         if (conflicts.length > 0) {
             throw new BadRequestException(`다음 ID는 표준 질문과 중복되어 사용할 수 없습니다: ${conflicts.join(', ')}`);

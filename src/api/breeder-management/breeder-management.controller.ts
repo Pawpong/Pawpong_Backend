@@ -1,21 +1,22 @@
 import { Controller, Post, Get, Put, Delete, Body, Param, Query, UseGuards, Patch } from '@nestjs/common';
 
 import { Roles } from '../../common/decorator/roles.decorator';
-import { ApiController, ApiEndpoint, ApiPaginatedEndpoint } from '../../common/decorator/swagger.decorator';
 import { CurrentUser } from '../../common/decorator/user.decorator';
+import { ApiController, ApiEndpoint, ApiPaginatedEndpoint } from '../../common/decorator/swagger.decorator';
 import { RolesGuard } from '../../common/guard/roles.guard';
 import { JwtAuthGuard } from '../../common/guard/jwt-auth.guard';
 
 import { BreederManagementService } from './breeder-management.service';
 
 import { ParentPetAddDto } from './dto/request/parent-pet-add-request.dto';
+import { ParentPetUpdateDto } from './dto/request/parent-pet-update-request.dto';
 import { AvailablePetAddDto } from './dto/request/available-pet-add-request.dto';
 import { ProfileUpdateRequestDto } from './dto/request/profile-update-request.dto';
 import { PetStatusUpdateRequestDto } from './dto/request/pet-status-update-request.dto';
 import { ApplicationsGetRequestDto } from './dto/request/applications-fetch-request.dto';
 import { VerificationSubmitRequestDto } from './dto/request/verification-submit-request.dto';
-import { ApplicationStatusUpdateRequestDto } from './dto/request/application-status-update-request.dto';
 import { ApplicationFormUpdateRequestDto } from './dto/request/application-form-update-request.dto';
+import { ApplicationStatusUpdateRequestDto } from './dto/request/application-status-update-request.dto';
 import { ApiResponseDto } from '../../common/dto/response/api-response.dto';
 import { PaginationResponseDto } from '../../common/dto/pagination/pagination-response.dto';
 import { PetAddResponseDto } from './dto/response/pet-add-response.dto';
@@ -23,17 +24,17 @@ import { PetUpdateResponseDto } from './dto/response/pet-update-response.dto';
 import { PetRemoveResponseDto } from './dto/response/pet-remove-response.dto';
 import { BreederProfileResponseDto } from '../breeder/dto/response/breeder-profile-response.dto';
 import { PetStatusUpdateResponseDto } from './dto/response/pet-status-update-response.dto';
+import { ApplicationFormResponseDto } from './dto/response/application-form-response.dto';
 import { BreederDashboardResponseDto } from '../breeder/dto/response/breeder-dashboard-response.dto';
 import { VerificationSubmitResponseDto } from './dto/response/verification-submit-response.dto';
 import { VerificationStatusResponseDto } from './dto/response/verification-status-response.dto';
-import { BreederProfileUpdateResponseDto } from './dto/response/profile-update-response.dto';
-import { ReceivedApplicationListResponseDto } from '../breeder/dto/response/received-application-list-response.dto';
 import { ReceivedApplicationResponseDto } from '../breeder/dto/response/received-application-response.dto';
+import { BreederProfileUpdateResponseDto } from './dto/response/profile-update-response.dto';
+import { ApplicationFormUpdateResponseDto } from './dto/response/application-form-update-response.dto';
+import { ReceivedApplicationListResponseDto } from '../breeder/dto/response/received-application-list-response.dto';
 import { ApplicationStatusUpdateResponseDto } from './dto/response/application-status-update-response.dto';
 import { MyPetsListResponseDto, MyPetItemDto } from './dto/response/my-pets-list-response.dto';
 import { MyReviewsListResponseDto, MyReviewItemDto } from './dto/response/my-reviews-list-response.dto';
-import { ApplicationFormResponseDto } from './dto/response/application-form-response.dto';
-import { ApplicationFormUpdateResponseDto } from './dto/response/application-form-update-response.dto';
 
 @ApiController('브리더 관리')
 @Controller('breeder-management')
@@ -84,7 +85,8 @@ export class BreederManagementController {
     @Get('verification')
     @ApiEndpoint({
         summary: '브리더 인증 상태 조회',
-        description: '로그인한 브리더의 인증 상태 및 관련 정보를 조회합니다. 인증 문서 URL은 1시간 유효한 Signed URL로 제공됩니다.',
+        description:
+            '로그인한 브리더의 인증 상태 및 관련 정보를 조회합니다. 인증 문서 URL은 1시간 유효한 Signed URL로 제공됩니다.',
         responseType: VerificationStatusResponseDto,
         isPublic: false,
     })
@@ -133,7 +135,7 @@ export class BreederManagementController {
     async updateParentPet(
         @CurrentUser() user: any,
         @Param('petId') petId: string,
-        @Body() updateData: Partial<ParentPetAddDto>,
+        @Body() updateData: ParentPetUpdateDto,
     ): Promise<ApiResponseDto<PetUpdateResponseDto>> {
         const result = await this.breederManagementService.updateParentPet(user.userId, petId, updateData);
         return ApiResponseDto.success(result, '부모 반려동물 정보가 성공적으로 수정되었습니다.');

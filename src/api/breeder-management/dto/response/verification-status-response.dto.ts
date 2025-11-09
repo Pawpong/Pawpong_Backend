@@ -68,7 +68,6 @@ export class VerificationStatusResponseDto {
     rejectionReason?: string;
 
     @ApiProperty({
-        description: '이메일로 제출 여부',
         example: false,
         required: false,
     })

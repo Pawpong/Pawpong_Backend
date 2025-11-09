@@ -54,23 +54,20 @@ describe('Breeder Management API E2E Tests (Simple)', () => {
         }
 
         // 테스트용 입양자 생성
+        const adopterProviderId = Math.random().toString().substr(2, 10);
         const adopterResponse = await request(app.getHttpServer())
             .post('/api/auth/register/adopter')
             .send({
+                tempId: `temp_kakao_${adopterProviderId}_${timestamp}`,
                 email: `adopter_test_${timestamp}@test.com`,
                 nickname: `테스트입양자${timestamp}`,
-                phoneNumber: '010-7777-6666',
-                agreements: {
-                    termsOfService: true,
-                    privacyPolicy: true,
-                    marketingConsent: false,
-                },
-            });
+                phone: '010-7777-6666',
+                profileImage: 'https://example.com/adopter.jpg',
+            })
+            .expect(200);
 
-        if (adopterResponse.status === 200 && adopterResponse.body.data) {
-            adopterToken = adopterResponse.body.data.accessToken;
-            console.log('✅ 테스트용 입양자 생성 완료');
-        }
+        adopterToken = adopterResponse.body.data.accessToken;
+        console.log('✅ 테스트용 입양자 생성 완료');
     });
 
     afterAll(async () => {
@@ -109,16 +106,11 @@ describe('Breeder Management API E2E Tests (Simple)', () => {
         });
 
         it('GET /api/breeder-management/dashboard - 입양자로 접근 실패', async () => {
-            if (!adopterToken) {
-                console.log('⚠️  입양자 토큰이 없어서 테스트 스킵');
-                return;
-            }
-
             const response = await request(app.getHttpServer())
                 .get('/api/breeder-management/dashboard')
                 .set('Authorization', `Bearer ${adopterToken}`);
 
-            expect([401, 403]).toContain(response.status);
+            expect(response.status).toBe(403);
             console.log('✅ 입양자 접근 거부 확인');
         });
     });
@@ -230,67 +222,51 @@ describe('Breeder Management API E2E Tests (Simple)', () => {
         let parentPetId: string;
 
         it('POST /api/breeder-management/parent-pets - 부모견/묘 추가', async () => {
-            if (!breederToken) {
-                console.log('⚠️  브리더 토큰이 없어서 테스트 스킵');
-                return;
-            }
-
             const parentPetData = {
                 name: '테스트 부모견',
                 breed: '포메라니안',
                 gender: 'male',
                 birthDate: '2020-01-01',
-                registrationNumber: 'TEST-12345',
+                photoFileName: 'parent-pet-test.jpg',
+                description: '건강한 부모견입니다',
             };
 
             const response = await request(app.getHttpServer())
                 .post('/api/breeder-management/parent-pets')
                 .set('Authorization', `Bearer ${breederToken}`)
-                .send(parentPetData);
+                .send(parentPetData)
+                .expect(201);
 
-            // 200/201 또는 400 허용
-            if ([200, 201].includes(response.status)) {
-                expect(response.body.success).toBe(true);
-                if (response.body.data?.petId) {
-                    parentPetId = response.body.data.petId;
-                }
-                console.log('✅ 부모견/묘 추가 성공');
-            } else {
-                console.log('⚠️  부모견/묘 추가 실패 (DTO 검증 오류 가능)');
-            }
+            expect(response.body.success).toBe(true);
+            expect(response.body.data.petId).toBeDefined();
+            parentPetId = response.body.data.petId;
+            console.log('✅ 부모견/묘 추가 성공:', parentPetId);
         });
 
         it('PUT /api/breeder-management/parent-pets/:petId - 부모견/묘 수정', async () => {
-            if (!breederToken || !parentPetId) {
-                console.log('⚠️  브리더 토큰 또는 부모견 ID가 없어서 테스트 스킵');
-                return;
-            }
-
             const updateData = {
                 name: '수정된 부모견',
+                description: '업데이트된 설명',
             };
 
             const response = await request(app.getHttpServer())
                 .put(`/api/breeder-management/parent-pets/${parentPetId}`)
                 .set('Authorization', `Bearer ${breederToken}`)
-                .send(updateData);
+                .send(updateData)
+                .expect(200);
 
-            expect([200, 400, 404]).toContain(response.status);
-            console.log('✅ 부모견/묘 수정 처리 완료');
+            expect(response.body.success).toBe(true);
+            console.log('✅ 부모견/묘 수정 성공');
         });
 
         it('DELETE /api/breeder-management/parent-pets/:petId - 부모견/묘 삭제', async () => {
-            if (!breederToken || !parentPetId) {
-                console.log('⚠️  브리더 토큰 또는 부모견 ID가 없어서 테스트 스킵');
-                return;
-            }
-
             const response = await request(app.getHttpServer())
                 .delete(`/api/breeder-management/parent-pets/${parentPetId}`)
-                .set('Authorization', `Bearer ${breederToken}`);
+                .set('Authorization', `Bearer ${breederToken}`)
+                .expect(200);
 
-            expect([200, 400, 404]).toContain(response.status);
-            console.log('✅ 부모견/묘 삭제 처리 완료');
+            expect(response.body.success).toBe(true);
+            console.log('✅ 부모견/묘 삭제 성공');
         });
 
         it('POST /api/breeder-management/parent-pets - 인증 없이 접근 실패', async () => {
@@ -317,62 +293,45 @@ describe('Breeder Management API E2E Tests (Simple)', () => {
         let availablePetId: string;
 
         it('POST /api/breeder-management/available-pets - 분양 개체 추가', async () => {
-            if (!breederToken) {
-                console.log('⚠️  브리더 토큰이 없어서 테스트 스킵');
-                return;
-            }
-
             const availablePetData = {
                 name: '테스트 분양 개체',
                 breed: '포메라니안',
                 gender: 'female',
                 birthDate: '2024-01-01',
                 price: 1500000,
-                petStatus: 'available',
+                description: '건강하고 활발한 아이입니다',
             };
 
             const response = await request(app.getHttpServer())
                 .post('/api/breeder-management/available-pets')
                 .set('Authorization', `Bearer ${breederToken}`)
-                .send(availablePetData);
+                .send(availablePetData)
+                .expect(201);
 
-            if ([200, 201].includes(response.status)) {
-                expect(response.body.success).toBe(true);
-                if (response.body.data?.petId) {
-                    availablePetId = response.body.data.petId;
-                }
-                console.log('✅ 분양 개체 추가 성공');
-            } else {
-                console.log('⚠️  분양 개체 추가 실패 (DTO 검증 오류 가능)');
-            }
+            expect(response.body.success).toBe(true);
+            expect(response.body.data.petId).toBeDefined();
+            availablePetId = response.body.data.petId;
+            console.log('✅ 분양 개체 추가 성공:', availablePetId);
         });
 
         it('PUT /api/breeder-management/available-pets/:petId - 분양 개체 수정', async () => {
-            if (!breederToken || !availablePetId) {
-                console.log('⚠️  브리더 토큰 또는 분양 개체 ID가 없어서 테스트 스킵');
-                return;
-            }
-
             const updateData = {
                 name: '수정된 분양 개체',
                 price: 1800000,
+                description: '업데이트된 설명',
             };
 
             const response = await request(app.getHttpServer())
                 .put(`/api/breeder-management/available-pets/${availablePetId}`)
                 .set('Authorization', `Bearer ${breederToken}`)
-                .send(updateData);
+                .send(updateData)
+                .expect(200);
 
-            expect([200, 400, 404]).toContain(response.status);
-            console.log('✅ 분양 개체 수정 처리 완료');
+            expect(response.body.success).toBe(true);
+            console.log('✅ 분양 개체 수정 성공');
         });
 
         it('PATCH /api/breeder-management/available-pets/:petId/status - 분양 상태 변경', async () => {
-            if (!breederToken || !availablePetId) {
-                console.log('⚠️  브리더 토큰 또는 분양 개체 ID가 없어서 테스트 스킵');
-                return;
-            }
-
             const statusData = {
                 petStatus: 'reserved',
             };
@@ -380,24 +339,21 @@ describe('Breeder Management API E2E Tests (Simple)', () => {
             const response = await request(app.getHttpServer())
                 .patch(`/api/breeder-management/available-pets/${availablePetId}/status`)
                 .set('Authorization', `Bearer ${breederToken}`)
-                .send(statusData);
+                .send(statusData)
+                .expect(200);
 
-            expect([200, 400, 404]).toContain(response.status);
-            console.log('✅ 분양 상태 변경 처리 완료');
+            expect(response.body.success).toBe(true);
+            console.log('✅ 분양 상태 변경 성공');
         });
 
         it('DELETE /api/breeder-management/available-pets/:petId - 분양 개체 삭제', async () => {
-            if (!breederToken || !availablePetId) {
-                console.log('⚠️  브리더 토큰 또는 분양 개체 ID가 없어서 테스트 스킵');
-                return;
-            }
-
             const response = await request(app.getHttpServer())
                 .delete(`/api/breeder-management/available-pets/${availablePetId}`)
-                .set('Authorization', `Bearer ${breederToken}`);
+                .set('Authorization', `Bearer ${breederToken}`)
+                .expect(200);
 
-            expect([200, 400, 404]).toContain(response.status);
-            console.log('✅ 분양 개체 삭제 처리 완료');
+            expect(response.body.success).toBe(true);
+            console.log('✅ 분양 개체 삭제 성공');
         });
 
         it('POST /api/breeder-management/available-pets - 인증 없이 접근 실패', async () => {
