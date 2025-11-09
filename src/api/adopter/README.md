@@ -71,3 +71,9 @@
 - Breeder Schema (브리더 정보 참조)
 - JWT 인증 가드
 - 데이터 검증 파이프
+
+## 테스트 실행
+
+```bash
+yarn test:e2e src/api/adopter/test/adopter.e2e-spec.ts
+```

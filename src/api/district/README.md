@@ -175,3 +175,17 @@ async function initDistrictCache() {
 - [ ] 지역별 통계 정보
 - [ ] 지도 좌표 정보 추가
 - [ ] 인접 지역 추천 기능
+
+## 테스트 실행
+
+### 일반 사용자 API 테스트
+
+```bash
+yarn test:e2e src/api/district/test/district.e2e-spec.ts
+```
+
+### 관리자 API 테스트
+
+```bash
+yarn test:e2e src/api/district/admin/test/district-admin.e2e-spec.ts
+```

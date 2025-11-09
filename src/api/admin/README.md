@@ -116,3 +116,9 @@
 - SystemStats Schema (통계 데이터)
 - JWT 관리자 인증 가드
 - 알림 서비스
+
+## 테스트 실행
+
+```bash
+yarn test:e2e src/api/admin/test/admin.e2e-spec.ts
+```

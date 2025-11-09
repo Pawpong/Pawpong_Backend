@@ -1,8 +1,11 @@
-import { Controller, Get, Post, Patch, Delete, Param, Body, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
 
+import { Roles } from '../../../common/decorator/roles.decorator';
+import { RolesGuard } from '../../../common/guard/roles.guard';
+import { JwtAuthGuard } from '../../../common/guard/jwt-auth.guard';
 import { ApiController, ApiEndpoint } from '../../../common/decorator/swagger.decorator';
 
-import { AdminDistrictService } from './admin-district.service';
+import { DistrictAdminService } from './district-admin.service';
 
 import { ApiResponseDto } from '../../../common/dto/response/api-response.dto';
 import { CreateDistrictRequestDto } from './dto/request/create-district-request.dto';
@@ -11,8 +14,10 @@ import { DistrictResponseDto } from '../dto/response/district-response.dto';
 
 @ApiController('districts-admin')
 @Controller('districts-admin')
-export class AdminDistrictController {
-    constructor(private readonly adminDistrictService: AdminDistrictService) {}
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('admin')
+export class DistrictAdminController {
+    constructor(private readonly districtAdminService: DistrictAdminService) {}
 
     @Post()
     @ApiEndpoint({
@@ -20,10 +25,8 @@ export class AdminDistrictController {
         description: '새로운 지역을 생성합니다. (관리자 전용)',
         responseType: DistrictResponseDto,
     })
-    async createDistrict(
-        @Body() dto: CreateDistrictRequestDto,
-    ): Promise<ApiResponseDto<DistrictResponseDto>> {
-        const result = await this.adminDistrictService.createDistrict(dto);
+    async createDistrict(@Body() dto: CreateDistrictRequestDto): Promise<ApiResponseDto<DistrictResponseDto>> {
+        const result = await this.districtAdminService.createDistrict(dto);
         return ApiResponseDto.success(result);
     }
 
@@ -34,7 +37,7 @@ export class AdminDistrictController {
         responseType: DistrictResponseDto,
     })
     async getAllDistricts(): Promise<ApiResponseDto<DistrictResponseDto[]>> {
-        const result = await this.adminDistrictService.getAllDistricts();
+        const result = await this.districtAdminService.getAllDistricts();
         return ApiResponseDto.success(result);
     }
 
@@ -45,7 +48,7 @@ export class AdminDistrictController {
         responseType: DistrictResponseDto,
     })
     async getDistrictById(@Param('id') id: string): Promise<ApiResponseDto<DistrictResponseDto>> {
-        const result = await this.adminDistrictService.getDistrictById(id);
+        const result = await this.districtAdminService.getDistrictById(id);
         return ApiResponseDto.success(result);
     }
 
@@ -59,7 +62,7 @@ export class AdminDistrictController {
         @Param('id') id: string,
         @Body() dto: UpdateDistrictRequestDto,
     ): Promise<ApiResponseDto<DistrictResponseDto>> {
-        const result = await this.adminDistrictService.updateDistrict(id, dto);
+        const result = await this.districtAdminService.updateDistrict(id, dto);
         return ApiResponseDto.success(result);
     }
 
@@ -69,7 +72,7 @@ export class AdminDistrictController {
         description: '기존 지역을 삭제합니다. (관리자 전용)',
     })
     async deleteDistrict(@Param('id') id: string): Promise<ApiResponseDto<null>> {
-        await this.adminDistrictService.deleteDistrict(id);
+        await this.districtAdminService.deleteDistrict(id);
         return ApiResponseDto.success(null, '지역이 삭제되었습니다.');
     }
 }

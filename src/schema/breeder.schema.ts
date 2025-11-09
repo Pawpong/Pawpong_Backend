@@ -309,7 +309,7 @@ function getDefaultApplicationForm(): ApplicationFormField[] {
 export const BreederSchema = SchemaFactory.createForClass(Breeder);
 
 // 인덱스 설정
-BreederSchema.index({ email: 1 }, { unique: true });
-BreederSchema.index({ status: 1, 'verification.status': 1, 'stats.averageRating': -1 });
+BreederSchema.index({ emailAddress: 1 }, { unique: true });
+BreederSchema.index({ accountStatus: 1, 'verification.status': 1, 'stats.averageRating': -1 });
 BreederSchema.index({ 'verification.status': 1, 'profile.location.city': 1, 'profile.location.district': 1 });
-BreederSchema.index({ 'socialAuth.provider': 1, 'socialAuth.providerId': 1 });
+BreederSchema.index({ 'socialAuthInfo.authProvider': 1, 'socialAuthInfo.providerUserId': 1 });

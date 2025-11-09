@@ -9,7 +9,7 @@ import { UpdateDistrictRequestDto } from './dto/request/update-district-request.
 import { DistrictResponseDto } from '../dto/response/district-response.dto';
 
 @Injectable()
-export class AdminDistrictService {
+export class DistrictAdminService {
     constructor(@InjectModel(District.name) private readonly districtModel: Model<District>) {}
 
     /**

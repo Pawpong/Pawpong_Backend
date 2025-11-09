@@ -113,3 +113,9 @@ async getBreedsByPetType(petType: string): Promise<Breed[]>
 - Breeder: 브리더가 분양하는 품종 정보 참조
 - Breeder-Explore: 품종 필터링에 사용
 - District: 지역 정보와 함께 필터링에 활용
+
+## 테스트 실행
+
+```bash
+yarn test:e2e src/api/breed/test/breed.e2e-spec.ts
+```

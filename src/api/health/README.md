@@ -114,3 +114,9 @@
 - 자동 복구 메커니즘
 - 성능 트렌드 분석
 - 예측적 장애 감지
+
+## 테스트 실행
+
+```bash
+yarn test:e2e src/api/health/test/health.e2e-spec.ts
+```

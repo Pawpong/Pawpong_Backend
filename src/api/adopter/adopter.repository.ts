@@ -131,7 +131,7 @@ export class AdopterRepository {
         try {
             await this.adopterModel
                 .findByIdAndUpdate(adopterId, {
-                    $push: { favorite_breeder_list: favoriteData },
+                    $push: { favoriteBreederList: favoriteData },
                     $set: {
                         updated_at: new Date(),
                         last_activity_at: new Date(),
@@ -153,7 +153,7 @@ export class AdopterRepository {
         try {
             await this.adopterModel
                 .findByIdAndUpdate(adopterId, {
-                    $pull: { favorite_breeder_list: { favorite_breeder_id: breederId } },
+                    $pull: { favoriteBreederList: { favoriteBreederId: breederId } },
                     $set: {
                         updated_at: new Date(),
                         last_activity_at: new Date(),
@@ -285,7 +285,7 @@ export class AdopterRepository {
      */
     async findFavoriteList(adopterId: string, page: number = 1, limit: number = 10): Promise<any> {
         try {
-            const adopter = await this.adopterModel.findById(adopterId).select('favorite_breeder_list').lean().exec();
+            const adopter = await this.adopterModel.findById(adopterId).select('favoriteBreederList').lean().exec();
 
             if (!adopter || !adopter.favoriteBreederList) {
                 return {

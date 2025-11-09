@@ -1,102 +1,101 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
-import * as request from 'supertest';
-import { MongooseModule } from '@nestjs/mongoose';
-import { MongoMemoryServer } from 'mongodb-memory-server';
+import { INestApplication } from '@nestjs/common';
+import request from 'supertest';
 
-import { AppModule } from '../../../app.module';
+import { createTestingApp } from '../../../common/test/test-utils';
 
 /**
- * Health API End-to-End 테스트
+ * Health API E2E Tests (Simple)
  * 시스템 헬스체크 API 엔드포인트를 테스트합니다.
  */
-describe('Health API (e2e)', () => {
+describe('Health API E2E Tests (Simple)', () => {
     let app: INestApplication;
-    let mongod: MongoMemoryServer;
 
     beforeAll(async () => {
-        // 메모리 내 MongoDB 서버 시작
-        mongod = await MongoMemoryServer.create();
-        const uri = mongod.getUri();
-
-        const moduleFixture: TestingModule = await Test.createTestingModule({
-            imports: [MongooseModule.forRoot(uri), AppModule],
-        }).compile();
-
-        app = moduleFixture.createNestApplication();
-
-        // 글로벌 프리픽스 설정
-        app.setGlobalPrefix('api');
-
-        // 글로벌 파이프 설정
-        app.useGlobalPipes(
-            new ValidationPipe({
-                transform: true,
-                whitelist: true,
-                forbidNonWhitelisted: true,
-            }),
-        );
-
-        await app.init();
+        app = await createTestingApp();
     });
 
     afterAll(async () => {
         await app.close();
-        await mongod.stop();
     });
 
-    describe('GET /api/health', () => {
-        it('헬스체크 성공', async () => {
-            const response = await request(app.getHttpServer())
-                .get('/api/health')
-                .expect(200);
+    /**
+     * 1. 헬스체크 테스트
+     */
+    describe('헬스체크', () => {
+        it('GET /api/health - 헬스체크 성공', async () => {
+            const response = await request(app.getHttpServer()).get('/api/health').expect(200);
 
             expect(response.body).toHaveProperty('success', true);
             expect(response.body).toHaveProperty('code');
             expect(response.body).toHaveProperty('timestamp');
-            expect(response.body).toHaveProperty('item');
+            expect(response.body).toHaveProperty('data');
             expect(response.body).toHaveProperty('message');
+            console.log('✅ 헬스체크 성공');
         });
 
-        it('헬스체크 응답 데이터 구조 검증', async () => {
-            const response = await request(app.getHttpServer())
-                .get('/api/health')
-                .expect(200);
+        it('GET /api/health - 응답 데이터 구조 검증', async () => {
+            const response = await request(app.getHttpServer()).get('/api/health').expect(200);
 
-            const healthData = response.body.item;
+            const healthData = response.body.data;
             expect(healthData).toHaveProperty('status', 'healthy');
             expect(healthData).toHaveProperty('timestamp');
             expect(healthData).toHaveProperty('service', 'Pawpong Backend');
             expect(healthData).toHaveProperty('version', '1.0.0-MVP');
             expect(healthData).toHaveProperty('environment');
             expect(healthData).toHaveProperty('uptime');
+            console.log('✅ 헬스체크 응답 데이터 구조 검증 완료');
         });
 
-        it('헬스체크 uptime이 숫자인지 확인', async () => {
-            const response = await request(app.getHttpServer())
-                .get('/api/health')
-                .expect(200);
+        it('GET /api/health - uptime이 숫자인지 확인', async () => {
+            const response = await request(app.getHttpServer()).get('/api/health').expect(200);
 
-            const healthData = response.body.item;
+            const healthData = response.body.data;
             expect(typeof healthData.uptime).toBe('number');
             expect(healthData.uptime).toBeGreaterThanOrEqual(0);
+            console.log('✅ uptime 값 검증 완료');
         });
 
-        it('헬스체크 timestamp가 유효한 ISO 형식인지 확인', async () => {
-            const response = await request(app.getHttpServer())
-                .get('/api/health')
-                .expect(200);
+        it('GET /api/health - timestamp가 유효한 ISO 형식인지 확인', async () => {
+            const response = await request(app.getHttpServer()).get('/api/health').expect(200);
 
-            const healthData = response.body.item;
+            const healthData = response.body.data;
             const timestamp = new Date(healthData.timestamp);
             expect(timestamp.toString()).not.toBe('Invalid Date');
+            console.log('✅ timestamp 형식 검증 완료');
         });
 
-        it('헬스체크는 인증 없이 접근 가능', async () => {
+        it('GET /api/health - 인증 없이 접근 가능', async () => {
             // Authorization 헤더 없이 요청
-            await request(app.getHttpServer())
-                .get('/api/health')
-                .expect(200);
+            const response = await request(app.getHttpServer()).get('/api/health').expect(200);
+
+            expect(response.body.success).toBe(true);
+            console.log('✅ 인증 없이 접근 가능 확인');
+        });
+    });
+
+    /**
+     * 2. 응답 형식 검증 테스트
+     */
+    describe('응답 형식 검증', () => {
+        it('표준 API 응답 형식 확인', async () => {
+            const response = await request(app.getHttpServer()).get('/api/health').expect(200);
+
+            expect(response.body).toHaveProperty('success');
+            expect(response.body).toHaveProperty('code');
+            expect(response.body).toHaveProperty('data');
+            expect(response.body).toHaveProperty('timestamp');
+            expect(response.body.success).toBe(true);
+            expect(response.body.code).toBe(200);
+            console.log('✅ 표준 API 응답 형식 검증 완료');
+        });
+
+        it('타임스탬프 형식 확인', async () => {
+            const response = await request(app.getHttpServer()).get('/api/health').expect(200);
+
+            const timestamp = response.body.timestamp;
+            expect(timestamp).toBeDefined();
+            expect(new Date(timestamp).toString()).not.toBe('Invalid Date');
+            console.log('✅ 타임스탬프 형식 검증 완료');
         });
     });
 });

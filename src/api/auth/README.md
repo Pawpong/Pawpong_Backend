@@ -9,12 +9,14 @@
 ### 1. 회원가입
 
 #### 입양자 회원가입 (`POST /api/auth/register/adopter`)
+
 - 이메일, 닉네임, 전화번호 중복 체크
 - 비밀번호 bcrypt 해싱
 - 전화번호 자동 정규화 (하이픈 제거)
 - 프로필 이미지 업로드 (선택사항)
 
 #### 브리더 회원가입 (`POST /api/auth/register/breeder`)
+
 - 이메일, 전화번호 중복 체크
 - 비밀번호 bcrypt 해싱
 - 필수 약관 동의 체크 (서비스 이용약관, 개인정보 처리방침)
@@ -59,10 +61,12 @@
 #### 브리더 레벨별 필수 서류
 
 **New 레벨** (`POST /api/auth/breeder/submit-documents`):
+
 - 신분증 사본 (idCardUrl) - 필수
 - 동물생산업 등록증 (animalProductionLicenseUrl) - 필수
 
 **Elite 레벨** (`POST /api/auth/breeder/submit-documents`):
+
 - 신분증 사본 (idCardUrl) - 필수
 - 동물생산업 등록증 (animalProductionLicenseUrl) - 필수
 - 표준 입양계약서 샘플 (adoptionContractSampleUrl) - 필수
@@ -71,6 +75,7 @@
 - TICA 또는 CFA 서류 (ticaCfaDocumentUrl) - 선택사항
 
 서류 제출 후:
+
 - 검증 상태: `pending` → `reviewing` → `approved` / `rejected`
 - 예상 처리 시간: 3-5 영업일
 - 관리자 승인 후 브리더 활동 가능
@@ -206,3 +211,9 @@ FRONTEND_URL=http://localhost:3000
 - 전화번호 정규화로 중복 가입 방지
 - SMS 인증 5회 시도 제한
 - JWT 짧은 만료 시간 (Access: 1시간, Refresh: 7일)
+
+## 테스트 실행
+
+```bash
+yarn test:e2e src/api/auth/test/auth.e2e-spec.ts
+```

@@ -5,10 +5,11 @@
 브리더 검색 및 조회를 위한 공개 API 도메인입니다. 인증 없이도 브리더 검색, 프로필 조회, 후기 확인, 반려동물 정보 조회 등이 가능합니다.
 
 **핵심 특징:**
-- 🌐 **공개 API**: 인증 없이 모든 API 사용 가능 (일부 기능은 인증 시 추가 정보 제공)
-- 🔍 **강력한 검색**: 다양한 필터링 및 정렬 옵션 제공
-- 📊 **페이지네이션**: 모든 목록 조회 API에서 페이지네이션 지원
-- 💾 **성능 최적화**: MongoDB 임베딩 구조로 단일 쿼리 조회
+
+- **공개 API**: 인증 없이 모든 API 사용 가능 (일부 기능은 인증 시 추가 정보 제공)
+- **강력한 검색**: 다양한 필터링 및 정렬 옵션 제공
+- **페이지네이션**: 모든 목록 조회 API에서 페이지네이션 지원
+- **성능 최적화**: MongoDB 임베딩 구조로 단일 쿼리 조회
 
 ## 주요 기능
 
@@ -28,23 +29,25 @@
 강아지/고양이 브리더를 검색하고 다양한 조건으로 필터링할 수 있습니다.
 
 **Request:**
+
 ```json
 {
-  "petType": "dog",
-  "dogSize": ["small", "medium"],
-  "province": ["서울특별시", "경기도"],
-  "city": ["강남구", "파주시"],
-  "isAdoptionAvailable": true,
-  "breederLevel": ["elite"],
-  "sortBy": "latest",
-  "page": 1,
-  "take": 20
+    "petType": "dog",
+    "dogSize": ["small", "medium"],
+    "province": ["서울특별시", "경기도"],
+    "city": ["강남구", "파주시"],
+    "isAdoptionAvailable": true,
+    "breederLevel": ["elite"],
+    "sortBy": "latest",
+    "page": 1,
+    "take": 20
 }
 ```
 
 **정렬 옵션:** latest, favorite, review, price_asc, price_desc
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -102,9 +105,10 @@
 - GET /api/breeder/search: 2개 테스트
 - 통합 시나리오: 1개 테스트
 
+## 테스트 실행
+
 ```bash
-# 테스트 실행
-yarn test:e2e breeder.e2e-spec
+yarn test:e2e src/api/breeder/test/breeder.e2e-spec.ts
 ```
 
 ## 관련 문서

@@ -5,11 +5,12 @@
 인증된 브리더가 자신의 정보와 반려동물을 관리하기 위한 전용 API 도메인입니다. 프로필 수정, 인증 관리, 반려동물 등록/수정/삭제, 입양 신청 처리 등 브리더의 모든 관리 기능을 제공합니다.
 
 **핵심 특징:**
-- 🔒 **인증 필수**: 모든 API는 JWT 인증 + breeder 역할 필요
-- 🎛️ **완전한 CRUD**: 반려동물(부모견/분양용)과 프로필 전체 관리
-- 📋 **입양 신청 관리**: 받은 신청 조회 및 상태 업데이트
-- 🔧 **커스텀 폼**: 입양 신청 폼 질문 추가/수정/삭제
-- 📊 **대시보드**: 통계 정보와 최근 활동 한눈에 확인
+
+- **인증 필수**: 모든 API는 JWT 인증 + breeder 역할 필요
+- **완전한 CRUD**: 반려동물(부모견/분양용)과 프로필 전체 관리
+- **입양 신청 관리**: 받은 신청 조회 및 상태 업데이트
+- **커스텀 폼**: 입양 신청 폼 질문 추가/수정/삭제
+- **대시보드**: 통계 정보와 최근 활동 한눈에 확인
 
 ## 주요 기능
 
@@ -30,6 +31,7 @@
 브리더의 통계 정보와 최근 활동을 확인합니다.
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -59,21 +61,22 @@
 브리더의 프로필 정보를 업데이트합니다.
 
 **Request:**
+
 ```json
 {
-  "profileDescription": "15년 경력의 전문 브리더입니다",
-  "locationInfo": {
-    "cityName": "서울특별시",
-    "districtName": "강남구",
-    "detailAddress": "테헤란로 123"
-  },
-  "profilePhotos": ["https://...", "https://..."],
-  "priceRangeInfo": {
-    "minimumPrice": 500000,
-    "maximumPrice": 2000000
-  },
-  "specializationTypes": ["dog", "cat"],
-  "experienceYears": 15
+    "profileDescription": "15년 경력의 전문 브리더입니다",
+    "locationInfo": {
+        "cityName": "서울특별시",
+        "districtName": "강남구",
+        "detailAddress": "테헤란로 123"
+    },
+    "profilePhotos": ["https://...", "https://..."],
+    "priceRangeInfo": {
+        "minimumPrice": 500000,
+        "maximumPrice": 2000000
+    },
+    "specializationTypes": ["dog", "cat"],
+    "experienceYears": 15
 }
 ```
 
@@ -86,15 +89,13 @@
 브리더 인증을 위한 서류를 제출합니다.
 
 **Request:**
+
 ```json
 {
-  "businessNumber": "123-45-67890",
-  "businessName": "해피독 브리더",
-  "representativeName": "홍길동",
-  "documentUrls": [
-    "https://example.com/business-license.pdf",
-    "https://example.com/certificate.pdf"
-  ]
+    "businessNumber": "123-45-67890",
+    "businessName": "해피독 브리더",
+    "representativeName": "홍길동",
+    "documentUrls": ["https://example.com/business-license.pdf", "https://example.com/certificate.pdf"]
 }
 ```
 
@@ -103,12 +104,13 @@
 새로운 부모 반려동물을 등록합니다.
 
 **Request:**
+
 ```json
 {
-  "name": "챔프",
-  "breed": "골든리트리버",
-  "gender": "male",
-  "description": "온순하고 건강한 부모견입니다"
+    "name": "챔프",
+    "breed": "골든리트리버",
+    "gender": "male",
+    "description": "온순하고 건강한 부모견입니다"
 }
 ```
 
@@ -125,18 +127,19 @@
 새로운 분양 가능한 반려동물을 등록합니다.
 
 **Request:**
+
 ```json
 {
-  "name": "밀크",
-  "breed": "골든리트리버",
-  "gender": "female",
-  "birthDate": "2024-01-15",
-  "price": 1500000,
-  "description": "건강하고 활발한 아이입니다",
-  "parentInfo": {
-    "mother": "507f1f77bcf86cd799439011",
-    "father": "507f1f77bcf86cd799439012"
-  }
+    "name": "밀크",
+    "breed": "골든리트리버",
+    "gender": "female",
+    "birthDate": "2024-01-15",
+    "price": 1500000,
+    "description": "건강하고 활발한 아이입니다",
+    "parentInfo": {
+        "mother": "507f1f77bcf86cd799439011",
+        "father": "507f1f77bcf86cd799439012"
+    }
 }
 ```
 
@@ -149,9 +152,10 @@
 분양 반려동물의 상태를 변경합니다 (available, reserved, adopted).
 
 **Request:**
+
 ```json
 {
-  "petStatus": "reserved"
+    "petStatus": "reserved"
 }
 ```
 
@@ -164,6 +168,7 @@
 브리더가 받은 입양 신청들을 페이지네이션으로 조회합니다.
 
 **Query Parameters:**
+
 - `page`: 페이지 번호 (기본값: 1)
 - `take`: 페이지당 항목 수 (기본값: 10)
 
@@ -172,6 +177,7 @@
 브리더가 받은 특정 입양 신청의 상세 정보를 조회합니다.
 
 **Response 데이터:**
+
 - 신청 ID, 입양자 정보 (이름, 이메일, 연락처)
 - 반려동물 정보 (있는 경우)
 - 신청서 전체 내용 (8가지 필수 정보 포함)
@@ -183,10 +189,11 @@
 받은 입양 신청의 상태를 변경합니다.
 
 **Request:**
+
 ```json
 {
-  "applicationStatus": "approved",
-  "breederMemo": "검토 완료, 승인합니다"
+    "applicationStatus": "approved",
+    "breederMemo": "검토 완료, 승인합니다"
 }
 ```
 
@@ -197,12 +204,14 @@
 브리더 자신의 모든 개체 목록을 관리 목적으로 조회합니다.
 
 **Query Parameters:**
+
 - `status`: 상태 필터 (available, reserved, adopted)
 - `includeInactive`: 비활성화된 개체 포함 여부 (true/false)
 - `page`: 페이지 번호 (기본값: 1)
 - `limit`: 페이지당 항목 수 (기본값: 20)
 
 **Response 포함 정보:**
+
 - 비활성화된 개체
 - 상태별 필터링
 - 입양 신청 수 등 상세 정보
@@ -212,11 +221,13 @@
 브리더 자신에게 작성된 모든 후기를 관리 목적으로 조회합니다.
 
 **Query Parameters:**
+
 - `visibility`: 공개 여부 필터 (all, public, private)
 - `page`: 페이지 번호 (기본값: 1)
 - `limit`: 페이지당 항목 수 (기본값: 10)
 
 **Response 포함 정보:**
+
 - 공개/비공개 후기 모두 확인 가능
 - 신고된 후기 정보 포함
 
@@ -225,21 +236,22 @@
 브리더가 설정한 입양 신청 폼 전체 구조를 조회합니다.
 
 **Response 데이터:**
+
 - **표준 질문 (14개)**: 모든 브리더 공통, 수정 불가능
-  1. 개인정보 수집 동의
-  2. 자기소개
-  3. 가족 구성원 정보
-  4. 가족 입양 동의
-  5. 알러지 검사
-  6. 집 비우는 시간
-  7. 거주 공간 소개
-  8. 반려동물 경험
-  9. 기본 케어 책임
-  10. 치료비 감당
-  11. 중성화 동의
-  12. 선호하는 아이
-  13. 입양 시기
-  14. 추가 문의사항
+    1. 개인정보 수집 동의
+    2. 자기소개
+    3. 가족 구성원 정보
+    4. 가족 입양 동의
+    5. 알러지 검사
+    6. 집 비우는 시간
+    7. 거주 공간 소개
+    8. 반려동물 경험
+    9. 기본 케어 책임
+    10. 치료비 감당
+    11. 중성화 동의
+    12. 선호하는 아이
+    13. 입양 시기
+    14. 추가 문의사항
 
 - **커스텀 질문**: 브리더가 자유롭게 추가/삭제 가능
 
@@ -248,37 +260,40 @@
 브리더가 커스텀 질문을 추가/수정/삭제합니다.
 
 **중요 사항:**
+
 - 표준 14개 질문은 자동으로 포함되며 수정 불가능
 - 이 API는 커스텀 질문만 관리합니다
 - 전체 커스텀 질문 배열을 전송 (부분 수정 불가)
 
 **Validation 규칙:**
+
 - 질문 ID는 영문, 숫자, 언더스코어만 사용
 - 질문 ID는 중복 불가
 - 표준 질문 ID와 중복 불가
 - select/radio/checkbox 타입은 options 필수
 
 **Request:**
+
 ```json
 {
-  "customQuestions": [
-    {
-      "id": "custom_visit_time",
-      "type": "select",
-      "label": "방문 가능한 시간대를 선택해주세요",
-      "required": true,
-      "options": ["오전", "오후", "저녁"],
-      "order": 1
-    },
-    {
-      "id": "custom_pet_preference",
-      "type": "textarea",
-      "label": "선호하는 반려동물의 성격을 알려주세요",
-      "required": false,
-      "placeholder": "예: 활발하고 사람을 좋아하는 성격",
-      "order": 2
-    }
-  ]
+    "customQuestions": [
+        {
+            "id": "custom_visit_time",
+            "type": "select",
+            "label": "방문 가능한 시간대를 선택해주세요",
+            "required": true,
+            "options": ["오전", "오후", "저녁"],
+            "order": 1
+        },
+        {
+            "id": "custom_pet_preference",
+            "type": "textarea",
+            "label": "선호하는 반려동물의 성격을 알려주세요",
+            "required": false,
+            "placeholder": "예: 활발하고 사람을 좋아하는 성격",
+            "order": 2
+        }
+    ]
 }
 ```
 
@@ -315,11 +330,13 @@ yarn test:e2e breeder-management.e2e-spec
 ## 권한 및 보안
 
 **인증 요구사항:**
+
 - 모든 API는 JWT 토큰 필수
 - `breeder` 역할만 접근 가능
 - 본인의 데이터만 조회/수정 가능
 
 **보안 정책:**
+
 - 브리더는 자신의 정보만 관리
 - 다른 브리더의 데이터 접근 불가
 - 입양 신청은 자신에게 온 것만 조회
@@ -327,11 +344,13 @@ yarn test:e2e breeder-management.e2e-spec
 ## 비즈니스 로직
 
 ### 반려동물 상태 관리
+
 - `available`: 분양 가능
 - `reserved`: 예약됨
 - `adopted`: 입양 완료
 
 ### 입양 신청 상태 관리
+
 - `pending`: 접수 대기
 - `reviewing`: 검토 중
 - `approved`: 승인
@@ -339,9 +358,16 @@ yarn test:e2e breeder-management.e2e-spec
 - `cancelled`: 취소됨
 
 ### 인증 상태
+
 - `pending`: 승인 대기
 - `approved`: 승인됨
 - `rejected`: 거절됨
+
+## 테스트 실행
+
+```bash
+yarn test:e2e src/api/breeder-management/test/breeder-management.e2e-spec.ts
+```
 
 ## 관련 문서
 

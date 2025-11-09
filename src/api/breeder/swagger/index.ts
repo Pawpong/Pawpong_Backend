@@ -1,5 +1,3 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { SearchBreederRequestDto } from '../dto/request/search-breeder-request.dto';
 import { BreederCardResponseDto } from '../dto/response/breeder-card-response.dto';
 import { PaginationResponseDto } from '../../../common/dto/pagination/pagination-response.dto';
 

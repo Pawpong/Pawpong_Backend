@@ -64,3 +64,9 @@ upload/
 - [ ] 이미지 자동 리사이징
 - [ ] WebP 자동 변환
 - [ ] 바이러스 스캔 연동
+
+## 테스트 실행
+
+```bash
+yarn test:e2e src/api/upload/test/upload.e2e-spec.ts
+```

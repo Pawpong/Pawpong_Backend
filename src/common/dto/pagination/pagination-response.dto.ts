@@ -5,7 +5,7 @@ import { PaginationBuilder } from './pagination-builder.dto';
 /**
  * 페이지네이션 응답 DTO
  * 페이징 처리된 데이터와 페이지 정보를 함께 반환합니다.
- * data: { items: [], pageInfo: {} } 구조
+ * data: { items: [], pagination: {} } 구조
  */
 export class PaginationResponseDto<T> {
     /**
@@ -18,11 +18,11 @@ export class PaginationResponseDto<T> {
      * 페이지네이션 메타 정보
      */
     @ApiProperty({ description: '페이지네이션 정보', type: PageInfoDto })
-    pageInfo: PageInfoDto;
+    pagination: PageInfoDto;
 
     constructor(paginationBuilder: PaginationBuilder<T>) {
         this.items = paginationBuilder._items;
-        this.pageInfo = {
+        this.pagination = {
             currentPage: paginationBuilder._page,
             pageSize: paginationBuilder._take,
             totalItems: paginationBuilder._totalCount,

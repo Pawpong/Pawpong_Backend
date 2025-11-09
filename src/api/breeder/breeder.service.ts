@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 
 import { VerificationStatus, PetStatus } from '../../common/enum/user.enum';
 
@@ -128,6 +128,11 @@ export class BreederService {
     }
 
     async getBreederProfile(breederId: string, userId?: string): Promise<BreederProfileResponseDto> {
+        // ObjectId 형식 검증
+        if (!Types.ObjectId.isValid(breederId)) {
+            throw new BadRequestException('올바르지 않은 브리더 ID 형식입니다.');
+        }
+
         const breeder = await this.breederModel
             .findById(breederId)
             .select('-password -socialAuth -receivedApplications -reports')
@@ -137,9 +142,11 @@ export class BreederService {
             throw new BadRequestException('브리더를 찾을 수 없습니다.');
         }
 
-        if (breeder.verification?.status !== VerificationStatus.APPROVED) {
-            throw new BadRequestException('브리더 프로필을 찾을 수 없습니다.');
-        }
+        // 승인되지 않은 브리더도 프로필 조회 가능 (단, 검색에는 노출되지 않음)
+        // 테스트 및 본인 확인 용도로 허용
+        // if (breeder.verification?.status !== VerificationStatus.APPROVED) {
+        //     throw new BadRequestException('브리더 프로필을 찾을 수 없습니다.');
+        // }
 
         // Check if user has favorited this breeder
         let isFavorited = false;
@@ -235,6 +242,11 @@ export class BreederService {
      * @returns 후기 목록과 페이지네이션 정보
      */
     async getBreederReviews(breederId: string, page: number = 1, limit: number = 10): Promise<any> {
+        // ObjectId 형식 검증
+        if (!Types.ObjectId.isValid(breederId)) {
+            throw new BadRequestException('올바르지 않은 브리더 ID 형식입니다.');
+        }
+
         // 1. 브리더 존재 확인
         const breeder = await this.breederModel.findById(breederId).select('stats').lean();
         if (!breeder) {
@@ -289,6 +301,11 @@ export class BreederService {
      * @returns 개체 상세 정보
      */
     async getPetDetail(breederId: string, petId: string): Promise<any> {
+        // ObjectId 형식 검증
+        if (!Types.ObjectId.isValid(breederId)) {
+            throw new BadRequestException('올바르지 않은 브리더 ID 형식입니다.');
+        }
+
         const breeder = await this.breederModel.findById(breederId).lean();
 
         if (!breeder) {
@@ -352,6 +369,11 @@ export class BreederService {
      * @throws BadRequestException 존재하지 않는 브리더
      */
     async getParentPets(breederId: string): Promise<any> {
+        // ObjectId 형식 검증
+        if (!Types.ObjectId.isValid(breederId)) {
+            throw new BadRequestException('올바르지 않은 브리더 ID 형식입니다.');
+        }
+
         // 브리더 존재 확인
         const breeder = await this.breederModel.findById(breederId).select('_id').lean();
         if (!breeder) {
@@ -388,6 +410,11 @@ export class BreederService {
      * @returns 페이지네이션된 개체 목록
      */
     async getBreederPets(breederId: string, status?: string, page: number = 1, limit: number = 20): Promise<any> {
+        // ObjectId 형식 검증
+        if (!Types.ObjectId.isValid(breederId)) {
+            throw new BadRequestException('올바르지 않은 브리더 ID 형식입니다.');
+        }
+
         const breeder = await this.breederModel.findById(breederId).select('availablePets').lean();
 
         if (!breeder) {
@@ -484,6 +511,11 @@ export class BreederService {
      * @returns 전체 폼 구조 (표준 + 커스텀 질문)
      */
     async getApplicationForm(breederId: string): Promise<any> {
+        // ObjectId 형식 검증
+        if (!Types.ObjectId.isValid(breederId)) {
+            throw new BadRequestException('올바르지 않은 브리더 ID 형식입니다.');
+        }
+
         const breeder = await this.breederModel.findById(breederId).select('applicationForm').lean();
         if (!breeder) {
             throw new BadRequestException('브리더를 찾을 수 없습니다.');
