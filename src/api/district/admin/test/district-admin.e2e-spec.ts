@@ -96,10 +96,12 @@ describe('District Admin API E2E Tests (Simple)', () => {
         });
 
         it('POST /api/districts-admin - 인증 없이 접근 실패', async () => {
-            const response = await request(app.getHttpServer()).post('/api/districts-admin').send({
-                city: `테스트시_무인증_${Date.now()}`,
-                districts: ['테스트구'],
-            });
+            const response = await request(app.getHttpServer())
+                .post('/api/districts-admin')
+                .send({
+                    city: `테스트시_무인증_${Date.now()}`,
+                    districts: ['테스트구'],
+                });
 
             expect(response.status).toBe(401);
             console.log('✅ 인증 없이 접근 거부 확인');
