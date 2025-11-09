@@ -1,4 +1,4 @@
-import { INestApplication, Logger, ValidationPipe, HttpStatus, HttpException } from '@nestjs/common';
+import { INestApplication, Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, OpenAPIObject, SwaggerModule } from '@nestjs/swagger';
@@ -6,9 +6,11 @@ import express from 'express';
 import cookieParser from 'cookie-parser';
 import path from 'path';
 
-import { CustomLoggerService } from './common/logger/custom-logger.service';
-import { HttpStatusInterceptor } from './common/interceptor/http-status.interceptor';
 import { HttpExceptionFilter, AllExceptionsFilter } from './common/filter/http-exception.filter';
+import { HttpStatusInterceptor } from './common/interceptor/http-status.interceptor';
+
+import { CustomLoggerService } from './common/logger/custom-logger.service';
+
 import { AppModule } from './app.module';
 
 declare const module: any;

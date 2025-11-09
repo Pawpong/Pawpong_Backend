@@ -3,8 +3,8 @@ import { ConfigModule } from '@nestjs/config';
 import { StorageService } from './storage.service';
 
 @Module({
-  imports: [ConfigModule],
-  providers: [StorageService],
-  exports: [StorageService],
+    imports: [ConfigModule],
+    providers: [StorageService],
+    exports: [StorageService],
 })
 export class StorageModule {}

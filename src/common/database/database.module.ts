@@ -56,6 +56,7 @@ export class DatabaseModule {}
         MongooseModule.forFeature([
             { name: Adopter.name, schema: AdopterSchema },
             { name: Breeder.name, schema: BreederSchema },
+            { name: Admin.name, schema: AdminSchema },
         ]),
     ],
     exports: [MongooseModule],
