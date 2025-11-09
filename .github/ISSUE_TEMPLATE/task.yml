@@ -1,6 +1,6 @@
 name: Task
 description: Jira 하위 작업 생성
-title: "[BE] "
+title: "[BackEnd] "
 body:
   - type: input
     id: jira-story-number
