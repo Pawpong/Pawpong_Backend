@@ -16,36 +16,34 @@ export class ReviewCreateResponseDto {
     reviewId: string;
 
     /**
-     * 후기 대상 브리더 ID
+     * 입양 신청 ID
      * @example "507f1f77bcf86cd799439011"
      */
     @ApiProperty({
-        description: '후기 대상 브리더 ID',
+        description: '입양 신청 ID',
         example: '507f1f77bcf86cd799439011',
     })
-    targetBreederId: string;
+    applicationId: string;
 
     /**
-     * 전체 평점
-     * @example 5
+     * 후기 대상 브리더 ID
+     * @example "507f1f77bcf86cd799439012"
      */
     @ApiProperty({
-        description: '전체 평점',
-        example: 5,
-        minimum: 1,
-        maximum: 5,
+        description: '후기 대상 브리더 ID',
+        example: '507f1f77bcf86cd799439012',
     })
-    overallRating: number;
+    breederId: string;
 
     /**
-     * 후기 내용
-     * @example "정말 좋은 브리더입니다. 반려동물이 건강하고 성격도 좋아요."
+     * 후기 유형
+     * @example "adoption"
      */
     @ApiProperty({
-        description: '후기 내용',
-        example: '정말 좋은 브리더입니다. 반려동물이 건강하고 성격도 좋아요.',
+        description: '후기 유형 (consultation | adoption)',
+        example: 'adoption',
     })
-    reviewContent: string;
+    reviewType: string;
 
     /**
      * 후기 작성 일시
@@ -56,25 +54,5 @@ export class ReviewCreateResponseDto {
         example: '2024-01-15T10:30:00.000Z',
         format: 'date-time',
     })
-    createdAt: string;
-
-    /**
-     * 후기 공개 상태
-     * @example true
-     */
-    @ApiProperty({
-        description: '후기 공개 상태',
-        example: true,
-    })
-    isPublicVisible: boolean;
-
-    /**
-     * 후기 작성 완료 메시지
-     * @example "후기가 성공적으로 작성되었습니다. 다른 입양자들에게 도움이 될 것입니다."
-     */
-    @ApiProperty({
-        description: '후기 작성 완료 메시지',
-        example: '후기가 성공적으로 작성되었습니다. 다른 입양자들에게 도움이 될 것입니다.',
-    })
-    confirmationMessage: string;
+    writtenAt: string;
 }

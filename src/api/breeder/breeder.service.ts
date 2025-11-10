@@ -263,6 +263,7 @@ export class BreederService {
                 .skip(skip)
                 .limit(limit)
                 .populate('adopterId', 'nickname') // 입양자 닉네임 조회
+                .populate('applicationId', 'petName') // 입양 신청의 반려동물 이름 조회
                 .lean()
                 .exec(),
             this.breederReviewModel.countDocuments({ breederId, isVisible: true }).exec(),
@@ -271,7 +272,9 @@ export class BreederService {
         // 3. 응답 데이터 포맷팅
         const formattedReviews = reviews.map((review: any) => ({
             reviewId: review._id.toString(),
+            applicationId: review.applicationId?._id?.toString() || review.applicationId?.toString(),
             adopterName: review.adopterId?.nickname || '알 수 없음',
+            petName: review.applicationId?.petName || undefined,
             content: review.content,
             writtenAt: review.writtenAt,
             type: review.type,
@@ -289,7 +292,6 @@ export class BreederService {
                 hasNextPage: page < totalPages,
                 hasPrevPage: page > 1,
             },
-            totalReviews: total,
         };
     }
 

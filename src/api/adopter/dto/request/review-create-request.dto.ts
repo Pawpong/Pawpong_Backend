@@ -2,25 +2,26 @@ import { IsString, IsNotEmpty } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 /**
- * 입양자 후기 작성 요청 DTO (재설계)
+ * 입양자 후기 작성 요청 DTO
  *
  * 변경사항:
- * - applicationId 제거 (권한 확인 불필요)
+ * - applicationId 필수 (상담 완료된 신청에 대해서만 작성 가능)
  * - adopterId는 JWT 토큰에서 자동 추출
- * - 필수 필드: breederId, reviewType, content
+ * - 필수 필드: applicationId, reviewType, content
  */
 export class ReviewCreateRequestDto {
     /**
-     * 후기를 작성할 브리더 ID
+     * 후기를 작성할 입양 신청 ID
+     * 상담 완료(consultation_completed) 상태인 신청만 가능
      * @example "507f1f77bcf86cd799439012"
      */
     @ApiProperty({
-        description: '후기를 작성할 브리더 ID',
+        description: '후기를 작성할 입양 신청 ID (상담 완료 상태여야 함)',
         example: '507f1f77bcf86cd799439012',
     })
     @IsString()
     @IsNotEmpty()
-    breederId: string;
+    applicationId: string;
 
     /**
      * 후기 유형

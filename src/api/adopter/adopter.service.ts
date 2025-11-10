@@ -174,20 +174,20 @@ export class AdopterService {
     }
 
     /**
-     * 입양 후기 작성 처리 (단순화)
+     * 입양 후기 작성 처리
      *
      * 변경사항:
-     * - applicationId 검증 제거 (자유롭게 작성 가능)
-     * - 브리더 존재 여부만 확인
-     * - 중복 후기 방지
+     * - 상담 완료된 입양 신청에 대해서만 작성 가능
+     * - 입양 신청당 1개의 후기만 작성 가능 (중복 방지)
+     * - 본인 신청에 대해서만 후기 작성 가능
      *
      * @param userId 입양자 고유 ID (JWT에서 추출)
      * @param createReviewDto 후기 작성 데이터
-     * @returns 생성된 후기 ID 및 성공 메시지
+     * @returns 생성된 후기 정보
      * @throws BadRequestException 잘못된 요청
      */
     async createReview(userId: string, createReviewDto: ReviewCreateRequestDto): Promise<any> {
-        const { breederId, reviewType, content } = createReviewDto;
+        const { applicationId, reviewType, content } = createReviewDto;
 
         // 1. 입양자 존재 확인
         const adopter = await this.adopterRepository.findById(userId);
@@ -195,25 +195,43 @@ export class AdopterService {
             throw new BadRequestException('입양자 정보를 찾을 수 없습니다.');
         }
 
-        // 2. 브리더 존재 확인
-        const breeder = await this.breederRepository.findById(breederId);
+        // 2. 입양 신청 조회 및 검증
+        const application = await this.adoptionApplicationModel.findById(applicationId);
+        if (!application) {
+            throw new BadRequestException('해당 입양 신청을 찾을 수 없습니다.');
+        }
+
+        // 3. 본인 신청인지 확인
+        if (application.adopterId.toString() !== userId) {
+            throw new BadRequestException('본인의 입양 신청에 대해서만 후기를 작성할 수 있습니다.');
+        }
+
+        // 4. 상담 완료 상태인지 확인
+        if (application.status !== ApplicationStatus.CONSULTATION_COMPLETED) {
+            throw new BadRequestException(
+                '상담이 완료된 신청에 대해서만 후기를 작성할 수 있습니다. 현재 상태: ' + application.status,
+            );
+        }
+
+        // 5. 브리더 존재 확인
+        const breeder = await this.breederRepository.findById(application.breederId.toString());
         if (!breeder) {
             throw new BadRequestException('해당 브리더를 찾을 수 없습니다.');
         }
 
-        // 3. 중복 후기 작성 방지 (같은 브리더에게 이미 작성한 후기가 있는지 확인)
+        // 6. 중복 후기 작성 방지 (해당 신청에 이미 작성한 후기가 있는지 확인)
         const existingReview = await this.breederReviewModel.findOne({
-            adopterId: userId,
-            breederId: breederId,
+            applicationId: applicationId,
         });
 
         if (existingReview) {
-            throw new ConflictException('이미 해당 브리더에 대한 후기를 작성하셨습니다.');
+            throw new ConflictException('이미 해당 신청에 대한 후기를 작성하셨습니다.');
         }
 
-        // 4. BreederReview 컬렉션에 후기 저장
+        // 7. BreederReview 컬렉션에 후기 저장
         const newReview = new this.breederReviewModel({
-            breederId: breederId,
+            applicationId: applicationId,
+            breederId: application.breederId,
             adopterId: userId,
             type: reviewType,
             content: content,
@@ -223,12 +241,15 @@ export class AdopterService {
 
         const savedReview = await newReview.save();
 
-        // 5. 브리더 통계 업데이트
-        await this.breederRepository.incrementReviewCount(breederId);
+        // 8. 브리더 통계 업데이트
+        await this.breederRepository.incrementReviewCount(application.breederId.toString());
 
         return {
             reviewId: (savedReview._id as any).toString(),
-            message: '후기가 성공적으로 등록되었습니다.',
+            applicationId: applicationId,
+            breederId: application.breederId.toString(),
+            reviewType: reviewType,
+            writtenAt: savedReview.writtenAt.toISOString(),
         };
     }
 

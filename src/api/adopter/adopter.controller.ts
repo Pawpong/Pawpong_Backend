@@ -128,24 +128,23 @@ Figma 상담 신청 폼 기반으로 재설계된 API입니다.
     @Post('review')
     @ApiEndpoint({
         summary: '브리더 후기 작성',
-        description: `입양 완료 후 브리더에 대한 후기를 작성합니다.
+        description: `상담이 완료된 입양 신청에 대해 후기를 작성합니다.
 
 **작성 가능 조건:**
-- 입양 신청 상태가 '상담 완료(consultation_completed)' 이상이어야 함
+- 입양 신청 상태가 '상담 완료(consultation_completed)'여야 함
+- 본인의 입양 신청에 대해서만 작성 가능
 - 한 번의 입양 신청당 하나의 후기만 작성 가능
 - 이미 후기를 작성한 신청에는 재작성 불가
 
 **후기 정보:**
 - applicationId: 후기를 작성할 입양 신청 ID (필수)
-- reviewType: 후기 유형 (adoption_completed 등)
-- rating: 평점 (1-5점)
-- content: 후기 내용
-- photos: 후기 사진 URL 배열 (선택)
+- reviewType: 후기 유형 (consultation: 상담후기 | adoption: 입양완료후기)
+- content: 후기 내용 (필수)
 
 **자동 처리:**
 - 입양자의 후기 목록에 추가
-- 브리더의 후기 캐시에 추가
-- 브리더 평균 평점 및 후기 수 실시간 업데이트`,
+- 브리더의 후기 목록에 추가
+- 브리더 후기 수 실시간 업데이트`,
         responseType: ReviewCreateResponseDto,
         isPublic: false,
     })

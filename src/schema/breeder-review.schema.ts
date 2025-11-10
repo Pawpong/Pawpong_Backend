@@ -4,11 +4,11 @@ import { Document, Schema as MongooseSchema } from 'mongoose';
 export type BreederReviewDocument = BreederReview & Document;
 
 /**
- * 브리더 후기 스키마 (단순화)
+ * 브리더 후기 스키마
  *
  * 참조 방식으로 설계:
  * - 별도 컬렉션으로만 관리 (임베디드 없음)
- * - 필요한 필드만 저장 (브리더ID, 작성자ID, 후기유형, 내용, 작성일시)
+ * - 입양 신청과 연결하여 상담 완료 후 작성 가능
  * - 조회 시 populate로 추가 정보 가져오기
  */
 @Schema({
@@ -16,6 +16,13 @@ export type BreederReviewDocument = BreederReview & Document;
     collection: 'breeder_reviews',
 })
 export class BreederReview {
+    /**
+     * 입양 신청 ID (참조)
+     * 상담 완료 후 작성하는 후기이므로 신청과 1:1 매칭
+     */
+    @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'AdoptionApplication', required: true, unique: true, index: true })
+    applicationId: MongooseSchema.Types.ObjectId;
+
     /**
      * 브리더 ID (참조)
      */
@@ -88,6 +95,7 @@ export class BreederReview {
 export const BreederReviewSchema = SchemaFactory.createForClass(BreederReview);
 
 // 인덱스 설정
+BreederReviewSchema.index({ applicationId: 1 }, { unique: true }); // 신청당 1개 후기 보장
 BreederReviewSchema.index({ breederId: 1, isVisible: 1, writtenAt: -1 }); // 브리더별 최신 후기 조회
 BreederReviewSchema.index({ adopterId: 1, writtenAt: -1 }); // 입양자별 작성 후기 조회
 BreederReviewSchema.index({ breederId: 1, type: 1 }); // 브리더별 후기 타입 필터링
