@@ -6,6 +6,7 @@ import { BreedService } from './breed.service';
 
 import { ApiResponseDto } from '../../../common/dto/response/api-response.dto';
 import { GetBreedsResponseDto } from '../dto/response/get-breeds-response.dto';
+import { BreedServiceSwaggerDocs } from './swagger';
 
 @ApiController('breeds')
 @Controller('breeds')
@@ -14,8 +15,7 @@ export class BreedController {
 
     @Get(':petType')
     @ApiEndpoint({
-        summary: '특정 동물의 품종 목록 조회',
-        description: '강아지(dog) 또는 고양이(cat)의 카테고리별 품종 목록을 조회합니다.',
+        ...BreedServiceSwaggerDocs.getBreeds,
         responseType: GetBreedsResponseDto,
         isPublic: true,
     })

@@ -18,6 +18,8 @@ import { PetDetailResponseDto } from './dto/response/pet-detail-response.dto';
 import { PetsListResponseDto, PetItemDto } from './dto/response/pets-list-response.dto';
 import { ParentPetListResponseDto } from './dto/response/parent-pet-list.dto';
 import { PublicApplicationFormResponseDto } from './dto/response/public-application-form.dto';
+import { BreederSwaggerDocs } from './swagger';
+import { BreederExploreResponseDto } from './dto/response/breeder-explore-response.dto';
 
 @ApiController('브리더')
 @Controller('breeder')
@@ -29,8 +31,7 @@ export class BreederController {
 
     @Get('search')
     @ApiEndpoint({
-        summary: '브리더 검색 (레거시)',
-        description: '기존 브리더 검색 API (하위 호환성 유지)',
+        ...BreederSwaggerDocs.searchBreeders,
         responseType: BreederSearchResponseDto,
         isPublic: true,
     })
@@ -43,9 +44,9 @@ export class BreederController {
 
     @Post('explore')
     @ApiPaginatedEndpoint({
-        summary: '브리더 탐색',
-        description: '강아지/고양이 브리더를 검색하고 다양한 조건으로 필터링할 수 있습니다.',
-        responseType: BreederCardResponseDto,
+        ...BreederSwaggerDocs.exploreBreeders,
+        responseType: BreederExploreResponseDto,
+        itemType: BreederCardResponseDto,
         isPublic: true,
     })
     async exploreBreeders(
@@ -58,10 +59,8 @@ export class BreederController {
 
     @Get('popular')
     @ApiEndpoint({
-        summary: '인기 브리더 조회',
-        description:
-            '찜이 많고 평점이 높은 인기 브리더 Top 10을 조회합니다. 로그인 없이도 이용 가능하며, 가격 정보는 제외됩니다.',
-        responseType: BreederCardResponseDto,
+        ...BreederSwaggerDocs.getPopularBreeders,
+        responseType: [BreederCardResponseDto],
         isPublic: true,
     })
     async getPopularBreeders(): Promise<ApiResponseDto<BreederCardResponseDto[]>> {
@@ -72,8 +71,7 @@ export class BreederController {
     @Get(':id')
     // @UseGuards(JwtAuthGuard) // 임시로 주석 처리
     @ApiEndpoint({
-        summary: '브리더 프로필 상세',
-        description: '특정 브리더의 상세 정보를 조회합니다.',
+        ...BreederSwaggerDocs.getBreederProfile,
         responseType: BreederProfileResponseDto,
         isPublic: true, // 공개 API로 변경
     })
@@ -87,9 +85,9 @@ export class BreederController {
 
     @Get(':id/reviews')
     @ApiPaginatedEndpoint({
-        summary: '브리더 후기 목록 조회',
-        description: '특정 브리더의 후기 목록을 페이지네이션과 함께 조회합니다. 최신 후기부터 정렬되어 반환됩니다.',
+        ...BreederSwaggerDocs.getBreederReviews,
         responseType: BreederReviewsResponseDto,
+        itemType: BreederReviewItemDto,
         isPublic: true,
     })
     async getBreederReviews(
@@ -103,10 +101,9 @@ export class BreederController {
 
     @Get(':id/pets')
     @ApiPaginatedEndpoint({
-        summary: '브리더 개체 목록 조회',
-        description:
-            '특정 브리더의 개체(반려동물) 목록을 조회합니다. status 파라미터로 분양 가능, 예약, 입양 완료 상태별 필터링이 가능합니다.',
+        ...BreederSwaggerDocs.getBreederPets,
         responseType: PetsListResponseDto,
+        itemType: PetItemDto,
         isPublic: true,
     })
     async getBreederPets(
@@ -121,9 +118,7 @@ export class BreederController {
 
     @Get(':id/pet/:petId')
     @ApiEndpoint({
-        summary: '개체 상세 정보 조회',
-        description:
-            '특정 개체(반려동물)의 상세 정보를 조회합니다. 백신 접종 기록, 건강 기록, 부모 정보 등이 포함됩니다.',
+        ...BreederSwaggerDocs.getPetDetail,
         responseType: PetDetailResponseDto,
         isPublic: true,
     })
@@ -137,34 +132,18 @@ export class BreederController {
 
     @Get(':id/parent-pets')
     @ApiEndpoint({
-        summary: '브리더 부모견/부모묘 목록 조회',
-        description:
-            '특정 브리더의 부모견/부모묘 목록을 조회합니다. 활성화된 부모견/부모묘만 반환되며, 사진 URL은 1시간 유효한 Signed URL로 제공됩니다.',
-        responseType: ParentPetListResponseDto,
+        ...BreederSwaggerDocs.getParentPets,
+        responseType: [ParentPetListResponseDto],
         isPublic: true,
     })
-    async getParentPets(@Param('id') breederId: string): Promise<ApiResponseDto<ParentPetListResponseDto>> {
+    async getParentPets(@Param('id') breederId: string): Promise<ApiResponseDto<ParentPetListResponseDto[]>> {
         const result = await this.breederService.getParentPets(breederId);
         return ApiResponseDto.success(result, '부모견/부모묘 목록이 조회되었습니다.');
     }
 
     @Get(':id/application-form')
     @ApiEndpoint({
-        summary: '입양 신청 폼 구조 조회 (공개)',
-        description: `입양자가 입양 신청하기 전에 브리더의 입양 신청 폼 구조를 조회합니다.
-
-**응답 데이터:**
-- **표준 질문** (14개): 모든 브리더 공통 - 개인정보 동의, 자기소개, 가족 구성원, 가족 동의, 알러지 검사, 집 비우는 시간, 거주 공간, 반려동물 경험, 기본 케어 책임, 치료비 감당, 중성화 동의, 선호하는 아이, 입양 시기, 추가 문의사항
-- **커스텀 질문**: 해당 브리더가 추가로 요청하는 질문들
-
-**사용 시나리오:**
-1. 입양자가 브리더 프로필 페이지에서 "입양 신청하기" 버튼 클릭
-2. 이 API를 호출하여 폼 구조 조회
-3. 폼 구조에 맞춰 동적으로 입력 폼 렌더링
-4. 입양자가 모든 질문에 답변 작성
-5. POST /api/adopter/application으로 입양 신청 제출
-
-**인증 불필요** (공개 API)`,
+        ...BreederSwaggerDocs.getApplicationForm,
         responseType: PublicApplicationFormResponseDto,
         isPublic: true,
     })

@@ -10,7 +10,7 @@ import { ApiResponseDto } from '../dto/response/api-response.dto';
 export function ApiEndpoint(options: {
     summary: string;
     description?: string;
-    responseType?: Type<any>;
+    responseType?: Type<any> | [Type<any>];
     isPublic?: boolean;
 }) {
     const decorators = [
@@ -22,7 +22,10 @@ export function ApiEndpoint(options: {
 
     // responseType이 있을 경우 ApiResponseDto<T> 형식으로 Swagger 스키마 생성
     if (options.responseType) {
-        decorators.push(ApiExtraModels(ApiResponseDto, options.responseType));
+        const isArray = Array.isArray(options.responseType);
+        const DtoType = isArray ? options.responseType[0] : options.responseType;
+
+        decorators.push(ApiExtraModels(ApiResponseDto, DtoType));
         decorators.push(
             ApiResponse({
                 status: 200,
@@ -34,9 +37,14 @@ export function ApiEndpoint(options: {
                             properties: {
                                 success: { type: 'boolean', example: true },
                                 code: { type: 'number', example: 200 },
-                                data: {
-                                    $ref: getSchemaPath(options.responseType),
-                                },
+                                data: isArray
+                                    ? {
+                                          type: 'array',
+                                          items: { $ref: getSchemaPath(DtoType) },
+                                      }
+                                    : {
+                                          $ref: getSchemaPath(DtoType),
+                                      },
                                 message: { type: 'string', example: '요청이 성공적으로 처리되었습니다.' },
                                 timestamp: { type: 'string', example: '2025-01-26T10:30:00.000Z' },
                             },

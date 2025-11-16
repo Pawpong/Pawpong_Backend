@@ -143,3 +143,150 @@ export const BREEDER_CARD_EXAMPLE = {
     averageRating: 4.5,
     createdAt: new Date('2024-01-15T09:00:00.000Z'),
 };
+
+/**
+ * Breeder 도메인 스웨거 문서
+ */
+export class BreederSwaggerDocs {
+    static readonly searchBreeders = {
+        summary: '브리더 검색 (레거시)',
+        description: `
+            **[Deprecated]** 기존 버전의 브리더 검색 API입니다. 하위 호환성을 위해 유지되며, **exploreBreeders** API 사용을 권장합니다.
+            
+            다양한 조건으로 브리더를 검색합니다.
+            
+            ## Query Parameters
+            - **page, limit**: 페이지네이션
+            - **sortBy**: 정렬 기준 (예: 'popular', 'latest')
+            - **filterBy**: 필터링 조건
+            
+            ## 인증 불필요
+            - 공개 API로 인증 없이 호출 가능합니다.
+        `,
+    };
+
+    static readonly exploreBreeders = {
+        summary: '브리더 탐색',
+        description: `
+            강아지 또는 고양이 브리더를 검색하고 다양한 조건으로 필터링합니다.
+            
+            ## Request Body
+            - **animalType**: 'dog' 또는 'cat' (필수)
+            - **page, limit**: 페이지네이션
+            - **sortBy**: 정렬 기준 ('distance', 'popular', 'latest', 'priceHigh', 'priceLow')
+            - **filters**: 상세 필터링 조건 (지역, 품종, 성별, 가격대 등)
+            - **userLocation**: 사용자의 현재 위치 (거리순 정렬 시 사용)
+            
+            ## 주요 기능
+            - 로그인 시, 각 브리더에 대한 사용자의 '찜' 여부(isWished)가 포함됩니다.
+            - 비로그인 시에도 사용 가능합니다.
+        `,
+    };
+
+    static readonly getPopularBreeders = {
+        summary: '인기 브리더 조회',
+        description: `
+            '찜'이 많고 평점이 높은 순으로 인기 브리더 목록을 조회합니다.
+            
+            ## 주요 기능
+            - 상위 10명의 브리더를 반환합니다.
+            - 가격 정보는 제외된 상태로 반환됩니다.
+            
+            ## 인증 불필요
+            - 공개 API로 인증 없이 호출 가능합니다.
+        `,
+    };
+
+    static readonly getBreederProfile = {
+        summary: '브리더 프로필 상세 조회',
+        description: `
+            ID를 사용하여 특정 브리더의 상세 프로필 정보를 조회합니다.
+            
+            ## 주요 기능
+            - 브리더 기본 정보, 소개, 연락처, 활동 지역 등을 포함합니다.
+            - 로그인 시, 해당 브리더에 대한 사용자의 '찜' 여부(isWished)가 포함됩니다.
+            - 비로그인 시에도 사용 가능합니다.
+        `,
+    };
+
+    static readonly getBreederReviews = {
+        summary: '브리더 후기 목록 조회',
+        description: `
+            특정 브리더에 대한 입양 후기 목록을 페이지네이션과 함께 조회합니다.
+            
+            ## Query Parameters
+            - **page**: 페이지 번호 (기본값: 1)
+            - **limit**: 페이지 당 항목 수 (기본값: 10)
+            
+            ## 정렬
+            - 최신 후기부터 내림차순으로 정렬됩니다.
+            
+            ## 인증 불필요
+            - 공개 API로 인증 없이 호출 가능합니다.
+        `,
+    };
+
+    static readonly getBreederPets = {
+        summary: '브리더의 분양 개체 목록 조회',
+        description: `
+            특정 브리더가 분양 중인 개체(반려동물) 목록을 조회합니다.
+            
+            ## Query Parameters
+            - **status**: 분양 상태 필터링 ('available', 'reserved', 'completed')
+            - **page**: 페이지 번호 (기본값: 1)
+            - **limit**: 페이지 당 항목 수 (기본값: 20)
+            
+            ## 인증 불필요
+            - 공개 API로 인증 없이 호출 가능합니다.
+        `,
+    };
+
+    static readonly getPetDetail = {
+        summary: '분양 개체 상세 정보 조회',
+        description: `
+            특정 개체(반려동물)의 상세 정보를 조회합니다.
+            
+            ## 주요 정보
+            - 기본 정보 (이름, 성별, 생년월일 등)
+            - 백신 접종 기록
+            - 건강 기록
+            - 부모 정보 (부모견/묘)
+            
+            ## 인증 불필요
+            - 공개 API로 인증 없이 호출 가능합니다.
+        `,
+    };
+
+    static readonly getParentPets = {
+        summary: '브리더의 부모견/부모묘 목록 조회',
+        description: `
+            특정 브리더의 부모견 또는 부모묘 목록을 조회합니다.
+            
+            ## 주요 기능
+            - '활성화' 상태인 부모 개체만 반환됩니다.
+            - 프로필 사진은 1시간 동안 유효한 임시 URL(Signed URL)로 제공됩니다.
+            
+            ## 인증 불필요
+            - 공개 API로 인증 없이 호출 가능합니다.
+        `,
+    };
+
+    static readonly getApplicationForm = {
+        summary: '입양 신청 폼 구조 조회',
+        description: `
+            입양 신청 시 필요한 질문 폼의 구조를 조회합니다.
+            
+            ## 응답 내용
+            - **표준 질문 (Standard Questions)**: 모든 브리더에게 공통으로 적용되는 필수 질문 목록입니다.
+            - **커스텀 질문 (Custom Questions)**: 해당 브리더가 개별적으로 추가한 질문 목록입니다.
+            
+            ## 사용 흐름
+            1. 입양 희망자가 "입양 신청하기" 버튼을 클릭합니다.
+            2. 이 API를 호출하여 질문 목록을 받아옵니다.
+            3. 프론트엔드에서 응답 데이터를 기반으로 동적 폼을 생성합니다.
+            
+            ## 인증 불필요
+            - 공개 API로 인증 없이 호출 가능합니다.
+        `,
+    };
+}

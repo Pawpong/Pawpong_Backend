@@ -8,6 +8,7 @@ import { CreateBreedRequestDto } from './dto/request/create-breed-request.dto';
 import { UpdateBreedRequestDto } from './dto/request/update-breed-request.dto';
 import { ApiResponseDto } from '../../../common/dto/response/api-response.dto';
 import { BreedResponseDto } from '../dto/response/breed-response.dto';
+import { BreedAdminSwaggerDocs } from './swagger';
 
 @ApiController('breeds-admin')
 @Controller('breeds-admin')
@@ -16,8 +17,7 @@ export class AdminBreedController {
 
     @Post()
     @ApiEndpoint({
-        summary: '품종 카테고리 생성',
-        description: '새로운 품종 카테고리를 생성합니다. (관리자 전용)',
+        ...BreedAdminSwaggerDocs.createBreed,
         responseType: BreedResponseDto,
     })
     async createBreed(@Body() dto: CreateBreedRequestDto): Promise<ApiResponseDto<BreedResponseDto>> {
@@ -27,9 +27,8 @@ export class AdminBreedController {
 
     @Get()
     @ApiEndpoint({
-        summary: '모든 품종 카테고리 조회',
-        description: '모든 품종 카테고리를 조회합니다. (관리자 전용)',
-        responseType: BreedResponseDto,
+        ...BreedAdminSwaggerDocs.getAllBreeds,
+        responseType: [BreedResponseDto],
     })
     async getAllBreeds(): Promise<ApiResponseDto<BreedResponseDto[]>> {
         const result = await this.adminBreedService.getAllBreeds();
@@ -38,8 +37,7 @@ export class AdminBreedController {
 
     @Get(':id')
     @ApiEndpoint({
-        summary: '특정 품종 카테고리 조회',
-        description: 'ID로 특정 품종 카테고리를 조회합니다. (관리자 전용)',
+        ...BreedAdminSwaggerDocs.getBreedById,
         responseType: BreedResponseDto,
     })
     async getBreedById(@Param('id') id: string): Promise<ApiResponseDto<BreedResponseDto>> {
@@ -49,8 +47,7 @@ export class AdminBreedController {
 
     @Patch(':id')
     @ApiEndpoint({
-        summary: '품종 카테고리 수정',
-        description: '기존 품종 카테고리를 수정합니다. (관리자 전용)',
+        ...BreedAdminSwaggerDocs.updateBreed,
         responseType: BreedResponseDto,
     })
     async updateBreed(
@@ -63,8 +60,7 @@ export class AdminBreedController {
 
     @Delete(':id')
     @ApiEndpoint({
-        summary: '품종 카테고리 삭제',
-        description: '기존 품종 카테고리를 삭제합니다. (관리자 전용)',
+        ...BreedAdminSwaggerDocs.deleteBreed,
     })
     async deleteBreed(@Param('id') id: string): Promise<ApiResponseDto<null>> {
         await this.adminBreedService.deleteBreed(id);
