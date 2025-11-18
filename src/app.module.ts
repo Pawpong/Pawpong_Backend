@@ -18,6 +18,7 @@ import { UserAdminModule } from './api/user/admin/user-admin.module';
 import { PlatformAdminModule } from './api/platform/admin/platform-admin.module';
 import { StandardQuestionModule } from './api/standard-question/standard-question.module';
 import { BreederManagementModule } from './api/breeder-management/breeder-management.module';
+import { FilterOptionsModule } from './api/filter-options/filter-options.module';
 
 @Module({
     imports: [
@@ -39,6 +40,7 @@ import { BreederManagementModule } from './api/breeder-management/breeder-manage
         UploadModule,
         DistrictModule,
         BreedModule,
+        FilterOptionsModule,
     ],
     controllers: [],
     providers: [CustomLoggerService],

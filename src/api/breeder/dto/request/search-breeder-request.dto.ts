@@ -59,6 +59,20 @@ export class SearchBreederRequestDto {
     catFurLength?: string[];
 
     /**
+     * 품종 필터 - 중복 선택 가능
+     * @example ["말티즈", "푸들"]
+     */
+    @ApiPropertyOptional({
+        description: '품종 필터',
+        isArray: true,
+        example: ['말티즈', '푸들'],
+    })
+    @IsOptional()
+    @IsString({ each: true })
+    @Type(() => String)
+    breeds?: string[];
+
+    /**
      * 지역 필터 (광역시/도) - 중복 선택 가능
      * @example ["경기도", "서울특별시"]
      */
