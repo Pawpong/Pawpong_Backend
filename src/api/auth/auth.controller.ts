@@ -54,6 +54,22 @@ export class AuthController {
         private readonly configService: ConfigService,
     ) {}
 
+    /**
+     * 요청의 출처(Referer 헤더)를 확인하여 적절한 프론트엔드 URL 반환
+     * - localhost에서 요청: 로컬 프론트엔드 URL 반환
+     * - 프로덕션에서 요청: 프로덕션 프론트엔드 URL 반환
+     */
+    private getFrontendUrl(req: any): string {
+        const referer = req.headers.referer || req.headers.origin || '';
+        const isLocalRequest = referer.includes('localhost') || referer.includes('127.0.0.1');
+
+        if (isLocalRequest) {
+            return this.configService.get<string>('FRONTEND_URL_LOCAL') || 'http://localhost:3000';
+        } else {
+            return this.configService.get<string>('FRONTEND_URL_PROD') || 'https://pawpong-frontend.vercel.app';
+        }
+    }
+
     @Post('refresh')
     @HttpCode(HttpStatus.OK)
     @ApiEndpoint({
@@ -133,7 +149,7 @@ export class AuthController {
     @UseGuards(AuthGuard('google'))
     async googleCallback(@Req() req, @Res() res: Response) {
         const result = await this.authService.handleSocialLogin(req.user);
-        const frontendUrl = this.configService.get<string>('FRONTEND_URL');
+        const frontendUrl = this.getFrontendUrl(req); // ✅ 동적 URL 결정
 
         if (result.needsAdditionalInfo) {
             // 신규 사용자 - /signup으로 리다이렉트
@@ -191,7 +207,7 @@ export class AuthController {
     @UseGuards(AuthGuard('naver'))
     async naverCallback(@Req() req, @Res() res: Response) {
         const result = await this.authService.handleSocialLogin(req.user);
-        const frontendUrl = this.configService.get<string>('FRONTEND_URL');
+        const frontendUrl = this.getFrontendUrl(req); // ✅ 동적 URL 결정
 
         if (result.needsAdditionalInfo) {
             // 신규 사용자 - /signup으로 리다이렉트
@@ -249,7 +265,7 @@ export class AuthController {
     @UseGuards(AuthGuard('kakao'))
     async kakaoCallback(@Req() req, @Res() res: Response) {
         const result = await this.authService.handleSocialLogin(req.user);
-        const frontendUrl = this.configService.get<string>('FRONTEND_URL');
+        const frontendUrl = this.getFrontendUrl(req); // ✅ 동적 URL 결정
 
         if (result.needsAdditionalInfo) {
             // 신규 사용자 - /signup으로 리다이렉트
