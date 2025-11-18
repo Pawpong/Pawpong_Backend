@@ -1,5 +1,6 @@
 import { Injectable, UnauthorizedException, ConflictException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
 
 import { UserStatus, VerificationStatus, BreederPlan } from '../../common/enum/user.enum';
@@ -43,6 +44,7 @@ export class AuthService {
         private readonly authAdopterRepository: AuthAdopterRepository,
         private readonly authBreederRepository: AuthBreederRepository,
         private jwtService: JwtService,
+        private readonly configService: ConfigService,
         private readonly logger: CustomLoggerService,
         private readonly storageService: StorageService,
     ) {
@@ -127,16 +129,18 @@ export class AuthService {
             role,
         };
 
-        // Access 토큰 (1시간)
+        // Access 토큰 (.env JWT_EXPIRATION 설정 사용, 기본값 24시간)
+        const jwtExpiration = this.configService.get<string>('JWT_EXPIRATION') || '24h';
         const accessToken = this.jwtService.sign(payload, {
-            expiresIn: '1h',
+            expiresIn: jwtExpiration,
         });
 
-        // Refresh 토큰 (7일)
+        // Refresh 토큰 (.env JWT_REFRESH_EXPIRATION 설정 사용, 기본값 7일)
+        const jwtRefreshExpiration = this.configService.get<string>('JWT_REFRESH_EXPIRATION') || '7d';
         const refreshToken = this.jwtService.sign(
             { ...payload, type: 'refresh' },
             {
-                expiresIn: '7d',
+                expiresIn: jwtRefreshExpiration,
             },
         );
 
@@ -273,11 +277,30 @@ export class AuthService {
         name: string;
         profileImage?: string;
     }): Promise<{ needsAdditionalInfo: boolean; tempUserId?: string; user?: any }> {
+        // 디버깅: 받은 profile 정보 로깅
+        this.logger.log(
+            `[handleSocialLogin] 소셜 로그인 요청 - provider: ${profile.provider}, providerId: ${profile.providerId}, email: ${profile.email}`,
+        );
+
         // 기존 사용자 조회 (Adopter)
         let adopter = await this.authAdopterRepository.findBySocialAuth(profile.provider, profile.providerId);
 
+        // 디버깅: 조회 결과 로깅
+        this.logger.log(`[handleSocialLogin] Adopter 조회 결과: ${adopter ? '찾음 - ' + adopter.emailAddress : '없음'}`);
+
+        // 디버깅: 이메일로 사용자 조회하여 socialAuthInfo 확인
+        if (!adopter) {
+            const adopterByEmail = await this.authAdopterRepository.findByEmail(profile.email);
+            if (adopterByEmail) {
+                this.logger.log(
+                    `[handleSocialLogin] ⚠️ 이메일로 Adopter 찾음: ${adopterByEmail.emailAddress}, socialAuthInfo: ${JSON.stringify(adopterByEmail.socialAuthInfo || 'null')}`,
+                );
+            }
+        }
+
         if (adopter) {
             // 기존 사용자 로그인
+            this.logger.log(`[handleSocialLogin] 기존 Adopter 로그인 성공: ${adopter.emailAddress}`);
             return {
                 needsAdditionalInfo: false,
                 user: {
@@ -293,8 +316,12 @@ export class AuthService {
         // 기존 사용자 조회 (Breeder)
         let breeder = await this.authBreederRepository.findBySocialAuth(profile.provider, profile.providerId);
 
+        // 디버깅: 조회 결과 로깅
+        this.logger.log(`[handleSocialLogin] Breeder 조회 결과: ${breeder ? '찾음 - ' + breeder.emailAddress : '없음'}`);
+
         if (breeder) {
             // 기존 사용자 로그인
+            this.logger.log(`[handleSocialLogin] 기존 Breeder 로그인 성공: ${breeder.emailAddress}`);
             return {
                 needsAdditionalInfo: false,
                 user: {

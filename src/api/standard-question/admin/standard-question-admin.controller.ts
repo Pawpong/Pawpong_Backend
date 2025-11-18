@@ -1,4 +1,4 @@
-import { Controller, Get, Put, Patch, Post, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Patch, Post, Body, Param, UseGuards } from '@nestjs/common';
 
 import { Roles } from '../../../common/decorator/roles.decorator';
 import { CurrentUser } from '../../../common/decorator/user.decorator';
@@ -25,7 +25,7 @@ import { STANDARD_QUESTION_ADMIN_REQUEST_EXAMPLES, StandardQuestionAdminSwaggerD
  * - 표준 질문 순서 변경
  * - 표준 질문 재시딩
  */
-@ApiController('입양 신청 질문 admin')
+@ApiController('입양 신청 질문 (Admin)')
 @Controller('standard-question-admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('admin')
@@ -43,7 +43,7 @@ export class StandardQuestionAdminController {
         return ApiResponseDto.success(result, '표준 질문 목록이 조회되었습니다.');
     }
 
-    @Put(':id')
+    @Patch(':id')
     @ApiEndpoint({
         ...StandardQuestionAdminSwaggerDocs.updateStandardQuestion,
         responseType: StandardQuestionResponseDto,

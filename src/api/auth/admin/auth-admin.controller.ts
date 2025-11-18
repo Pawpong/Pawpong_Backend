@@ -6,8 +6,8 @@ import { ApiEndpoint } from '../../../common/decorator/swagger.decorator';
 import { AuthAdminService } from './auth-admin.service';
 
 import { AdminLoginRequestDto } from '../dto/request/admin-login-request.dto';
-import { AdminLoginResponseDto } from '../dto/response/admin-login-response.dto';
 import { ApiResponseDto } from '../../../common/dto/response/api-response.dto';
+import { AdminLoginResponseDto } from '../dto/response/admin-login-response.dto';
 
 /**
  * 관리자 인증 컨트롤러
@@ -16,7 +16,7 @@ import { ApiResponseDto } from '../../../common/dto/response/api-response.dto';
  *
  * @tag Auth Admin - 관리자 인증
  */
-@ApiTags('Auth Admin')
+@ApiTags('인증 관리 (Admin)')
 @Controller('auth/admin')
 export class AuthAdminController {
     constructor(private readonly authAdminService: AuthAdminService) {}

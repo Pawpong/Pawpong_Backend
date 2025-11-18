@@ -32,6 +32,7 @@ import { RefreshTokenRequestDto } from './dto/request/refresh-token-request.dto'
 import { CheckNicknameRequestDto } from './dto/request/check-nickname-request.dto';
 import { RegisterAdopterRequestDto } from './dto/request/register-adopter-request.dto';
 import { RegisterBreederRequestDto } from './dto/request/register-breeder-request.dto';
+import { SocialCompleteRequestDto } from './dto/request/social-complete-request.dto';
 import { UploadBreederDocumentsRequestDto } from './dto/request/upload-breeder-documents-request.dto';
 import { SendVerificationCodeRequestDto, VerifyCodeRequestDto } from './dto/request/phone-verification-request.dto';
 import { ApiResponseDto } from '../../common/dto/response/api-response.dto';
@@ -142,8 +143,35 @@ export class AuthController {
             // 기존 사용자 - 로그인 처리 (토큰 발급)
             const tokens = await this.authService.generateSocialLoginTokens(result.user);
 
-            // 프론트엔드로 토큰 전달 (URL 파라미터)
-            const redirectUrl = `${frontendUrl}/login/success?accessToken=${tokens.accessToken}&refreshToken=${tokens.refreshToken}`;
+            // HttpOnly 쿠키에 토큰 저장
+            const isProduction = this.configService.get<string>('NODE_ENV') === 'production';
+
+            res.cookie('accessToken', tokens.accessToken, {
+                httpOnly: true,
+                secure: isProduction,
+                sameSite: 'lax',
+                path: '/',
+                maxAge: 24 * 60 * 60 * 1000, // 24시간
+            });
+
+            res.cookie('refreshToken', tokens.refreshToken, {
+                httpOnly: true,
+                secure: isProduction,
+                sameSite: 'lax',
+                path: '/',
+                maxAge: 7 * 24 * 60 * 60 * 1000, // 7일
+            });
+
+            res.cookie('userRole', result.user.role, {
+                httpOnly: false,
+                secure: isProduction,
+                sameSite: 'lax',
+                path: '/',
+                maxAge: 24 * 60 * 60 * 1000, // 24시간
+            });
+
+            // 토큰 없이 프론트엔드로 리다이렉트
+            const redirectUrl = `${frontendUrl}/explore`;
             return res.redirect(redirectUrl);
         }
     }
@@ -173,8 +201,35 @@ export class AuthController {
             // 기존 사용자 - 로그인 처리 (토큰 발급)
             const tokens = await this.authService.generateSocialLoginTokens(result.user);
 
-            // 프론트엔드로 토큰 전달 (URL 파라미터)
-            const redirectUrl = `${frontendUrl}/login/success?accessToken=${tokens.accessToken}&refreshToken=${tokens.refreshToken}`;
+            // HttpOnly 쿠키에 토큰 저장
+            const isProduction = this.configService.get<string>('NODE_ENV') === 'production';
+
+            res.cookie('accessToken', tokens.accessToken, {
+                httpOnly: true,
+                secure: isProduction,
+                sameSite: 'lax',
+                path: '/',
+                maxAge: 24 * 60 * 60 * 1000, // 24시간
+            });
+
+            res.cookie('refreshToken', tokens.refreshToken, {
+                httpOnly: true,
+                secure: isProduction,
+                sameSite: 'lax',
+                path: '/',
+                maxAge: 7 * 24 * 60 * 60 * 1000, // 7일
+            });
+
+            res.cookie('userRole', result.user.role, {
+                httpOnly: false,
+                secure: isProduction,
+                sameSite: 'lax',
+                path: '/',
+                maxAge: 24 * 60 * 60 * 1000, // 24시간
+            });
+
+            // 토큰 없이 프론트엔드로 리다이렉트
+            const redirectUrl = `${frontendUrl}/explore`;
             return res.redirect(redirectUrl);
         }
     }
@@ -205,9 +260,147 @@ export class AuthController {
             // 기존 사용자 - 로그인 처리 (토큰 발급)
             const tokens = await this.authService.generateSocialLoginTokens(result.user);
 
-            // 프론트엔드로 토큰 전달 (URL 파라미터)
-            const redirectUrl = `${frontendUrl}/login/success?accessToken=${tokens.accessToken}&refreshToken=${tokens.refreshToken}`;
+            // HttpOnly 쿠키에 토큰 저장
+            const isProduction = this.configService.get<string>('NODE_ENV') === 'production';
+
+            res.cookie('accessToken', tokens.accessToken, {
+                httpOnly: true,
+                secure: isProduction,
+                sameSite: 'lax',
+                path: '/',
+                maxAge: 24 * 60 * 60 * 1000, // 24시간
+            });
+
+            res.cookie('refreshToken', tokens.refreshToken, {
+                httpOnly: true,
+                secure: isProduction,
+                sameSite: 'lax',
+                path: '/',
+                maxAge: 7 * 24 * 60 * 60 * 1000, // 7일
+            });
+
+            res.cookie('userRole', result.user.role, {
+                httpOnly: false,
+                secure: isProduction,
+                sameSite: 'lax',
+                path: '/',
+                maxAge: 24 * 60 * 60 * 1000, // 24시간
+            });
+
+            // 토큰 없이 프론트엔드로 리다이렉트
+            const redirectUrl = `${frontendUrl}/explore`;
             return res.redirect(redirectUrl);
+        }
+    }
+
+    @Post('social/complete')
+    @HttpCode(HttpStatus.OK)
+    @ApiEndpoint({
+        summary: '소셜 로그인 회원가입 완료',
+        description: `소셜 로그인 후 역할(role)에 따라 입양자 또는 브리더 회원가입을 완료합니다.
+
+**프론트엔드 회원가입 플로우:**
+1. 소셜 로그인 (Google/Naver/Kakao) → tempId 획득
+2. 역할 선택 (adopter/breeder)
+3. 필수 정보 입력
+4. 이 엔드포인트로 회원가입 완료
+
+**공통 필수 필드:**
+- tempId: 소셜 로그인 후 받은 임시 ID
+- email: 이메일 주소
+- name: 이름
+- role: 역할 (adopter 또는 breeder)
+
+**입양자 전용 필드:**
+- nickname: 닉네임 (필수)
+- phone: 전화번호 (선택)
+- marketingAgreed: 마케팅 수신 동의 (선택)
+
+**브리더 전용 필드:**
+- phone: 전화번호 (필수)
+- petType: 브리딩 동물 종류 (cat/dog)
+- plan: 플랜 유형 (basic/pro)
+- breederName: 브리더명
+- introduction: 소개글 (선택)
+- city: 시/도
+- district: 시/군/구 (선택)
+- breeds: 품종 목록
+- level: 브리더 레벨 (elite/new)
+- marketingAgreed: 마케팅 수신 동의 (선택)
+
+**응답 데이터:**
+- accessToken: JWT Access 토큰
+- refreshToken: JWT Refresh 토큰
+- userInfo: 사용자 정보`,
+        responseType: RegisterAdopterResponseDto,
+        isPublic: true,
+    })
+    async completeSocialRegistration(
+        @Body() dto: SocialCompleteRequestDto,
+    ): Promise<ApiResponseDto<RegisterAdopterResponseDto | RegisterBreederResponseDto>> {
+        if (dto.role === 'adopter') {
+            // 입양자 회원가입 필수 필드 검증
+            if (!dto.nickname) {
+                throw new BadRequestException('입양자 회원가입 시 닉네임은 필수입니다.');
+            }
+
+            const adopterDto: RegisterAdopterRequestDto = {
+                tempId: dto.tempId,
+                email: dto.email,
+                nickname: dto.nickname,
+                phone: dto.phone,
+                marketingAgreed: dto.marketingAgreed,
+            };
+            const result = await this.authService.registerAdopter(adopterDto);
+            return ApiResponseDto.success(result, '입양자 회원가입이 완료되었습니다.');
+        } else if (dto.role === 'breeder') {
+            // 브리더 회원가입 필수 필드 검증
+            if (!dto.phone) {
+                throw new BadRequestException('브리더 회원가입 시 전화번호는 필수입니다.');
+            }
+            if (!dto.breederName) {
+                throw new BadRequestException('브리더 회원가입 시 브리더명은 필수입니다.');
+            }
+            if (!dto.city) {
+                throw new BadRequestException('브리더 회원가입 시 시/도는 필수입니다.');
+            }
+            if (!dto.petType) {
+                throw new BadRequestException('브리더 회원가입 시 브리딩 동물 종류는 필수입니다.');
+            }
+            if (!dto.breeds || dto.breeds.length === 0) {
+                throw new BadRequestException('브리더 회원가입 시 품종 목록은 필수입니다.');
+            }
+            if (!dto.plan) {
+                throw new BadRequestException('브리더 회원가입 시 플랜은 필수입니다.');
+            }
+            if (!dto.level) {
+                throw new BadRequestException('브리더 회원가입 시 레벨은 필수입니다.');
+            }
+
+            const breederDto: RegisterBreederRequestDto = {
+                tempId: dto.tempId,
+                provider: dto.provider, // ✅ 소셜 로그인 제공자 추가
+                email: dto.email,
+                phoneNumber: dto.phone,
+                breederName: dto.breederName,
+                breederLocation: {
+                    city: dto.city,
+                    district: dto.district,
+                },
+                animal: dto.petType,
+                breeds: dto.breeds,
+                plan: dto.plan,
+                level: dto.level,
+                agreements: {
+                    termsOfService: true, // 소셜 로그인 시 기본 동의로 처리
+                    privacyPolicy: true,
+                    marketingConsent: dto.marketingAgreed ?? false,
+                },
+            };
+            const result = await this.authService.registerBreeder(breederDto);
+            return ApiResponseDto.success(result, '브리더 회원가입이 완료되었습니다.');
+        } else {
+            throw new BadRequestException('유효하지 않은 역할입니다.');
         }
     }
 

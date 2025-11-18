@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Put, Delete, Body, Param, Query, UseGuards, Patch } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
 
 import { Roles } from '../../common/decorator/roles.decorator';
 import { CurrentUser } from '../../common/decorator/user.decorator';
@@ -125,7 +125,7 @@ export class BreederManagementController {
         return ApiResponseDto.success(result, '부모 반려동물이 성공적으로 등록되었습니다.');
     }
 
-    @Put('parent-pets/:petId')
+    @Patch('parent-pets/:petId')
     @ApiEndpoint({
         summary: '부모견/부모묘 정보 수정',
         description: '등록된 부모 반려동물의 정보를 수정합니다.',
@@ -171,7 +171,7 @@ export class BreederManagementController {
         return ApiResponseDto.success(result, '분양 반려동물이 성공적으로 등록되었습니다.');
     }
 
-    @Put('available-pets/:petId')
+    @Patch('available-pets/:petId')
     @ApiEndpoint({
         summary: '분양 가능한 반려동물 정보 수정',
         description: '등록된 분양 반려동물의 정보를 수정합니다.',
@@ -365,7 +365,7 @@ export class BreederManagementController {
         return ApiResponseDto.success(result, '입양 신청 폼이 조회되었습니다.');
     }
 
-    @Put('application-form')
+    @Patch('application-form')
     @ApiEndpoint({
         summary: '입양 신청 폼 수정',
         description: `브리더가 커스텀 질문을 추가/수정/삭제합니다.

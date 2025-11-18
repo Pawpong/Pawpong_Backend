@@ -250,7 +250,7 @@ describe('Breeder Management API E2E Tests (Simple)', () => {
             };
 
             const response = await request(app.getHttpServer())
-                .put(`/api/breeder-management/parent-pets/${parentPetId}`)
+                .patch(`/api/breeder-management/parent-pets/${parentPetId}`)
                 .set('Authorization', `Bearer ${breederToken}`)
                 .send(updateData)
                 .expect(200);
@@ -322,7 +322,7 @@ describe('Breeder Management API E2E Tests (Simple)', () => {
             };
 
             const response = await request(app.getHttpServer())
-                .put(`/api/breeder-management/available-pets/${availablePetId}`)
+                .patch(`/api/breeder-management/available-pets/${availablePetId}`)
                 .set('Authorization', `Bearer ${breederToken}`)
                 .send(updateData)
                 .expect(200);
@@ -524,7 +524,7 @@ describe('Breeder Management API E2E Tests (Simple)', () => {
             };
 
             const response = await request(app.getHttpServer())
-                .put('/api/breeder-management/application-form')
+                .patch('/api/breeder-management/application-form')
                 .set('Authorization', `Bearer ${breederToken}`)
                 .send(formData);
 
@@ -551,7 +551,7 @@ describe('Breeder Management API E2E Tests (Simple)', () => {
             };
 
             const response = await request(app.getHttpServer())
-                .put('/api/breeder-management/application-form')
+                .patch('/api/breeder-management/application-form')
                 .set('Authorization', `Bearer ${breederToken}`)
                 .send(formData);
 

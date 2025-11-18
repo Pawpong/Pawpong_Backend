@@ -10,7 +10,7 @@ import { ApiResponseDto } from '../../../common/dto/response/api-response.dto';
 import { BreedResponseDto } from '../dto/response/breed-response.dto';
 import { BreedAdminSwaggerDocs } from './swagger';
 
-@ApiController('breeds-admin')
+@ApiController('품종 관리 (Admin)')
 @Controller('breeds-admin')
 export class AdminBreedController {
     constructor(private readonly adminBreedService: AdminBreedService) {}

@@ -41,8 +41,8 @@ export class AuthBreederRepository {
     async findBySocialAuth(provider: string, providerId: string): Promise<BreederDocument | null> {
         return this.breederModel
             .findOne({
-                'socialAuth.provider': provider,
-                'socialAuth.providerId': providerId,
+                'socialAuthInfo.authProvider': provider,
+                'socialAuthInfo.providerUserId': providerId,
             })
             .exec() as Promise<BreederDocument | null>;
     }

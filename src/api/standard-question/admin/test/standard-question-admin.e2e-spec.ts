@@ -117,7 +117,6 @@ describe('Standard Question Admin API E2E Tests', () => {
             //     .get('/api/standard-question-admin')
             //     .set('Authorization', `Bearer ${adminToken}`)
             //     .expect(200);
-
             // if (response.body.data.length > 0) {
             //     questionId = response.body.data[0].id;
             // }
@@ -126,7 +125,7 @@ describe('Standard Question Admin API E2E Tests', () => {
         it('질문 제목과 설명 수정 성공', async () => {
             // NOTE: 실제 JWT 토큰 구현 후 테스트 활성화 필요
             // const response = await request(app.getHttpServer())
-            //     .put(`/api/standard-question-admin/${questionId}`)
+            //     .patch(`/api/standard-question-admin/${questionId}`)
             //     .set('Authorization', `Bearer ${adminToken}`)
             //     .send({
             //         title: '수정된 질문 제목',
@@ -145,7 +144,7 @@ describe('Standard Question Admin API E2E Tests', () => {
         it('필수 여부 변경 성공', async () => {
             // NOTE: 실제 JWT 토큰 구현 후 테스트 활성화 필요
             // const response = await request(app.getHttpServer())
-            //     .put(`/api/standard-question-admin/${questionId}`)
+            //     .patch(`/api/standard-question-admin/${questionId}`)
             //     .set('Authorization', `Bearer ${adminToken}`)
             //     .send({
             //         isRequired: false,
@@ -161,7 +160,7 @@ describe('Standard Question Admin API E2E Tests', () => {
         it('존재하지 않는 질문 수정 시 400 에러', async () => {
             // NOTE: 실제 JWT 토큰 구현 후 테스트 활성화 필요
             // const response = await request(app.getHttpServer())
-            //     .put('/api/standard-question-admin/invalid-id')
+            //     .patch('/api/standard-question-admin/invalid-id')
             //     .set('Authorization', `Bearer ${adminToken}`)
             //     .send({
             //         title: '수정 시도',
@@ -173,7 +172,7 @@ describe('Standard Question Admin API E2E Tests', () => {
 
         it('인증 없이 접근 시 401 에러', async () => {
             const response = await request(app.getHttpServer())
-                .put('/api/standard-question-admin/some-id')
+                .patch('/api/standard-question-admin/some-id')
                 .send({
                     title: '수정 시도',
                 })
@@ -256,7 +255,6 @@ describe('Standard Question Admin API E2E Tests', () => {
             //     .get('/api/standard-question-admin')
             //     .set('Authorization', `Bearer ${adminToken}`)
             //     .expect(200);
-
             // questionIds = response.body.data.slice(0, 3).map((q) => q.id);
         });
 

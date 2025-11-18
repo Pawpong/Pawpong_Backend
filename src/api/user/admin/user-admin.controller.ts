@@ -1,4 +1,4 @@
-import { Controller, Get, Put, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Patch, Body, Param, Query, UseGuards } from '@nestjs/common';
 
 import { Roles } from '../../../common/decorator/roles.decorator';
 import { CurrentUser } from '../../../common/decorator/user.decorator';
@@ -57,7 +57,7 @@ export class UserAdminController {
         return ApiResponseDto.success(result, '사용자 목록이 조회되었습니다.');
     }
 
-    @Put('users/:userId/status')
+    @Patch('users/:userId/status')
     @ApiEndpoint({
         summary: '사용자 상태 변경',
         description: '입양자 또는 브리더의 계정 상태를 변경합니다.',

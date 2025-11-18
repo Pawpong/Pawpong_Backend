@@ -1,4 +1,4 @@
-import { Controller, Get, Put, Param, Query, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Patch, Param, Query, Body, UseGuards } from '@nestjs/common';
 
 import { Roles } from '../../../common/decorator/roles.decorator';
 import { CurrentUser } from '../../../common/decorator/user.decorator';
@@ -12,7 +12,6 @@ import { ReportActionRequestDto } from './dto/request/report-action-request.dto'
 import { BreederSearchRequestDto } from './dto/request/breeder-search-request.dto';
 import { BreederVerificationRequestDto } from './dto/request/breeder-verification-request.dto';
 import { ApplicationMonitoringRequestDto } from './dto/request/application-monitoring-request.dto';
-
 import { ApiResponseDto } from '../../../common/dto/response/api-response.dto';
 import { PaginationResponseDto } from '../../../common/dto/pagination/pagination-response.dto';
 import { BreederReportItemDto } from './dto/response/breeder-report-list.dto';
@@ -53,7 +52,7 @@ export class BreederAdminController {
         return ApiResponseDto.success(result, '승인 대기 브리더 목록이 조회되었습니다.');
     }
 
-    @Put('verification/:breederId')
+    @Patch('verification/:breederId')
     @ApiEndpoint({
         summary: '브리더 인증 승인/거절',
         description: '브리더의 인증 신청을 승인하거나 거절합니다.',
@@ -105,7 +104,7 @@ export class BreederAdminController {
         return ApiResponseDto.success(result, '브리더 신고 목록이 조회되었습니다.');
     }
 
-    @Put('reports/:breederId/:reportId')
+    @Patch('reports/:breederId/:reportId')
     @ApiEndpoint({
         summary: '브리더 신고 처리',
         description: '접수된 브리더 신고를 처리합니다.',

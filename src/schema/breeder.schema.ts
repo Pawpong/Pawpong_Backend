@@ -16,6 +16,7 @@ export class VerificationDocument {
      * - id_card: 신분증 사본 (필수 - 모든 레벨)
      * - animal_production_license: 동물생산업 등록증 (필수 - 모든 레벨)
      * - adoption_contract_sample: 표준 입양계약서 샘플 (엘리트 필수)
+     * - recent_pedigree_document: 최근 발급된 혈통서 사본 (엘리트 필수)
      * - breeder_certification: 고양이 브리더 인증 서류 (엘리트 필수)
      */
     @Prop({
@@ -24,6 +25,7 @@ export class VerificationDocument {
             'id_card',
             'animal_production_license',
             'adoption_contract_sample',
+            'recent_pedigree_document',
             'breeder_certification',
         ],
     })

@@ -7,6 +7,7 @@ import { ApplicationStatus, ReportStatus } from '../../common/enum/user.enum';
 
 import { StorageService } from '../../common/storage/storage.service';
 
+import { Breeder, BreederDocument } from '../../schema/breeder.schema';
 import { BreederReview, BreederReviewDocument } from '../../schema/breeder-review.schema';
 import { AdoptionApplication, AdoptionApplicationDocument } from '../../schema/adoption-application.schema';
 
@@ -44,6 +45,7 @@ export class AdopterService {
         private breederRepository: BreederRepository,
         private availablePetManagementRepository: AvailablePetManagementRepository,
         private storageService: StorageService,
+        @InjectModel(Breeder.name) private breederModel: Model<BreederDocument>,
         @InjectModel(BreederReview.name) private breederReviewModel: Model<BreederReviewDocument>,
         @InjectModel(AdoptionApplication.name) private adoptionApplicationModel: Model<AdoptionApplicationDocument>,
     ) {}
@@ -609,22 +611,61 @@ export class AdopterService {
      * @param userId 입양자 고유 ID
      * @param page 페이지 번호 (기본값: 1)
      * @param limit 페이지당 아이템 수 (기본값: 10)
+     * @param animalType 동물 타입 필터 (선택사항: 'cat' 또는 'dog')
      * @returns 입양 신청 목록과 페이지네이션 정보
      * @throws BadRequestException 존재하지 않는 입양자
      */
-    async getMyApplications(userId: string, page: number = 1, limit: number = 10): Promise<any> {
+    async getMyApplications(
+        userId: string,
+        page: number = 1,
+        limit: number = 10,
+        animalType?: 'cat' | 'dog',
+    ): Promise<any> {
         // 입양자 존재 확인
         const adopter = await this.adopterRepository.findById(userId);
         if (!adopter) {
             throw new BadRequestException('입양자 정보를 찾을 수 없습니다.');
         }
 
+        // animalType 필터가 있는 경우 해당 타입을 브리딩하는 브리더 ID 목록 조회
+        let breederIds: string[] | undefined;
+        if (animalType) {
+            const breeders = await this.breederModel
+                .find({
+                    'profile.specialization': animalType,
+                })
+                .select('_id')
+                .exec();
+            breederIds = breeders.map((breeder: any) => breeder._id.toString());
+
+            // 해당 동물 타입을 브리딩하는 브리더가 없는 경우 빈 결과 반환
+            if (breederIds.length === 0) {
+                return {
+                    items: [],
+                    pagination: {
+                        currentPage: page,
+                        pageSize: limit,
+                        totalItems: 0,
+                        totalPages: 0,
+                        hasNextPage: false,
+                        hasPrevPage: false,
+                    },
+                };
+            }
+        }
+
+        // 쿼리 조건 구성
+        const queryConditions: any = { adopterId: userId };
+        if (breederIds) {
+            queryConditions.breederId = { $in: breederIds };
+        }
+
         // 전체 신청 수 조회
-        const totalItems = await this.adoptionApplicationModel.countDocuments({ adopterId: userId });
+        const totalItems = await this.adoptionApplicationModel.countDocuments(queryConditions);
 
         // 페이지네이션된 신청 목록 조회
         const applications = await this.adoptionApplicationModel
-            .find({ adopterId: userId })
+            .find(queryConditions)
             .sort({ appliedAt: -1 }) // 최신순 정렬
             .skip((page - 1) * limit)
             .limit(limit)
@@ -634,6 +675,18 @@ export class AdopterService {
         const items = await Promise.all(
             applications.map(async (app: any) => {
                 const breeder = await this.breederRepository.findById(app.breederId.toString());
+
+                // 날짜를 "2024. 01. 15." 형식으로 변환
+                const formatDate = (date: Date): string => {
+                    const year = date.getFullYear();
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const day = String(date.getDate()).padStart(2, '0');
+                    return `${year}. ${month}. ${day}.`;
+                };
+
+                // 브리더의 주요 동물 타입 추출 (첫 번째 specialization 사용)
+                const animalType = breeder?.profile?.specialization?.[0] || 'dog';
+
                 return {
                     applicationId: app._id.toString(),
                     breederId: app.breederId.toString(),
@@ -643,6 +696,11 @@ export class AdopterService {
                     status: app.status,
                     appliedAt: app.appliedAt.toISOString(),
                     processedAt: app.processedAt?.toISOString(),
+                    // 프론트엔드 요구사항 필드 추가
+                    breederLevel: (breeder?.verification?.level || 'new') as 'elite' | 'new',
+                    profileImage: breeder?.profileImageFileName,
+                    animalType: animalType as 'cat' | 'dog',
+                    applicationDate: formatDate(app.appliedAt),
                 };
             }),
         );

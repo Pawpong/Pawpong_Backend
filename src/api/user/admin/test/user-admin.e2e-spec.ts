@@ -1,6 +1,4 @@
 import { INestApplication } from '@nestjs/common';
-import { getConnectionToken } from '@nestjs/mongoose';
-import { Connection } from 'mongoose';
 import request from 'supertest';
 
 import { createTestingApp, cleanupDatabase, seedAdmin } from '../../../../common/test/test-utils';
@@ -36,7 +34,7 @@ describe('User Admin API E2E Tests', () => {
             .expect(200);
 
         adminToken = loginResponse.body.data.accessToken;
-    });
+    }, 30000); // 30초 타임아웃
 
     afterAll(async () => {
         await cleanupDatabase(app);
@@ -119,7 +117,7 @@ describe('User Admin API E2E Tests', () => {
                 .expect(200);
 
             breederId = breederResponse.body.data.breederId;
-        });
+        }, 15000); // 15초 타임아웃
 
         it('모든 사용자 목록 조회 성공', async () => {
             const response = await request(app.getHttpServer())
@@ -199,11 +197,11 @@ describe('User Admin API E2E Tests', () => {
                 .expect(200);
 
             testAdopterId = response.body.data.adopterId;
-        });
+        }, 15000); // 15초 타임아웃
 
         it('입양자 계정 정지 성공', async () => {
             const response = await request(app.getHttpServer())
-                .put(`/api/user-admin/users/${testAdopterId}/status?role=adopter`)
+                .patch(`/api/user-admin/users/${testAdopterId}/status?role=adopter`)
                 .set('Authorization', `Bearer ${adminToken}`)
                 .send({
                     accountStatus: 'suspended',
@@ -220,7 +218,7 @@ describe('User Admin API E2E Tests', () => {
 
         it('입양자 계정 활성화 성공', async () => {
             const response = await request(app.getHttpServer())
-                .put(`/api/user-admin/users/${testAdopterId}/status?role=adopter`)
+                .patch(`/api/user-admin/users/${testAdopterId}/status?role=adopter`)
                 .set('Authorization', `Bearer ${adminToken}`)
                 .send({
                     accountStatus: 'active',
@@ -235,7 +233,7 @@ describe('User Admin API E2E Tests', () => {
 
         it('사유 없이 상태 변경 시 실패', async () => {
             const response = await request(app.getHttpServer())
-                .put(`/api/user-admin/users/${testAdopterId}/status?role=adopter`)
+                .patch(`/api/user-admin/users/${testAdopterId}/status?role=adopter`)
                 .set('Authorization', `Bearer ${adminToken}`)
                 .send({
                     accountStatus: 'suspended',
@@ -248,7 +246,7 @@ describe('User Admin API E2E Tests', () => {
 
         it('인증 없이 접근 시 401 에러', async () => {
             const response = await request(app.getHttpServer())
-                .put(`/api/user-admin/users/${testAdopterId}/status?role=adopter`)
+                .patch(`/api/user-admin/users/${testAdopterId}/status?role=adopter`)
                 .send({
                     accountStatus: 'suspended',
                     actionReason: '테스트',

@@ -12,7 +12,7 @@ import { CreateDistrictRequestDto } from './dto/request/create-district-request.
 import { UpdateDistrictRequestDto } from './dto/request/update-district-request.dto';
 import { DistrictResponseDto } from '../dto/response/district-response.dto';
 
-@ApiController('districts-admin')
+@ApiController('지역 관리 (Admin)')
 @Controller('districts-admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('admin')

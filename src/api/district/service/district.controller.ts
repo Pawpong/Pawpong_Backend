@@ -7,7 +7,7 @@ import { DistrictService } from './district.service';
 import { ApiResponseDto } from '../../../common/dto/response/api-response.dto';
 import { GetDistrictsResponseDto } from '../dto/response/get-districts-response.dto';
 
-@ApiController('districts')
+@ApiController('지역 관리')
 @Controller('districts')
 export class DistrictController {
     constructor(private readonly districtService: DistrictService) {}

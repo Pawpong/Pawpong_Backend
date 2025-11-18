@@ -91,4 +91,47 @@ export class ApplicationListItemResponseDto {
         required: false,
     })
     processedAt?: string;
+
+    /**
+     * 브리더 등급
+     * @example "elite"
+     */
+    @ApiProperty({
+        description: '브리더 등급',
+        example: 'elite',
+        enum: ['elite', 'new'],
+    })
+    breederLevel: 'elite' | 'new';
+
+    /**
+     * 브리더 프로필 이미지 URL
+     * @example "https://example.com/breeder-profile.jpg"
+     */
+    @ApiProperty({
+        description: '브리더 프로필 이미지 URL',
+        example: 'https://example.com/breeder-profile.jpg',
+        required: false,
+    })
+    profileImage?: string;
+
+    /**
+     * 동물 타입 (고양이 또는 강아지)
+     * @example "dog"
+     */
+    @ApiProperty({
+        description: '동물 타입',
+        example: 'dog',
+        enum: ['cat', 'dog'],
+    })
+    animalType: 'cat' | 'dog';
+
+    /**
+     * 신청 날짜 (프론트엔드 표시용 포맷: "2024. 01. 15.")
+     * @example "2024. 01. 15."
+     */
+    @ApiProperty({
+        description: '신청 날짜 (표시용 포맷)',
+        example: '2024. 01. 15.',
+    })
+    applicationDate: string;
 }

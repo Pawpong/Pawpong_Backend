@@ -8,7 +8,7 @@ import { ApiResponseDto } from '../../../common/dto/response/api-response.dto';
 import { GetBreedsResponseDto } from '../dto/response/get-breeds-response.dto';
 import { BreedServiceSwaggerDocs } from './swagger';
 
-@ApiController('breeds')
+@ApiController('품종')
 @Controller('breeds')
 export class BreedController {
     constructor(private readonly breedService: BreedService) {}

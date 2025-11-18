@@ -87,7 +87,8 @@ Figma 상담 신청 폼 기반으로 재설계된 API입니다.
 
 **Query Parameters:**
 - \`page\`: 페이지 번호 (기본: 1)
-- \`limit\`: 페이지당 아이템 수 (기본: 10)`,
+- \`limit\`: 페이지당 아이템 수 (기본: 10)
+- \`animalType\`: 동물 타입 필터 ('cat' 또는 'dog', 선택사항)`,
         responseType: ApplicationListResponseDto,
         itemType: ApplicationListItemResponseDto,
         isPublic: false,
@@ -96,8 +97,14 @@ Figma 상담 신청 폼 기반으로 재설계된 API입니다.
         @CurrentUser() user: any,
         @Query('page') page: number = 1,
         @Query('limit') limit: number = 10,
+        @Query('animalType') animalType?: 'cat' | 'dog',
     ): Promise<ApiResponseDto<PaginationResponseDto<ApplicationListItemResponseDto>>> {
-        const result = await this.adopterService.getMyApplications(user.userId, Number(page), Number(limit));
+        const result = await this.adopterService.getMyApplications(
+            user.userId,
+            Number(page),
+            Number(limit),
+            animalType,
+        );
         return ApiResponseDto.success(result, '입양 신청 목록이 조회되었습니다.');
     }
 

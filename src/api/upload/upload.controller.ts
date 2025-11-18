@@ -29,7 +29,7 @@ import { AvailablePet, AvailablePetDocument } from '../../schema/available-pet.s
 import { ApiResponseDto } from '../../common/dto/response/api-response.dto';
 import { UploadResponseDto } from './dto/response/upload-response.dto';
 
-@ApiController('upload')
+@ApiController('업로드')
 @Controller('upload')
 export class UploadController {
     constructor(
