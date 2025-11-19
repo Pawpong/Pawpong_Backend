@@ -20,7 +20,7 @@ export class BreederReview {
      * 입양 신청 ID (참조)
      * 상담 완료 후 작성하는 후기이므로 신청과 1:1 매칭
      */
-    @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'AdoptionApplication', required: true, unique: true, index: true })
+    @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'AdoptionApplication', required: true })
     applicationId: MongooseSchema.Types.ObjectId;
 
     /**

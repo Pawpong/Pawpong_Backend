@@ -159,6 +159,7 @@ export class StorageService {
 
     /**
      * 파일명 배열을 Signed URL 배열로 변환
+     * 개발 환경: http/https로 시작하는 외부 URL은 그대로 반환
      */
     generateSignedUrls(fileNames: string[], expirationMinutes: number = 60): string[] {
         if (!fileNames || fileNames.length === 0) {
@@ -166,7 +167,14 @@ export class StorageService {
         }
         return fileNames
             .filter((fileName) => fileName && fileName.trim() !== '')
-            .map((fileName) => this.generateSignedUrl(fileName, expirationMinutes));
+            .map((fileName) => {
+                // 외부 URL(http/https)은 그대로 반환 (개발 환경)
+                if (fileName.startsWith('http://') || fileName.startsWith('https://')) {
+                    return fileName;
+                }
+                // GCS 버킷 경로는 signed URL로 변환
+                return this.generateSignedUrl(fileName, expirationMinutes);
+            });
     }
 
     /**

@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 
@@ -9,54 +9,19 @@ import { STANDARD_QUESTIONS } from '../../../common/data/standard-questions.data
  * 표준 입양 신청 질문 관리 Admin 서비스
  *
  * 역할:
- * - 앱 시작 시 표준 질문 자동 시딩
  * - 관리자의 표준 질문 CRUD 관리
  */
 @Injectable()
-export class StandardQuestionAdminService implements OnModuleInit {
-    private isSeeded = false;
-
+export class StandardQuestionAdminService {
     constructor(
         @InjectModel(StandardQuestion.name) private readonly standardQuestionModel: Model<StandardQuestionDocument>,
     ) {}
-
-    /**
-     * 모듈 초기화 시 자동으로 표준 질문 시드 데이터 삽입
-     */
-    async onModuleInit() {
-        await this.ensureSeeded();
-    }
-
-    /**
-     * 필요시에만 시드 데이터 삽입 (Lazy Loading)
-     */
-    private async ensureSeeded() {
-        if (this.isSeeded) return;
-
-        try {
-            const count = await this.standardQuestionModel.countDocuments().maxTimeMS(3000);
-
-            if (count === 0) {
-                console.log('[StandardQuestionAdminService] 표준 질문 데이터 삽입 시작');
-                await this.standardQuestionModel.insertMany(STANDARD_QUESTIONS);
-                console.log(`[StandardQuestionAdminService] ${STANDARD_QUESTIONS.length}개 표준 질문 데이터 삽입 완료`);
-            } else {
-                console.log(`[StandardQuestionAdminService] 기존 ${count}개 표준 질문 데이터 확인`);
-            }
-
-            this.isSeeded = true;
-        } catch (error) {
-            console.error('[StandardQuestionAdminService] 시드 데이터 확인 실패:', error);
-            // 에러가 발생해도 서비스는 계속 작동
-        }
-    }
 
     /**
      * 모든 표준 질문 조회 (관리자용 - 비활성화 포함)
      * @returns 모든 표준 질문 목록
      */
     async getAllQuestions(): Promise<StandardQuestionDocument[]> {
-        await this.ensureSeeded();
         return this.standardQuestionModel.find().sort({ order: 1 }).exec() as any;
     }
 

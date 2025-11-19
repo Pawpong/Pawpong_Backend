@@ -1,9 +1,8 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 
 import { StorageService } from '../../common/storage/storage.service';
-import { MOCK_BREEDERS } from '../../common/data/breeders.data';
 
 import { Breeder, BreederDocument } from '../../schema/breeder.schema';
 import { Adopter, AdopterDocument } from '../../schema/adopter.schema';
@@ -19,7 +18,7 @@ import { PaginationResponseDto } from '../../common/dto/pagination/pagination-re
  * 공개 브리더 검색 및 필터링 기능을 제공
  */
 @Injectable()
-export class BreederExploreService implements OnModuleInit {
+export class BreederExploreService {
     private readonly logger = new Logger(BreederExploreService.name);
 
     constructor(
@@ -28,14 +27,6 @@ export class BreederExploreService implements OnModuleInit {
         @InjectModel(AvailablePet.name) private availablePetModel: Model<AvailablePetDocument>,
         private readonly storageService: StorageService,
     ) {}
-
-    async onModuleInit() {
-        try {
-            await this.seedMockBreeders();
-        } catch (error) {
-            this.logger.error('[onModuleInit] 시드 함수 에러:', error.message);
-        }
-    }
 
     /**
      * 브리더 탐색/검색 기능
@@ -199,47 +190,6 @@ export class BreederExploreService implements OnModuleInit {
             .setPage(page)
             .setTake(take)
             .build();
-    }
-
-    /**
-     * 개발용 목업 브리더 DB에 생성
-     * 목업 데이터는 common/data/breeders.data.ts에서 관리됩니다.
-     */
-    async seedMockBreeders(): Promise<void> {
-        this.logger.log('[seedMockBreeders] 시드 함수 시작');
-
-        if (process.env.NODE_ENV !== 'development') {
-            this.logger.log('[seedMockBreeders] 프로덕션 환경이므로 스킵');
-            return;
-        }
-
-        // 이미 브리더가 충분히 있으면 스킵
-        const existingCount = await this.breederModel.countDocuments();
-        this.logger.log(`[seedMockBreeders] 기존 브리더 수: ${existingCount}`);
-
-        if (existingCount >= 20) {
-            this.logger.log('[seedMockBreeders] 이미 충분한 브리더 데이터가 있으므로 스킵');
-            return;
-        }
-
-        // 기존 목업 데이터 삭제 (이메일이 *@example.com 패턴인 것들)
-        const mockEmails = MOCK_BREEDERS.map((b) => b.emailAddress);
-        const deleteResult = await this.breederModel.deleteMany({
-            emailAddress: { $in: mockEmails },
-        });
-        if (deleteResult.deletedCount > 0) {
-            this.logger.log(`[seedMockBreeders] 기존 목업 데이터 ${deleteResult.deletedCount}개 삭제`);
-        }
-
-        // common/data/breeders.data.ts에서 가져온 목업 데이터 사용
-        this.logger.log(`[seedMockBreeders] ${MOCK_BREEDERS.length}개의 목업 데이터 삽입 시작...`);
-        try {
-            const result = await this.breederModel.insertMany(MOCK_BREEDERS);
-            this.logger.log(`[seedMockBreeders] ${result.length}개의 목업 브리더 데이터 생성 완료`);
-        } catch (error) {
-            this.logger.error(`[seedMockBreeders] 삽입 실패:`, error.message);
-            throw error;
-        }
     }
 
     /**

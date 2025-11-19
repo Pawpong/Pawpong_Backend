@@ -8,6 +8,7 @@ import { CustomLoggerService } from './common/logger/custom-logger.service';
 import { DatabaseModule } from './common/database/database.module';
 import { AuthModule } from './api/auth/auth.module';
 import { HomeModule } from './api/home/home.module';
+import { HomeAdminModule } from './api/home/admin/home-admin.module';
 import { BreedModule } from './api/breed/breed.module';
 import { HealthModule } from './api/health/health.module';
 import { UploadModule } from './api/upload/upload.module';
@@ -31,6 +32,7 @@ import { FilterOptionsModule } from './api/filter-options/filter-options.module'
         StandardQuestionModule,
         AuthModule,
         HomeModule,
+        HomeAdminModule,
         BreederModule,
         AdopterModule,
         BreederManagementModule,

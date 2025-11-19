@@ -32,7 +32,14 @@
     "pm2:logs": "pm2 logs pawpong-api",
     "pm2:monit": "pm2 monit",
     "pm2:status": "pm2 status",
-    "seed:mock": "ts-node scripts/seed-mock-data.ts"
+    "seed:all": "ts-node src/scripts/seed-all.ts",
+    "seed:all:force": "ts-node src/scripts/seed-all.ts --force",
+    "seed:breeders": "ts-node src/scripts/seed-all.ts --only-breeders",
+    "seed:districts": "ts-node src/scripts/seed-all.ts --only-districts",
+    "seed:questions": "ts-node src/scripts/seed-all.ts --only-questions",
+    "seed:breeds": "ts-node src/scripts/seed-all.ts --only-breeds",
+    "seed:banners": "ts-node src/scripts/seed-all.ts --only-banners",
+    "seed:faqs": "ts-node src/scripts/seed-all.ts --only-faqs"
   },
   "dependencies": {
     "@google-cloud/storage": "^7.17.1",
